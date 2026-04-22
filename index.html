@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM Seguros</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<style>
+/* ============================================================
+   RESET Y BASE
+============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1A3C6E;--med-blue:#2E6DA4;--light-blue:#E6F1FB;
+  --green:#1D9E75;--green-light:#EAF3DE;
+  --amber:#EF9F27;--amber-light:#FAEEDA;
+  --red:#E24B4A;--red-light:#FCEBEB;
+  --purple:#7F77DD;--purple-light:#EEEDFE;
+  --gray:#888780;--gray-light:#F1EFE8;
+  --border:#e8e8e8;--bg:#f5f7fa;--white:#fff;
+  --text:#1a1a2e;--text-muted:#666;--text-light:#aaa;
+  --radius:10px;--radius-sm:7px;
+  --shadow:0 1px 4px rgba(0,0,0,.08);
+}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+input,select,textarea,button{font-family:inherit;font-size:14px}
+/* ============================================================
+   LOGIN
+============================================================ */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:var(--white);border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:var(--shadow);border:0.5px solid var(--border)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-title{font-size:26px;font-weight:700;color:var(--blue);margin-bottom:4px}
+.login-logo-sub{font-size:13px;color:var(--text-muted)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:5px;font-weight:500}
+.form-input{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);transition:border-color .2s}
+.form-input:focus{outline:none;border-color:var(--med-blue)}
+.btn-login{width:100%;padding:11px;background:var(--blue);color:var(--white);border:none;border-radius:var(--radius-sm);font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-login:hover{opacity:.88}
+.login-error{background:var(--red-light);color:#791F1F;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;display:none}
+.login-error.show{display:block}
+/* ============================================================
+   LAYOUT PRINCIPAL
+============================================================ */
+.app-wrap{display:none;min-height:100vh}
+.app-wrap.show{display:flex}
+/* Sidebar */
+.sidebar{width:220px;background:var(--white);border-right:0.5px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
+.sidebar-logo{padding:20px 16px 14px;border-bottom:0.5px solid var(--border)}
+.sidebar-logo-title{font-size:15px;font-weight:700;color:var(--blue)}
+.sidebar-logo-sub{font-size:11px;color:var(--text-light);margin-top:2px}
+.sidebar-nav{flex:1;padding:10px 0}
+.nav-section{padding:6px 16px 3px;font-size:10px;font-weight:600;color:var(--text-light);letter-spacing:.06em;margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--text-muted);font-size:13px;border-left:2px solid transparent;transition:all .15s;text-decoration:none}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--light-blue);color:var(--med-blue);font-weight:500;border-left-color:var(--med-blue)}
+.nav-item .nav-icon{width:18px;text-align:center;font-size:14px}
+.nav-badge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:10px;background:var(--red-light);color:#791F1F;font-weight:600}
+.sidebar-footer{padding:14px 16px;border-top:0.5px solid var(--border)}
+.sidebar-user{font-size:12px;color:var(--text-muted)}
+.sidebar-user strong{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
+.btn-logout{margin-top:8px;font-size:11px;color:var(--text-light);background:none;border:none;cursor:pointer;padding:0}
+.btn-logout:hover{color:var(--red)}
+/* Main content */
+.main-content{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50}
+.topbar-title{font-size:16px;font-weight:600;color:var(--text)}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.page-content{padding:24px;flex:1}
+/* ============================================================
+   COMPONENTES
+============================================================ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;border:0.5px solid var(--border);background:var(--white);color:var(--text);transition:all .15s;font-weight:400}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--blue);color:var(--white);border-color:var(--blue)}
+.btn-primary:hover{opacity:.88}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-success{background:var(--green);color:var(--white);border-color:var(--green)}
+.btn-danger{background:var(--red);color:var(--white);border-color:var(--red)}
+.card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.metric{background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px}
+.metric .lbl{font-size:11px;color:var(--text-light);margin-bottom:5px}
+.metric .val{font-size:24px;font-weight:600;color:var(--text)}
+.metric .sub{font-size:11px;color:var(--text-light);margin-top:3px}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.badge-verde{background:var(--green-light);color:#27500A}
+.badge-amber{background:var(--amber-light);color:#633806}
+.badge-rojo{background:var(--red-light);color:#791F1F}
+.badge-azul{background:var(--light-blue);color:#0C447C}
+.badge-gris{background:var(--gray-light);color:#444441}
+.badge-purple{background:var(--purple-light);color:#3C3489}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border);background:var(--bg)}
+td{padding:10px 12px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle}
+tr:hover td{background:var(--bg)}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--med-blue)}
+.form-row textarea{resize:vertical;min-height:80px}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.search-input{padding:8px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);width:240px}
+.search-input:focus{outline:none;border-color:var(--med-blue)}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--white);border-radius:14px;padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.modal-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);padding:2px 6px;border-radius:4px}
+.modal-close:hover{background:var(--bg);color:var(--text)}
+/* Alert */
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;display:none}
+.alert.show{display:block}
+.alert-success{background:var(--green-light);color:#27500A;border:0.5px solid #97C459}
+.alert-error{background:var(--red-light);color:#791F1F;border:0.5px solid #F09595}
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--text-light);font-size:13px}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--med-blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-light)}
+.empty-state .empty-icon{font-size:40px;margin-bottom:12px}
+.empty-state .empty-title{font-size:14px;font-weight:500;color:var(--text-muted);margin-bottom:6px}
+.empty-state .empty-desc{font-size:12px}
+/* Semáforo */
+.semaforo{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sem-verde{background:var(--green)}
+.sem-amarillo{background:var(--amber)}
+.sem-rojo{background:var(--red)}
+/* Progress bar */
+.pbar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:5px}
+.pfill{height:100%;border-radius:3px;transition:width .4s}
+/* Config notice */
+.config-notice{background:var(--amber-light);border:0.5px solid var(--amber);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
+.config-notice h3{font-size:14px;font-weight:600;color:#633806;margin-bottom:8px}
+.config-notice p{font-size:12px;color:#854F0B;line-height:1.6;margin-bottom:10px}
+.config-notice code{background:#fff;padding:3px 8px;border-radius:4px;font-family:monospace;font-size:12px;color:#633806;display:block;margin:4px 0;word-break:break-all}
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto}
+  .main-content{margin-left:0}
+  .fgrid2,.fgrid3{grid-template-columns:1fr}
+  .search-input{width:100%}
+}
+/* Secciones */
+.section{display:none}.section.active{display:block}
+/* Alertas dashboard */
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border)}
+.alert-item:last-child{border-bottom:none}
+.adot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIG NOTICE (se muestra si no hay credenciales)
+============================================================ -->
+<div id="config-notice" style="display:none;padding:20px">
+  <div class="config-notice">
+    <h3>🔧 Configuración requerida</h3>
+    <p>Para que el CRM funcione con tu base de datos real, necesitás reemplazar estos valores en el archivo <strong>index.html</strong>:</p>
+    <code>SUPABASE_URL = 'https://TU-PROYECTO.supabase.co'</code>
+    <code>SUPABASE_KEY = 'eyJ...tu-anon-key...'</code>
+    <p>Encontrás estos datos en: <strong>Supabase → Settings → API</strong></p>
+    <p>También ejecutá el archivo <strong>supabase_schema.sql</strong> en: <strong>Supabase → SQL Editor → New Query</strong></p>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGIN
+============================================================ -->
+<div class="login-wrap" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-title">🛡️ CRM Seguros</div>
+      <div class="login-logo-sub">Sistema de gestión para productores</div>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" type="email" id="login-email" placeholder="tu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="login()">Ingresar al CRM</button>
+    <div style="text-align:center;margin-top:14px">
+      <button style="background:none;border:none;font-size:12px;color:var(--med-blue);cursor:pointer" onclick="toggleRegistro()">¿Primera vez? Crear cuenta</button>
+    </div>
+    <!-- Registro -->
+    <div id="registro-form" style="display:none;margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+      <div class="form-group">
+        <label class="form-label">Tu nombre</label>
+        <input class="form-input" type="text" id="reg-nombre" placeholder="Nombre completo">
+      </div>
+      <button class="btn-login" onclick="registro()" style="background:var(--green)">Crear cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP PRINCIPAL
+============================================================ -->
+<div class="app-wrap" id="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-title">🛡️ CRM Seguros</div>
+      <div class="sidebar-logo-sub" id="sb-email"></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">PRINCIPAL</div>
+      <a class="nav-item active" onclick="showSection('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</a>
+      <a class="nav-item" onclick="showSection('clientes',this)"><span class="nav-icon">👥</span>Clientes<span class="nav-badge" id="badge-clientes" style="display:none"></span></a>
+      <a class="nav-item" onclick="showSection('polizas',this)"><span class="nav-icon">📋</span>Pólizas</a>
+      <a class="nav-item" onclick="showSection('cotizaciones',this)"><span class="nav-icon">💬</span>Cotizaciones</a>
+      <div class="nav-section">OPERACIONES</div>
+      <a class="nav-item" onclick="showSection('siniestros',this)"><span class="nav-icon">🚨</span>Siniestros<span class="nav-badge" id="badge-siniestros" style="display:none"></span></a>
+      <a class="nav-item" onclick="showSection('cobranzas',this)"><span class="nav-icon">💰</span>Cobranzas<span class="nav-badge" id="badge-cobranzas" style="display:none"></span></a>
+      <a class="nav-item" onclick="showSection('tareas',this)"><span class="nav-icon">✅</span>Tareas</a>
+      <div class="nav-section">ANÁLISIS</div>
+      <a class="nav-item" onclick="showSection('analisis',this)"><span class="nav-icon">📈</span>Análisis</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <strong id="sb-nombre">Usuario</strong>
+        <span id="sb-email2"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="btn btn-sm" onclick="showSection('clientes',document.querySelector(\'.nav-item:nth-child(2)\'))">+ Cliente</button>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalPoliza()">+ Póliza</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="alert alert-success" id="alert-global"></div>
+
+      <!-- ======= DASHBOARD ======= -->
+      <div id="sec-dashboard" class="section active">
+        <div class="grid3" id="dashboard-metrics">
+          <div class="metric"><div class="lbl">Clientes activos</div><div class="val" id="m-clientes">—</div><div class="sub">Total en cartera</div></div>
+          <div class="metric"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-polizas">—</div><div class="sub">Estado activo</div></div>
+          <div class="metric"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-siniestros" style="color:var(--red)">—</div><div class="sub">Requieren gestión</div></div>
+          <div class="metric"><div class="lbl">Cobranza pendiente</div><div class="val" id="m-cobranzas" style="color:var(--amber)">—</div><div class="sub">Cuotas vencidas</div></div>
+          <div class="metric"><div class="lbl">Cotizaciones activas</div><div class="val" id="m-cotizaciones">—</div><div class="sub">Enviadas sin respuesta</div></div>
+          <div class="metric"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tareas">—</div><div class="sub">Para hoy</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-title">Alertas prioritarias</div>
+            <div id="dashboard-alertas"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Próximas renovaciones</div>
+            <div id="dashboard-renovaciones"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======= CLIENTES ======= -->
+      <div id="sec-clientes" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <input class="search-input" type="text" placeholder="Buscar por nombre, DNI, email..." oninput="buscarClientes(this.value)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <select style="padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);font-size:12px" onchange="filtrarClientesEstado(this.value)">
+              <option value="">Todos los estados</option>
+              <option value="prospecto">Prospectos</option>
+              <option value="activo">Activos</option>
+              <option value="renovacion">En renovación</option>
+              <option value="siniestrado">Siniestrados</option>
+              <option value="inactivo">Inactivos</option>
+            </select>
+            <button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo cliente</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Estado</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>Último contacto</th><th></th></tr></thead>
+            <tbody id="tabla-clientes"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando clientes...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= PÓLIZAS ======= -->
+      <div id="sec-polizas" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <input class="search-input" type="text" placeholder="Buscar por N° póliza, cliente..." oninput="buscarPolizas(this.value)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <select style="padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);font-size:12px" onchange="filtrarPolizasRamo(this.value)">
+              <option value="">Todos los ramos</option>
+              <option value="Autos">Autos</option>
+              <option value="Vida">Vida</option>
+              <option value="Hogar">Hogar</option>
+              <option value="Salud">Salud / ART</option>
+              <option value="ART">ART</option>
+              <option value="Combinado">Combinado</option>
+              <option value="Empresas">Empresas</option>
+            </select>
+            <button class="btn btn-primary" onclick="abrirModalPoliza()">+ Nueva póliza</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>N° Póliza</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Prima anual</th><th>Vencimiento</th><th>Estado</th></tr></thead>
+            <tbody id="tabla-polizas"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando pólizas...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= COTIZACIONES ======= -->
+      <div id="sec-cotizaciones" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <input class="search-input" type="text" placeholder="Buscar cotización...">
+          <button class="btn btn-primary" onclick="abrirModalCotizacion()">+ Nueva cotización</button>
+        </div>
+        <div class="grid3" style="margin-bottom:16px">
+          <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="cotz-enviadas">—</div></div>
+          <div class="metric"><div class="lbl">Aceptadas</div><div class="val" id="cotz-aceptadas" style="color:var(--green)">—</div></div>
+          <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="cotz-tasa">—</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>N°</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Prima</th><th>Válida hasta</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-cotizaciones"><tr><td colspan="8"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= SINIESTROS ======= -->
+      <div id="sec-siniestros" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <input class="search-input" type="text" placeholder="Buscar siniestro o cliente...">
+          <button class="btn btn-primary" onclick="abrirModalSiniestro()">+ Nuevo siniestro</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Expediente</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Fecha denuncia</th><th>Estado</th><th>Días abierto</th></tr></thead>
+            <tbody id="tabla-siniestros"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= COBRANZAS ======= -->
+      <div id="sec-cobranzas" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:600">Gestión de cobranzas</div>
+          <button class="btn btn-primary" onclick="abrirModalCobranza()">+ Registrar cuota</button>
+        </div>
+        <div class="grid3" style="margin-bottom:16px">
+          <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="cob-vencidas" style="color:var(--red)">—</div></div>
+          <div class="metric"><div class="lbl">Cuotas pendientes</div><div class="val" id="cob-pendientes" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Cobrado este mes</div><div class="val" id="cob-cobrado" style="color:var(--green)">—</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Póliza</th><th>Cuota</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-cobranzas"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= TAREAS ======= -->
+      <div id="sec-tareas" class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap" id="tablero-tabs">
+            <button class="btn btn-sm active" style="border-color:var(--med-blue);color:var(--med-blue)" onclick="filtrarTablero('',this)">Todos</button>
+            <button class="btn btn-sm" onclick="filtrarTablero('ventas',this)">Ventas</button>
+            <button class="btn btn-sm" onclick="filtrarTablero('siniestros',this)">Siniestros</button>
+            <button class="btn btn-sm" onclick="filtrarTablero('cobranzas',this)">Cobranzas</button>
+            <button class="btn btn-sm" onclick="filtrarTablero('renovaciones',this)">Renovaciones</button>
+            <button class="btn btn-sm" onclick="filtrarTablero('general',this)">General</button>
+          </div>
+          <button class="btn btn-primary" onclick="abrirModalTarea()">+ Nueva tarea</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--gray)"></div>Pendiente <span id="cnt-pendiente" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
+            <div id="col-pendiente"></div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--med-blue)"></div>En curso <span id="cnt-encurso" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
+            <div id="col-encurso"></div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></div>Esp. respuesta <span id="cnt-esperando" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
+            <div id="col-esperando"></div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>Cerrada <span id="cnt-cerrada" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
+            <div id="col-cerrada"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======= ANÁLISIS ======= -->
+      <div id="sec-analisis" class="section">
+        <div class="grid3">
+          <div class="metric"><div class="lbl">Prima total cartera</div><div class="val" id="an-prima">—</div><div class="sub">Anual</div></div>
+          <div class="metric"><div class="lbl">Tasa de retención</div><div class="val" id="an-retencion">—</div><div class="sub">Clientes activos vs total</div></div>
+          <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="an-cierre">—</div><div class="sub">Cotizaciones aceptadas</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-title">Producción por ramo</div>
+            <div id="analisis-ramos"><div class="loading"><span class="spinner"></span>Calculando...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Producción por aseguradora</div>
+            <div id="analisis-aseg"><div class="loading"><span class="spinner"></span>Calculando...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODALES
+============================================================ -->
+
+<!-- Modal Cliente -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal-box">
+    <div class="modal-title">Nuevo cliente <button class="modal-close" onclick="cerrarModal('modal-cliente')">✕</button></div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Nombre *</label><input type="text" id="cl-nombre" placeholder="Nombre"></div>
+      <div class="form-row"><label>Apellido *</label><input type="text" id="cl-apellido" placeholder="Apellido"></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>DNI</label><input type="text" id="cl-dni" placeholder="XX.XXX.XXX"></div>
+      <div class="form-row"><label>Fecha de nacimiento</label><input type="date" id="cl-nacimiento"></div>
+    </div>
+    <div class="form-row"><label>Dirección</label><input type="text" id="cl-direccion" placeholder="Dirección completa"></div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Localidad</label><input type="text" id="cl-localidad" placeholder="Rosario"></div>
+      <div class="form-row"><label>Zona geográfica</label><input type="text" id="cl-zona" placeholder="Norte, Sur, Centro..."></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Teléfono principal</label><input type="text" id="cl-tel1" placeholder="341-XXX-XXXX"></div>
+      <div class="form-row"><label>Teléfono secundario</label><input type="text" id="cl-tel2" placeholder="341-XXX-XXXX"></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Email principal</label><input type="email" id="cl-email1" placeholder="cliente@email.com"></div>
+      <div class="form-row"><label>Email secundario</label><input type="email" id="cl-email2" placeholder="otro@email.com"></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Estado</label>
+        <select id="cl-estado">
+          <option value="prospecto">Prospecto</option>
+          <option value="activo">Activo</option>
+          <option value="renovacion">En renovación</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Canal de origen</label><input type="text" id="cl-canal" placeholder="Referido, redes, llamada..."></div>
+    </div>
+    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Vehículo asegurado (opcional)</div>
+      <div class="fgrid3">
+        <div class="form-row"><label>Patente</label><input type="text" id="cl-patente" placeholder="ABC123"></div>
+        <div class="form-row"><label>Marca</label><input type="text" id="cl-marca" placeholder="Ford"></div>
+        <div class="form-row"><label>Modelo</label><input type="text" id="cl-modelo" placeholder="Focus"></div>
+      </div>
+      <div class="fgrid2">
+        <div class="form-row"><label>Año</label><input type="number" id="cl-anio" placeholder="2020"></div>
+        <div class="form-row"><label>Color</label><input type="text" id="cl-color" placeholder="Plata"></div>
+      </div>
+    </div>
+    <div class="form-row"><label>Notas</label><textarea id="cl-notas" placeholder="Notas internas sobre el cliente..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Póliza -->
+<div class="modal-overlay" id="modal-poliza">
+  <div class="modal-box">
+    <div class="modal-title">Nueva póliza <button class="modal-close" onclick="cerrarModal('modal-poliza')">✕</button></div>
+    <div class="form-row"><label>Cliente *</label>
+      <select id="pol-cliente"><option value="">Seleccionar cliente...</option></select>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>N° de póliza *</label><input type="text" id="pol-numero" placeholder="AUTO-2025-XXX"></div>
+      <div class="form-row"><label>Aseguradora *</label>
+        <select id="pol-aseguradora">
+          <option value="">Seleccionar...</option>
+          <option>Sancor Seguros</option><option>Zurich Argentina</option>
+          <option>Mapfre Argentina</option><option>Federación Patronal</option>
+          <option>La Segunda</option><option>Provincia Seguros</option>
+          <option>San Cristóbal</option><option>Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Ramo *</label>
+        <select id="pol-ramo">
+          <option value="">Seleccionar...</option>
+          <option>Autos</option><option>Vida</option><option>Hogar</option>
+          <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Tipo de cobertura</label><input type="text" id="pol-cobertura" placeholder="Todo riesgo, RC, etc."></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Fecha inicio *</label><input type="date" id="pol-inicio"></div>
+      <div class="form-row"><label>Fecha vencimiento *</label><input type="date" id="pol-vto"></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Prima anual *</label><input type="number" id="pol-prima" placeholder="0"></div>
+      <div class="form-row"><label>Forma de pago</label>
+        <select id="pol-pago">
+          <option value="">Seleccionar...</option>
+          <option>Contado</option><option>3 cuotas</option><option>6 cuotas</option>
+          <option>12 cuotas</option><option>Débito automático</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Bien asegurado</label><input type="text" id="pol-bien" placeholder="Ford Focus 2019 ABC123 / Hogar Córdoba 1234..."></div>
+    <div class="form-row"><label>Notas</label><textarea id="pol-notas" placeholder="Notas sobre la póliza..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-poliza')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPoliza()">Guardar póliza</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cotización -->
+<div class="modal-overlay" id="modal-cotizacion">
+  <div class="modal-box">
+    <div class="modal-title">Nueva cotización <button class="modal-close" onclick="cerrarModal('modal-cotizacion')">✕</button></div>
+    <div class="form-row"><label>Cliente / Prospecto *</label>
+      <select id="cotz-cliente"><option value="">Seleccionar...</option></select>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Ramo *</label>
+        <select id="cotz-ramo">
+          <option value="">Seleccionar...</option>
+          <option>Autos</option><option>Vida</option><option>Hogar</option><option>ART</option><option>Combinado</option><option>Empresas</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Aseguradora *</label>
+        <select id="cotz-aseg">
+          <option value="">Seleccionar...</option>
+          <option>Sancor Seguros</option><option>Zurich Argentina</option>
+          <option>Mapfre Argentina</option><option>Federación Patronal</option><option>Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Prima cotizada</label><input type="number" id="cotz-prima" placeholder="0"></div>
+      <div class="form-row"><label>Válida hasta</label><input type="date" id="cotz-validez"></div>
+    </div>
+    <div class="form-row"><label>Notas</label><textarea id="cotz-notas" placeholder="Detalles de la cotización..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-cotizacion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCotizacion()">Guardar cotización</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Siniestro -->
+<div class="modal-overlay" id="modal-siniestro">
+  <div class="modal-box">
+    <div class="modal-title">Nuevo siniestro <button class="modal-close" onclick="cerrarModal('modal-siniestro')">✕</button></div>
+    <div class="form-row"><label>Cliente *</label>
+      <select id="sin-cliente"><option value="">Seleccionar...</option></select>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>N° expediente</label><input type="text" id="sin-expediente" placeholder="SIN-2025-XXX"></div>
+      <div class="form-row"><label>Aseguradora</label><input type="text" id="sin-aseg" placeholder="Sancor, Zurich..."></div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Fecha del hecho</label><input type="date" id="sin-fecha-hecho"></div>
+      <div class="form-row"><label>Tipo de siniestro</label>
+        <select id="sin-tipo">
+          <option value="">Seleccionar...</option>
+          <option>Choque</option><option>Robo total</option><option>Robo parcial</option>
+          <option>Incendio</option><option>Granizo</option><option>Inundación</option>
+          <option>Accidente personal</option><option>Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Descripción del hecho *</label><textarea id="sin-desc" placeholder="Describí lo que ocurrió..."></textarea></div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Taller asignado</label><input type="text" id="sin-taller" placeholder="Nombre del taller"></div>
+      <div class="form-row"><label>Fecha de inspección</label><input type="date" id="sin-inspeccion"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-siniestro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarSiniestro()">Registrar siniestro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cobranza -->
+<div class="modal-overlay" id="modal-cobranza">
+  <div class="modal-box">
+    <div class="modal-title">Registrar cuota <button class="modal-close" onclick="cerrarModal('modal-cobranza')">✕</button></div>
+    <div class="form-row"><label>Cliente *</label>
+      <select id="cob-cliente" onchange="cargarPolizasCliente(this.value,'cob-poliza')"><option value="">Seleccionar...</option></select>
+    </div>
+    <div class="form-row"><label>Póliza *</label>
+      <select id="cob-poliza"><option value="">Primero seleccioná un cliente</option></select>
+    </div>
+    <div class="fgrid3">
+      <div class="form-row"><label>N° cuota</label><input type="number" id="cob-num" placeholder="1"></div>
+      <div class="form-row"><label>Total cuotas</label><input type="number" id="cob-total" placeholder="12"></div>
+      <div class="form-row"><label>Monto *</label><input type="number" id="cob-monto" placeholder="0"></div>
+    </div>
+    <div class="form-row"><label>Fecha de vencimiento *</label><input type="date" id="cob-vto"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-cobranza')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCobranza()">Guardar cuota</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tarea -->
+<div class="modal-overlay" id="modal-tarea">
+  <div class="modal-box">
+    <div class="modal-title">Nueva tarea <button class="modal-close" onclick="cerrarModal('modal-tarea')">✕</button></div>
+    <div class="form-row"><label>Título *</label><input type="text" id="tar-titulo" placeholder="Descripción de la tarea..."></div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Tablero *</label>
+        <select id="tar-tablero">
+          <option value="ventas">Ventas</option><option value="siniestros">Siniestros</option>
+          <option value="cobranzas">Cobranzas</option><option value="renovaciones">Renovaciones</option>
+          <option value="general">General</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Tipo</label>
+        <select id="tar-tipo">
+          <option>Llamar al cliente</option><option>Enviar cotización</option>
+          <option>Gestionar siniestro</option><option>Cobrar cuota</option>
+          <option>Renovar póliza</option><option>Seguimiento post-venta</option>
+          <option>Trámite con aseguradora</option><option>Tarea libre</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Prioridad</label>
+        <select id="tar-prio">
+          <option value="urgente">Urgente — ahora</option>
+          <option value="alta">Alta — hoy</option>
+          <option value="media" selected>Media — esta semana</option>
+          <option value="baja">Baja — cuando pueda</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Cliente vinculado</label>
+        <select id="tar-cliente"><option value="">Sin vincular</option></select>
+      </div>
+    </div>
+    <div class="fgrid2">
+      <div class="form-row"><label>Fecha límite</label><input type="date" id="tar-fecha"></div>
+      <div class="form-row"><label>Notificación</label><input type="datetime-local" id="tar-notif"></div>
+    </div>
+    <div class="form-row"><label>Descripción</label><textarea id="tar-desc" placeholder="Detalle de la tarea..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-tarea')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTarea()">Crear tarea</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN SUPABASE — REEMPLAZAR CON TUS DATOS
+// ============================================================
+const SUPABASE_URL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
+// ============================================================
+
+let sb = null;
+let currentUser = null;
+let allClientes = [];
+let allPolizas = [];
+let tablerofiltro = '';
+
+// Verificar configuración
+if(SUPABASE_URL === 'NEVER_MATCH'){
+  document.getElementById('config-notice').style.display='block';
+  document.getElementById('login-screen').style.display='none';
+} else {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { autoRefreshToken: true, persistSession: true } });
+  checkSession();
+}
+
+async function checkSession(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    await initApp();
+  }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function login(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById("login-error");
+  errEl.classList.remove('show');
+  if(!email||!pass){errEl.textContent='Completá email y contraseña';errEl.classList.add('show');return;}
+  try {
+    console.log('Intentando login:', email);
+    const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+    console.log('Respuesta Supabase:', JSON.stringify(error));
+    if(error){errEl.textContent='Error: '+error.message;errEl.classList.add('show');return;}
+    if(!data||!data.user){errEl.textContent='No se pudo iniciar sesión. Revisá tus datos.';errEl.classList.add('show');return;}
+    currentUser = data.user;
+    await initApp();
+  } catch(e) {
+    console.error('Error:', e);
+    errEl.textContent='Error de conexión: '+e.message;
+    errEl.classList.add('show');
+  }
+}
+
+async function registro(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  if(!email||!pass||!nombre){alert('Completá todos los campos');return;}
+  try {
+    console.log('Registrando usuario:', email);
+    const {data,error} = await sb.auth.signUp({email,password:pass,options:{data:{nombre}}});
+    console.log('Resultado registro:', data, error);
+    if(error){alert('Error al crear cuenta: '+error.message);return;}
+    if(data.user && data.user.identities && data.user.identities.length === 0){
+      alert('Este email ya tiene una cuenta. Intentá iniciar sesión directamente.');
+      return;
+    }
+    alert('¡Cuenta creada correctamente! Ahora podés iniciar sesión directamente.');
+  } catch(e) {
+    console.error('Error registro:', e);
+    alert('Error de conexión: '+e.message);
+  }
+}
+
+function toggleRegistro(){
+  const f = document.getElementById('registro-form');
+  f.style.display = f.style.display==='none'?'block':'none';
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login-screen').style.display='flex';
+  currentUser = null;
+}
+
+// ============================================================
+// INIT APP
+// ============================================================
+async function initApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('show');
+  // Perfil
+  const {data:perfil} = await sb.from('perfiles').select('*').eq('id',currentUser.id).single();
+  const nombre = perfil?.nombre || currentUser.email;
+  document.getElementById('sb-nombre').textContent = nombre;
+  document.getElementById('sb-email').textContent = currentUser.email;
+  document.getElementById('sb-email2').textContent = currentUser.email;
+  // Cargar datos
+  await Promise.all([cargarDashboard(), cargarClientes(), cargarPolizas()]);
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+function showSection(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  const titles = {dashboard:'Dashboard',clientes:'Clientes',polizas:'Pólizas',cotizaciones:'Cotizaciones',siniestros:'Siniestros',cobranzas:'Cobranzas',tareas:'Tareas',analisis:'Análisis'};
+  document.getElementById('topbar-title').textContent = titles[id]||id;
+  if(id==='clientes') cargarClientes();
+  if(id==='polizas') cargarPolizas();
+  if(id==='cotizaciones') cargarCotizaciones();
+  if(id==='siniestros') cargarSiniestros();
+  if(id==='cobranzas') cargarCobranzas();
+  if(id==='tareas') cargarTareas();
+  if(id==='analisis') cargarAnalisis();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function cargarDashboard(){
+  const uid = currentUser.id;
+  const [cls,pols,sins,cobs,cotzs,tars] = await Promise.all([
+    sb.from('clientes').select('id,estado',{count:'exact'}).eq('productor_id',uid),
+    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','activa'),
+    sb.from('siniestros').select('id',{count:'exact'}).eq('productor_id',uid).neq('estado','cerrado'),
+    sb.from('cobranzas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','vencida'),
+    sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','enviada'),
+    sb.from('tareas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','pendiente'),
+  ]);
+  document.getElementById('m-clientes').textContent = cls.count||0;
+  document.getElementById('m-polizas').textContent = pols.count||0;
+  document.getElementById('m-siniestros').textContent = sins.count||0;
+  document.getElementById('m-cobranzas').textContent = cobs.count||0;
+  document.getElementById('m-cotizaciones').textContent = cotzs.count||0;
+  document.getElementById('m-tareas').textContent = tars.count||0;
+  if((sins.count||0)>0) {document.getElementById('badge-siniestros').textContent=sins.count;document.getElementById('badge-siniestros').style.display='inline';}
+  if((cobs.count||0)>0) {document.getElementById('badge-cobranzas').textContent=cobs.count;document.getElementById('badge-cobranzas').style.display='inline';}
+
+  // Alertas
+  const hoy = new Date().toISOString().split('T')[0];
+  const en30 = new Date(Date.now()+30*864e5).toISOString().split('T')[0];
+  const {data:venciendo} = await sb.from('polizas').select('numero,clientes(nombre,apellido),fecha_vencimiento').eq('productor_id',uid).lte('fecha_vencimiento',en30).gte('fecha_vencimiento',hoy).eq('estado','activa').order('fecha_vencimiento').limit(5);
+  const alertas = document.getElementById('dashboard-alertas');
+  if(!venciendo||!venciendo.length){
+    alertas.innerHTML='<div style="font-size:12px;color:var(--text-light);padding:8px 0">Sin alertas urgentes 🎉</div>';
+  } else {
+    alertas.innerHTML = venciendo.map(p=>{
+      const dias = Math.round((new Date(p.fecha_vencimiento)-new Date())/(864e5));
+      const color = dias<=5?'var(--red)':dias<=15?'var(--amber)':'var(--green)';
+      return `<div class="alert-item">
+        <div class="adot" style="background:${color}"></div>
+        <div>
+          <div style="font-size:12px;font-weight:500">${p.clientes?.nombre} ${p.clientes?.apellido||''} — ${p.numero}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Vence el ${p.fecha_vencimiento} (${dias} días)</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Renovaciones
+  const {data:renov} = await sb.from('polizas').select('numero,ramo,prima_anual,clientes(nombre,apellido),fecha_vencimiento').eq('productor_id',uid).lte('fecha_vencimiento',en30).gte('fecha_vencimiento',hoy).order('fecha_vencimiento').limit(5);
+  const renovDiv = document.getElementById('dashboard-renovaciones');
+  if(!renov||!renov.length){
+    renovDiv.innerHTML='<div style="font-size:12px;color:var(--text-light);padding:8px 0">Sin renovaciones próximas</div>';
+  } else {
+    renovDiv.innerHTML = renov.map(p=>`
+      <div class="alert-item">
+        <div class="adot" style="background:var(--amber)"></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500">${p.clientes?.nombre} ${p.clientes?.apellido||''}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${p.ramo} · Vto. ${p.fecha_vencimiento}</div>
+        </div>
+        <div style="font-size:12px;font-weight:500;color:var(--green)">$${(p.prima_anual||0).toLocaleString('es-AR')}</div>
+      </div>`).join('');
+  }
+}
+
+// ============================================================
+// CLIENTES
+// ============================================================
+async function cargarClientes(filtro='',estado=''){
+  const tbody = document.getElementById('tabla-clientes');
+  tbody.innerHTML='<tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando clientes...</div></td></tr>';
+  let q = sb.from('clientes').select('*').eq('productor_id',currentUser.id).order('apellido');
+  if(estado) q=q.eq('estado',estado);
+  if(filtro) q=q.or(`nombre.ilike.%${filtro}%,apellido.ilike.%${filtro}%,dni.ilike.%${filtro}%,email_principal.ilike.%${filtro}%`);
+  const {data,error} = await q;
+  allClientes = data||[];
+  cargarSelectClientes();
+  if(!data||!data.length){
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No hay clientes aún</div><div class="empty-desc">Agregá tu primer cliente con el botón "Nuevo cliente"</div></div></td></tr>';
+    return;
+  }
+  const estadoBadge = {prospecto:'badge-azul',activo:'badge-verde',renovacion:'badge-amber',siniestrado:'badge-rojo',inactivo:'badge-gris'};
+  tbody.innerHTML = data.map(c=>`<tr>
+    <td><div style="font-weight:500">${c.nombre} ${c.apellido}</div><div style="font-size:11px;color:var(--text-light)">${c.email_principal||''}</div></td>
+    <td><span class="badge ${estadoBadge[c.estado]||'badge-gris'}">${c.estado}</span></td>
+    <td>${c.dni||'—'}</td>
+    <td>${c.telefono_principal||'—'}</td>
+    <td>${c.localidad||'—'}</td>
+    <td>${c.ultimo_contacto||'—'}</td>
+    <td><button class="btn btn-sm" onclick="verCliente('${c.id}')">Ver</button></td>
+  </tr>`).join('');
+}
+
+function buscarClientes(q){clearTimeout(window._busqT);window._busqT=setTimeout(()=>cargarClientes(q),300);}
+function filtrarClientesEstado(e){cargarClientes('',e);}
+
+function cargarSelectClientes(){
+  const selects = ['pol-cliente','cotz-cliente','sin-cliente','cob-cliente','tar-cliente'];
+  selects.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const opt = id==='tar-cliente'?'<option value="">Sin vincular</option>':'<option value="">Seleccionar cliente...</option>';
+    el.innerHTML = opt + allClientes.map(c=>`<option value="${c.id}">${c.nombre} ${c.apellido}</option>`).join('');
+  });
+}
+
+async function guardarCliente(){
+  const datos = {
+    productor_id: currentUser.id,
+    nombre: document.getElementById('cl-nombre').value.trim(),
+    apellido: document.getElementById('cl-apellido').value.trim(),
+    dni: document.getElementById('cl-dni').value.trim(),
+    fecha_nacimiento: document.getElementById('cl-nacimiento').value||null,
+    direccion: document.getElementById('cl-direccion').value.trim(),
+    localidad: document.getElementById('cl-localidad').value.trim(),
+    zona_geografica: document.getElementById('cl-zona').value.trim(),
+    telefono_principal: document.getElementById('cl-tel1').value.trim(),
+    telefono_secundario: document.getElementById('cl-tel2').value.trim(),
+    email_principal: document.getElementById('cl-email1').value.trim(),
+    email_secundario: document.getElementById('cl-email2').value.trim(),
+    estado: document.getElementById('cl-estado').value,
+    canal_origen: document.getElementById('cl-canal').value.trim(),
+    patente: document.getElementById('cl-patente').value.trim(),
+    marca_vehiculo: document.getElementById('cl-marca').value.trim(),
+    modelo_vehiculo: document.getElementById('cl-modelo').value.trim(),
+    anio_vehiculo: document.getElementById('cl-anio').value||null,
+    color_vehiculo: document.getElementById('cl-color').value.trim(),
+    notas: document.getElementById('cl-notas').value.trim(),
+  };
+  if(!datos.nombre||!datos.apellido){alert('Nombre y apellido son obligatorios');return;}
+  const {error} = await sb.from('clientes').insert(datos);
+  if(error){alert('Error al guardar: '+error.message);return;}
+  cerrarModal('modal-cliente');
+  mostrarAlerta('Cliente guardado correctamente');
+  await cargarClientes();
+  await cargarDashboard();
+}
+
+// ============================================================
+// PÓLIZAS
+// ============================================================
+async function cargarPolizas(filtro='',ramo=''){
+  const tbody = document.getElementById('tabla-polizas');
+  if(tbody) tbody.innerHTML='<tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando pólizas...</div></td></tr>';
+  let q = sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('fecha_vencimiento');
+  if(ramo) q=q.eq('ramo',ramo);
+  if(filtro) q=q.or(`numero.ilike.%${filtro}%`);
+  const {data} = await q;
+  allPolizas = data||[];
+  if(!tbody) return;
+  if(!data||!data.length){
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No hay pólizas aún</div><div class="empty-desc">Agregá tu primera póliza con el botón "Nueva póliza"</div></div></td></tr>';
+    return;
+  }
+  const eb={activa:'badge-verde',renovacion:'badge-amber',vencida:'badge-rojo',cancelada:'badge-gris'};
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td style="font-weight:500">${p.numero}</td>
+    <td>${p.clientes?.nombre||''} ${p.clientes?.apellido||''}</td>
+    <td>${p.ramo}</td>
+    <td>${p.aseguradora}</td>
+    <td style="font-weight:500;color:var(--green)">$${(p.prima_anual||0).toLocaleString('es-AR')}</td>
+    <td>${p.fecha_vencimiento}</td>
+    <td><span class="badge ${eb[p.estado]||'badge-gris'}">${p.estado}</span></td>
+  </tr>`).join('');
+}
+function buscarPolizas(q){clearTimeout(window._busqP);window._busqP=setTimeout(()=>cargarPolizas(q),300);}
+function filtrarPolizasRamo(r){cargarPolizas('',r);}
+
+async function guardarPoliza(){
+  const datos={
+    productor_id:currentUser.id,
+    cliente_id:document.getElementById('pol-cliente').value||null,
+    numero:document.getElementById('pol-numero').value.trim(),
+    aseguradora:document.getElementById('pol-aseguradora').value,
+    ramo:document.getElementById('pol-ramo').value,
+    tipo_cobertura:document.getElementById('pol-cobertura').value.trim(),
+    fecha_inicio:document.getElementById('pol-inicio').value,
+    fecha_vencimiento:document.getElementById('pol-vto').value,
+    prima_anual:parseFloat(document.getElementById('pol-prima').value)||0,
+    forma_pago:document.getElementById('pol-pago').value,
+    bien_asegurado:document.getElementById('pol-bien').value.trim(),
+    notas:document.getElementById('pol-notas').value.trim(),
+  };
+  if(!datos.numero||!datos.ramo||!datos.aseguradora||!datos.fecha_inicio||!datos.fecha_vencimiento){alert('Completá los campos obligatorios');return;}
+  const {error}=await sb.from('polizas').insert(datos);
+  if(error){alert('Error: '+error.message);return;}
+  cerrarModal('modal-poliza');
+  mostrarAlerta('Póliza guardada correctamente');
+  await cargarPolizas();
+  await cargarDashboard();
+}
+
+// ============================================================
+// COTIZACIONES
+// ============================================================
+async function cargarCotizaciones(){
+  const tbody=document.getElementById('tabla-cotizaciones');
+  const {data}=await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
+  const total=data?.length||0;
+  const acept=data?.filter(c=>c.estado==='aceptada').length||0;
+  document.getElementById('cotz-enviadas').textContent=total;
+  document.getElementById('cotz-aceptadas').textContent=acept;
+  document.getElementById('cotz-tasa').textContent=total>0?Math.round(acept/total*100)+'%':'—';
+  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">No hay cotizaciones</div></div></td></tr>';return;}
+  const eb={enviada:'badge-azul',aceptada:'badge-verde',rechazada:'badge-rojo',vencida:'badge-gris'};
+  tbody.innerHTML=data.map(c=>`<tr>
+    <td>${c.numero||'—'}</td>
+    <td>${c.clientes?.nombre||''} ${c.clientes?.apellido||''}</td>
+    <td>${c.ramo}</td><td>${c.aseguradora}</td>
+    <td>$${(c.prima_cotizada||0).toLocaleString('es-AR')}</td>
+    <td>${c.fecha_validez||'—'}</td>
+    <td><span class="badge ${eb[c.estado]||'badge-gris'}">${c.estado}</span></td>
+    <td>${c.estado==='enviada'?`<button class="btn btn-sm btn-success" onclick="cambiarEstadoCotiz('${c.id}','aceptada')">Aceptar</button>`:'—'}</td>
+  </tr>`).join('');
+}
+async function guardarCotizacion(){
+  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('cotz-cliente').value||null,ramo:document.getElementById('cotz-ramo').value,aseguradora:document.getElementById('cotz-aseg').value,prima_cotizada:parseFloat(document.getElementById('cotz-prima').value)||0,fecha_validez:document.getElementById('cotz-validez').value||null,notas:document.getElementById('cotz-notas').value.trim()};
+  if(!datos.ramo||!datos.aseguradora){alert('Completá ramo y aseguradora');return;}
+  const {error}=await sb.from('cotizaciones').insert(datos);
+  if(error){alert('Error: '+error.message);return;}
+  cerrarModal('modal-cotizacion');mostrarAlerta('Cotización guardada');cargarCotizaciones();
+}
+async function cambiarEstadoCotiz(id,estado){
+  await sb.from('cotizaciones').update({estado}).eq('id',id);
+  mostrarAlerta('Estado actualizado');cargarCotizaciones();
+}
+
+// ============================================================
+// SINIESTROS
+// ============================================================
+async function cargarSiniestros(){
+  const tbody=document.getElementById('tabla-siniestros');
+  const {data}=await sb.from('siniestros').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
+  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🚨</div><div class="empty-title">Sin siniestros registrados</div></div></td></tr>';return;}
+  const eb={abierto:'badge-rojo',proceso:'badge-amber',documentacion:'badge-amber',taller:'badge-azul',liquidado:'badge-azul',cerrado:'badge-verde'};
+  tbody.innerHTML=data.map(s=>{
+    const dias=Math.round((new Date()-new Date(s.created_at))/(864e5));
+    return`<tr>
+      <td style="font-weight:500">${s.numero_expediente||'—'}</td>
+      <td>${s.clientes?.nombre||''} ${s.clientes?.apellido||''}</td>
+      <td>${s.tipo_siniestro||'—'}</td><td>${s.aseguradora||'—'}</td>
+      <td>${s.fecha_denuncia||'—'}</td>
+      <td><span class="badge ${eb[s.estado]||'badge-gris'}">${s.estado}</span></td>
+      <td>${s.estado!=='cerrado'?`<span style="color:${dias>15?'var(--red)':'var(--text)';font-weight:${dias>15?'600':'400'}">${dias}d</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+async function guardarSiniestro(){
+  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('sin-cliente').value||null,numero_expediente:document.getElementById('sin-expediente').value.trim(),aseguradora:document.getElementById('sin-aseg').value.trim(),fecha_hecho:document.getElementById('sin-fecha-hecho').value||null,tipo_siniestro:document.getElementById('sin-tipo').value,descripcion:document.getElementById('sin-desc').value.trim(),taller:document.getElementById('sin-taller').value.trim(),fecha_inspeccion:document.getElementById('sin-inspeccion').value||null};
+  if(!datos.descripcion){alert('La descripción es obligatoria');return;}
+  const {error}=await sb.from('siniestros').insert(datos);
+  if(error){alert('Error: '+error.message);return;}
+  cerrarModal('modal-siniestro');mostrarAlerta('Siniestro registrado');cargarSiniestros();cargarDashboard();
+}
+
+// ============================================================
+// COBRANZAS
+// ============================================================
+async function cargarCobranzas(){
+  const tbody=document.getElementById('tabla-cobranzas');
+  const {data}=await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero)').eq('productor_id',currentUser.id).order('fecha_vencimiento');
+  const venc=data?.filter(c=>c.estado==='vencida').length||0;
+  const pend=data?.filter(c=>c.estado==='pagada'&&new Date(c.fecha_pago)>=new Date(new Date().getFullYear(),new Date().getMonth(),1)).length||0;
+  const cobrado=data?.filter(c=>c.estado==='pagada'&&new Date(c.fecha_pago)>=new Date(new Date().getFullYear(),new Date().getMonth(),1)).reduce((s,c)=>s+c.monto,0)||0;
+  document.getElementById('cob-vencidas').textContent=venc;
+  document.getElementById('cob-pendientes').textContent=data?.filter(c=>c.estado==='pendiente').length||0;
+  document.getElementById('cob-cobrado').textContent='$'+cobrado.toLocaleString('es-AR');
+  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💰</div><div class="empty-title">Sin cuotas registradas</div></div></td></tr>';return;}
+  const eb={pendiente:'badge-amber',vencida:'badge-rojo',pagada:'badge-verde'};
+  tbody.innerHTML=data.map(c=>`<tr>
+    <td>${c.clientes?.nombre||''} ${c.clientes?.apellido||''}</td>
+    <td>${c.polizas?.numero||'—'}</td>
+    <td>${c.numero_cuota} / ${c.total_cuotas||'?'}</td>
+    <td style="font-weight:500">$${(c.monto||0).toLocaleString('es-AR')}</td>
+    <td>${c.fecha_vencimiento}</td>
+    <td><span class="badge ${eb[c.estado]||'badge-gris'}">${c.estado}</span></td>
+    <td>${c.estado!=='pagada'?`<button class="btn btn-sm btn-success" onclick="marcarPagada('${c.id}')">Registrar pago</button>`:'✓ Pagada'}</td>
+  </tr>`).join('');
+}
+async function guardarCobranza(){
+  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('cob-cliente').value||null,poliza_id:document.getElementById('cob-poliza').value||null,numero_cuota:parseInt(document.getElementById('cob-num').value)||1,total_cuotas:parseInt(document.getElementById('cob-total').value)||null,monto:parseFloat(document.getElementById('cob-monto').value)||0,fecha_vencimiento:document.getElementById('cob-vto').value};
+  if(!datos.fecha_vencimiento||!datos.monto){alert('Completá monto y fecha de vencimiento');return;}
+  const {error}=await sb.from('cobranzas').insert(datos);
+  if(error){alert('Error: '+error.message);return;}
+  cerrarModal('modal-cobranza');mostrarAlerta('Cuota registrada');cargarCobranzas();
+}
+async function marcarPagada(id){
+  await sb.from('cobranzas').update({estado:'pagada',fecha_pago:new Date().toISOString().split('T')[0]}).eq('id',id);
+  mostrarAlerta('Pago registrado correctamente');cargarCobranzas();
+}
+async function cargarPolizasCliente(clienteId,selectId){
+  const el=document.getElementById(selectId);
+  if(!clienteId){el.innerHTML='<option value="">Primero seleccioná un cliente</option>';return;}
+  const {data}=await sb.from('polizas').select('id,numero,ramo').eq('cliente_id',clienteId);
+  el.innerHTML='<option value="">Seleccionar póliza...</option>'+(data||[]).map(p=>`<option value="${p.id}">${p.numero} — ${p.ramo}</option>`).join('');
+}
+
+// ============================================================
+// TAREAS
+// ============================================================
+async function cargarTareas(){
+  const {data}=await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
+  const lista=tablerofiltro?data?.filter(t=>t.tablero===tablerofiltro):data||[];
+  ['pendiente','encurso','esperando','cerrada'].forEach(e=>{
+    const col=document.getElementById('col-'+e);
+    const cnt=document.getElementById('cnt-'+e);
+    const items=lista.filter(t=>t.estado===e);
+    cnt.textContent=items.length;
+    if(!items.length){col.innerHTML='<div style="text-align:center;padding:16px;font-size:11px;color:var(--text-light)">Sin tareas</div>';return;}
+    const prioColor={urgente:'var(--red)',alta:'var(--amber)',media:'var(--med-blue)',baja:'var(--gray)'};
+    const sig={pendiente:'encurso',encurso:'esperando',esperando:'cerrada'};
+    const sigBtn={pendiente:'Iniciar',encurso:'Esperando resp.',esperando:'Cerrar'};
+    col.innerHTML=items.map(t=>`<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:7px">
+      <div style="display:flex;gap:5px;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:500;flex:1">${t.titulo}</div>
+        <span style="font-size:9px;padding:2px 5px;border-radius:6px;background:${prioColor[t.prioridad]}18;color:${prioColor[t.prioridad]};font-weight:600;white-space:nowrap">${t.prioridad}</span>
+      </div>
+      ${t.clientes?`<div style="font-size:10px;color:var(--text-light);margin-bottom:5px">${t.clientes.nombre} ${t.clientes.apellido}</div>`:''}
+      <div style="font-size:10px;color:var(--text-light);margin-bottom:6px">${t.tipo}</div>
+      ${t.estado!=='cerrada'?`<button style="width:100%;padding:4px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer" onclick="moverTarea('${t.id}','${sig[t.estado]}')">${sigBtn[t.estado]}</button>`:''}
+    </div>`).join('');
+  });
+}
+function filtrarTablero(tab,btn){
+  tablerofiltro=tab;
+  document.querySelectorAll('#tablero-tabs .btn').forEach(b=>{b.style.borderColor='';b.style.color='';});
+  if(btn&&tab){btn.style.borderColor='var(--med-blue)';btn.style.color='var(--med-blue)';}
+  cargarTareas();
+}
+async function guardarTarea(){
+  const datos={productor_id:currentUser.id,titulo:document.getElementById('tar-titulo').value.trim(),tablero:document.getElementById('tar-tablero').value,tipo:document.getElementById('tar-tipo').value,prioridad:document.getElementById('tar-prio').value,cliente_id:document.getElementById('tar-cliente').value||null,fecha_limite:document.getElementById('tar-fecha').value||null,notif_fecha:document.getElementById('tar-notif').value||null,descripcion:document.getElementById('tar-desc').value.trim()};
+  if(!datos.titulo){alert('El título es obligatorio');return;}
+  const {error}=await sb.from('tareas').insert(datos);
+  if(error){alert('Error: '+error.message);return;}
+  cerrarModal('modal-tarea');mostrarAlerta('Tarea creada');cargarTareas();
+}
+async function moverTarea(id,estado){
+  await sb.from('tareas').update({estado}).eq('id',id);
+  cargarTareas();
+}
+
+// ============================================================
+// ANÁLISIS
+// ============================================================
+async function cargarAnalisis(){
+  const {data:pols}=await sb.from('polizas').select('ramo,aseguradora,prima_anual,estado').eq('productor_id',currentUser.id);
+  const {data:cls}=await sb.from('clientes').select('estado').eq('productor_id',currentUser.id);
+  const {data:cotzs}=await sb.from('cotizaciones').select('estado').eq('productor_id',currentUser.id);
+  const activas=pols?.filter(p=>p.estado==='activa')||[];
+  const totalPrima=activas.reduce((s,p)=>s+(p.prima_anual||0),0);
+  document.getElementById('an-prima').textContent='$'+totalPrima.toLocaleString('es-AR');
+  const totalCls=cls?.length||0;
+  const activosCls=cls?.filter(c=>['activo','renovacion','siniestrado'].includes(c.estado)).length||0;
+  document.getElementById('an-retencion').textContent=totalCls>0?Math.round(activosCls/totalCls*100)+'%':'—';
+  const totalC=cotzs?.length||0;
+  const acepC=cotzs?.filter(c=>c.estado==='aceptada').length||0;
+  document.getElementById('an-cierre').textContent=totalC>0?Math.round(acepC/totalC*100)+'%':'—';
+  // Por ramo
+  const ramos={};
+  activas.forEach(p=>{ramos[p.ramo]=(ramos[p.ramo]||0)+p.prima_anual;});
+  const maxR=Math.max(...Object.values(ramos),1);
+  const coloresR=['#378ADD','#1D9E75','#EF9F27','#7F77DD','#E24B4A','#888780','#D85A30'];
+  document.getElementById('analisis-ramos').innerHTML=Object.entries(ramos).sort((a,b)=>b[1]-a[1]).map(([r,v],i)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="font-weight:500">${r}</span><span style="color:var(--green)">$${v.toLocaleString('es-AR')}</span>
+      </div>
+      <div class="pbar"><div class="pfill" style="width:${Math.round(v/maxR*100)}%;background:${coloresR[i%coloresR.length]}"></div></div>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Sin datos</div>';
+  // Por aseguradora
+  const aseg={};
+  activas.forEach(p=>{aseg[p.aseguradora]=(aseg[p.aseguradora]||0)+p.prima_anual;});
+  const maxA=Math.max(...Object.values(aseg),1);
+  document.getElementById('analisis-aseg').innerHTML=Object.entries(aseg).sort((a,b)=>b[1]-a[1]).map(([a,v],i)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="font-weight:500">${a}</span><span style="color:var(--green)">$${v.toLocaleString('es-AR')}</span>
+      </div>
+      <div class="pbar"><div class="pfill" style="width:${Math.round(v/maxA*100)}%;background:${coloresR[i%coloresR.length]}"></div></div>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Sin datos</div>';
+}
+
+// ============================================================
+// MODALES Y UTILS
+// ============================================================
+function abrirModalCliente(){cargarSelectClientes();document.getElementById('modal-cliente').classList.add('open');}
+function abrirModalPoliza(){cargarSelectClientes();document.getElementById('modal-poliza').classList.add('open');}
+function abrirModalCotizacion(){cargarSelectClientes();document.getElementById('modal-cotizacion').classList.add('open');}
+function abrirModalSiniestro(){cargarSelectClientes();document.getElementById('modal-siniestro').classList.add('open');}
+function abrirModalCobranza(){cargarSelectClientes();document.getElementById('modal-cobranza').classList.add('open');}
+function abrirModalTarea(){cargarSelectClientes();document.getElementById('modal-tarea').classList.add('open');}
+function cerrarModal(id){document.getElementById(id).classList.remove('open');}
+function verCliente(id){mostrarAlerta('Ficha 360° — próximamente en la siguiente versión');}
+function mostrarAlerta(msg){
+  const el=document.getElementById('alert-global');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3500);
+}
+// Cerrar modales con Escape
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
+</script>
+</body>
+</html>
