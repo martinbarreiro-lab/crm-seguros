@@ -6,280 +6,214 @@
 <title>CRM Seguros</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <style>
-/* ============================================================
-   RESET Y BASE
-============================================================ */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --blue:#1A3C6E;--med-blue:#2E6DA4;--light-blue:#E6F1FB;
-  --green:#1D9E75;--green-light:#EAF3DE;
-  --amber:#EF9F27;--amber-light:#FAEEDA;
-  --red:#E24B4A;--red-light:#FCEBEB;
-  --purple:#7F77DD;--purple-light:#EEEDFE;
-  --gray:#888780;--gray-light:#F1EFE8;
+  --blue:#1A3C6E;--med:#2E6DA4;--light:#E6F1FB;
+  --green:#1D9E75;--gl:#EAF3DE;
+  --amber:#EF9F27;--al:#FAEEDA;
+  --red:#E24B4A;--rl:#FCEBEB;
   --border:#e8e8e8;--bg:#f5f7fa;--white:#fff;
-  --text:#1a1a2e;--text-muted:#666;--text-light:#aaa;
-  --radius:10px;--radius-sm:7px;
-  --shadow:0 1px 4px rgba(0,0,0,.08);
+  --text:#1a1a2e;--muted:#666;--lt:#aaa;
+  --r:10px;--rsm:7px
 }
 body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
 input,select,textarea,button{font-family:inherit;font-size:14px}
-/* ============================================================
-   LOGIN
-============================================================ */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-box{background:var(--white);border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:var(--shadow);border:0.5px solid var(--border)}
-.login-logo{text-align:center;margin-bottom:28px}
-.login-logo-title{font-size:26px;font-weight:700;color:var(--blue);margin-bottom:4px}
-.login-logo-sub{font-size:13px;color:var(--text-muted)}
-.form-group{margin-bottom:16px}
-.form-label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:5px;font-weight:500}
-.form-input{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);transition:border-color .2s}
-.form-input:focus{outline:none;border-color:var(--med-blue)}
-.btn-login{width:100%;padding:11px;background:var(--blue);color:var(--white);border:none;border-radius:var(--radius-sm);font-weight:600;cursor:pointer;transition:opacity .2s}
-.btn-login:hover{opacity:.88}
-.login-error{background:var(--red-light);color:#791F1F;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;display:none}
-.login-error.show{display:block}
-/* ============================================================
-   LAYOUT PRINCIPAL
-============================================================ */
-.app-wrap{display:none;min-height:100vh}
-.app-wrap.show{display:flex}
-/* Sidebar */
-.sidebar{width:220px;background:var(--white);border-right:0.5px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
-.sidebar-logo{padding:20px 16px 14px;border-bottom:0.5px solid var(--border)}
-.sidebar-logo-title{font-size:15px;font-weight:700;color:var(--blue)}
-.sidebar-logo-sub{font-size:11px;color:var(--text-light);margin-top:2px}
-.sidebar-nav{flex:1;padding:10px 0}
-.nav-section{padding:6px 16px 3px;font-size:10px;font-weight:600;color:var(--text-light);letter-spacing:.06em;margin-top:6px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--text-muted);font-size:13px;border-left:2px solid transparent;transition:all .15s;text-decoration:none}
-.nav-item:hover{background:var(--bg);color:var(--text)}
-.nav-item.active{background:var(--light-blue);color:var(--med-blue);font-weight:500;border-left-color:var(--med-blue)}
-.nav-item .nav-icon{width:18px;text-align:center;font-size:14px}
-.nav-badge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:10px;background:var(--red-light);color:#791F1F;font-weight:600}
-.sidebar-footer{padding:14px 16px;border-top:0.5px solid var(--border)}
-.sidebar-user{font-size:12px;color:var(--text-muted)}
-.sidebar-user strong{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
-.btn-logout{margin-top:8px;font-size:11px;color:var(--text-light);background:none;border:none;cursor:pointer;padding:0}
-.btn-logout:hover{color:var(--red)}
-/* Main content */
-.main-content{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50}
-.topbar-title{font-size:16px;font-weight:600;color:var(--text)}
-.topbar-actions{display:flex;gap:8px;align-items:center}
-.page-content{padding:24px;flex:1}
-/* ============================================================
-   COMPONENTES
-============================================================ */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;border:0.5px solid var(--border);background:var(--white);color:var(--text);transition:all .15s;font-weight:400}
+
+/* LOGIN */
+.lw{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.lb{background:var(--white);border-radius:16px;padding:40px;width:100%;max-width:400px;border:0.5px solid var(--border)}
+.lt{font-size:26px;font-weight:700;color:var(--blue);text-align:center;margin-bottom:4px}
+.ls{font-size:13px;color:var(--muted);text-align:center;margin-bottom:24px}
+.fl{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:12px;font-weight:500}
+.fi{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text)}
+.fi:focus{outline:none;border-color:var(--med)}
+.bl{width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);font-weight:600;cursor:pointer;margin-top:16px}
+.bl:hover{opacity:.88}
+.bl-g{background:var(--green)}
+.err-box{background:var(--rl);color:#791F1F;padding:8px 12px;border-radius:var(--rsm);font-size:12px;display:none;margin-bottom:12px}
+.err-box.show{display:block}
+
+/* APP */
+.app{display:none;min-height:100vh}
+.app.show{display:flex}
+.sidebar{width:220px;background:var(--white);border-right:0.5px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
+.sb-logo{padding:18px 16px 12px;border-bottom:0.5px solid var(--border)}
+.sb-title{font-size:15px;font-weight:700;color:var(--blue)}
+.sb-sub{font-size:11px;color:var(--lt);margin-top:2px}
+.sb-nav{flex:1;padding:8px 0}
+.nav-sec{padding:6px 16px 2px;font-size:10px;font-weight:600;color:var(--lt);letter-spacing:.06em;margin-top:4px}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--muted);font-size:13px;border-left:2px solid transparent;width:100%;text-align:left;background:none;border-top:none;border-right:none;border-bottom:none}
+.nav-btn:hover{background:var(--bg);color:var(--text)}
+.nav-btn.active{background:var(--light);color:var(--med);font-weight:500;border-left-color:var(--med)}
+.sb-foot{padding:12px 16px;border-top:0.5px solid var(--border);font-size:12px}
+.sb-name{display:block;font-weight:500;font-size:13px;color:var(--text);margin-bottom:2px}
+.btn-out{background:none;border:none;font-size:11px;color:var(--lt);cursor:pointer;padding:0}
+.btn-out:hover{color:var(--red)}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;background:var(--white);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50}
+.topbar-t{font-size:16px;font-weight:600}
+.page{padding:24px;flex:1}
+.sec{display:none}.sec.active{display:block}
+
+/* COMPONENTES */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--rsm);font-size:13px;cursor:pointer;border:0.5px solid var(--border);background:var(--white);color:var(--text)}
 .btn:hover{background:var(--bg)}
-.btn-primary{background:var(--blue);color:var(--white);border-color:var(--blue)}
-.btn-primary:hover{opacity:.88}
-.btn-sm{padding:5px 10px;font-size:12px}
-.btn-success{background:var(--green);color:var(--white);border-color:var(--green)}
-.btn-danger{background:var(--red);color:var(--white);border-color:var(--red)}
-.card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
-.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
-.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
-.metric{background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px}
-.metric .lbl{font-size:11px;color:var(--text-light);margin-bottom:5px}
-.metric .val{font-size:24px;font-weight:600;color:var(--text)}
-.metric .sub{font-size:11px;color:var(--text-light);margin-top:3px}
+.btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-p:hover{opacity:.88}
+.btn-ok{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}
+.card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card-t{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{background:var(--bg);border-radius:var(--rsm);padding:13px 15px}
+.metric .lbl{font-size:11px;color:var(--lt);margin-bottom:4px}
+.metric .val{font-size:22px;font-weight:600}
+.metric .sub{font-size:10px;color:var(--lt);margin-top:3px}
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
-.badge-verde{background:var(--green-light);color:#27500A}
-.badge-amber{background:var(--amber-light);color:#633806}
-.badge-rojo{background:var(--red-light);color:#791F1F}
-.badge-azul{background:var(--light-blue);color:#0C447C}
-.badge-gris{background:var(--gray-light);color:#444441}
-.badge-purple{background:var(--purple-light);color:#3C3489}
+.bv{background:var(--gl);color:#27500A}
+.ba{background:var(--al);color:#633806}
+.br{background:var(--rl);color:#791F1F}
+.bb{background:var(--light);color:#0C447C}
+.bgr{background:#F1EFE8;color:#444441}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border);background:var(--bg)}
-td{padding:10px 12px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle}
-tr:hover td{background:var(--bg)}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);padding:8px 12px;border-bottom:0.5px solid var(--border);background:var(--bg)}
+td{padding:9px 12px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle}
 tr:last-child td{border-bottom:none}
-.tbl-wrap{border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.form-row{margin-bottom:14px}
-.form-row label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px}
-.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)}
-.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--med-blue)}
-.form-row textarea{resize:vertical;min-height:80px}
-.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.search-input{padding:8px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);width:240px}
-.search-input:focus{outline:none;border-color:var(--med-blue)}
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.open{display:flex}
-.modal-box{background:var(--white);border-radius:14px;padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.15)}
-.modal-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
-.modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);padding:2px 6px;border-radius:4px}
-.modal-close:hover{background:var(--bg);color:var(--text)}
-/* Alert */
-.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;display:none}
-.alert.show{display:block}
-.alert-success{background:var(--green-light);color:#27500A;border:0.5px solid #97C459}
-.alert-error{background:var(--red-light);color:#791F1F;border:0.5px solid #F09595}
-/* Loading */
-.loading{text-align:center;padding:40px;color:var(--text-light);font-size:13px}
-.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--med-blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+tr:hover td{background:var(--bg)}
+.tbl{border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden}
+.frow{margin-bottom:12px}
+.frow label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:4px}
+.frow input,.frow select,.frow textarea{width:100%;padding:8px 11px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text)}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--med)}
+.frow textarea{resize:vertical;min-height:70px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.srch{padding:8px 13px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text);width:240px}
+.toprow{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-ov.open{display:flex}
+.modal-box{background:var(--white);border-radius:14px;padding:22px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-t{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--lt)}
+.alerta{padding:10px 14px;border-radius:var(--rsm);font-size:12px;margin-bottom:12px;display:none}
+.alerta.show{display:block}
+.alerta-ok{background:var(--gl);color:#27500A;border:0.5px solid #97C459}
+.alerta-err{background:var(--rl);color:#791F1F}
+.loading{text-align:center;padding:30px;color:var(--lt);font-size:13px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--med);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* Empty state */
-.empty-state{text-align:center;padding:60px 20px;color:var(--text-light)}
-.empty-state .empty-icon{font-size:40px;margin-bottom:12px}
-.empty-state .empty-title{font-size:14px;font-weight:500;color:var(--text-muted);margin-bottom:6px}
-.empty-state .empty-desc{font-size:12px}
-/* Semáforo */
-.semaforo{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
-.sem-verde{background:var(--green)}
-.sem-amarillo{background:var(--amber)}
-.sem-rojo{background:var(--red)}
-/* Progress bar */
-.pbar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:5px}
-.pfill{height:100%;border-radius:3px;transition:width .4s}
-/* Config notice */
-.config-notice{background:var(--amber-light);border:0.5px solid var(--amber);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
-.config-notice h3{font-size:14px;font-weight:600;color:#633806;margin-bottom:8px}
-.config-notice p{font-size:12px;color:#854F0B;line-height:1.6;margin-bottom:10px}
-.config-notice code{background:#fff;padding:3px 8px;border-radius:4px;font-family:monospace;font-size:12px;color:#633806;display:block;margin:4px 0;word-break:break-all}
-/* Responsive */
-@media(max-width:768px){
-  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto}
-  .main-content{margin-left:0}
-  .fgrid2,.fgrid3{grid-template-columns:1fr}
-  .search-input{width:100%}
-}
-/* Secciones */
-.section{display:none}.section.active{display:block}
-/* Alertas dashboard */
-.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border)}
-.alert-item:last-child{border-bottom:none}
+.empty{text-align:center;padding:50px 20px;color:var(--lt)}
+.pbar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:4px}
+.pfill{height:100%;border-radius:3px}
+.ai{display:flex;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border)}
+.ai:last-child{border-bottom:none}
 .adot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.sec-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)}
+
+/* FICHA CLIENTE */
+.ficha-wrap{display:none}
+.ficha-wrap.open{display:block}
+.ficha-tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.ftab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:12px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.ftab.active{color:var(--med);font-weight:500;border-bottom-color:var(--med)}
+.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-row span:first-child{color:var(--muted)}
+.info-row span:last-child{font-weight:500}
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-     CONFIG NOTICE (se muestra si no hay credenciales)
-============================================================ -->
-<div id="config-notice" style="display:none;padding:20px">
-  <div class="config-notice">
-    <h3>🔧 Configuración requerida</h3>
-    <p>Para que el CRM funcione con tu base de datos real, necesitás reemplazar estos valores en el archivo <strong>index.html</strong>:</p>
-    <code>SUPABASE_URL = 'https://TU-PROYECTO.supabase.co'</code>
-    <code>SUPABASE_KEY = 'eyJ...tu-anon-key...'</code>
-    <p>Encontrás estos datos en: <strong>Supabase → Settings → API</strong></p>
-    <p>También ejecutá el archivo <strong>supabase_schema.sql</strong> en: <strong>Supabase → SQL Editor → New Query</strong></p>
-  </div>
-</div>
-
-<!-- ============================================================
-     LOGIN
-============================================================ -->
-<div class="login-wrap" id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-logo-title">🛡️ CRM Seguros</div>
-      <div class="login-logo-sub">Sistema de gestión para productores</div>
+<!-- LOGIN -->
+<div class="lw" id="login-screen">
+  <div class="lb">
+    <div class="lt">🛡️ CRM Seguros</div>
+    <div class="ls">Sistema de gestión para productores</div>
+    <div class="err-box" id="login-err"></div>
+    <label class="fl">Email</label>
+    <input class="fi" type="email" id="l-email" placeholder="tu@email.com" autocomplete="email">
+    <label class="fl">Contraseña</label>
+    <input class="fi" type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password">
+    <button class="bl" id="btn-ingresar">Ingresar al CRM</button>
+    <div style="text-align:center;margin-top:12px">
+      <button style="background:none;border:none;font-size:12px;color:var(--med);cursor:pointer" id="btn-toggle">¿Primera vez? Crear cuenta</button>
     </div>
-    <div class="login-error" id="login-error"></div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input class="form-input" type="email" id="login-email" placeholder="tu@email.com" autocomplete="email">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Contraseña</label>
-      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn-login" onclick="login()">Ingresar al CRM</button>
-    <div style="text-align:center;margin-top:14px">
-      <button style="background:none;border:none;font-size:12px;color:var(--med-blue);cursor:pointer" onclick="toggleRegistro()">¿Primera vez? Crear cuenta</button>
-    </div>
-    <!-- Registro -->
-    <div id="registro-form" style="display:none;margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
-      <div class="form-group">
-        <label class="form-label">Tu nombre</label>
-        <input class="form-input" type="text" id="reg-nombre" placeholder="Nombre completo">
-      </div>
-      <button class="btn-login" onclick="registro()" style="background:var(--green)">Crear cuenta</button>
+    <div id="reg-form" style="display:none;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
+      <label class="fl">Tu nombre completo</label>
+      <input class="fi" type="text" id="r-nombre" placeholder="Nombre Apellido">
+      <button class="bl bl-g" id="btn-registrar">Crear cuenta</button>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     APP PRINCIPAL
-============================================================ -->
-<div class="app-wrap" id="app">
-
-  <!-- SIDEBAR -->
+<!-- APP -->
+<div class="app" id="app">
   <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-title">🛡️ CRM Seguros</div>
-      <div class="sidebar-logo-sub" id="sb-email"></div>
+    <div class="sb-logo">
+      <div class="sb-title">🛡️ CRM Seguros</div>
+      <div class="sb-sub" id="sb-email"></div>
     </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">PRINCIPAL</div>
-      <a class="nav-item active" onclick="showSection('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</a>
-      <a class="nav-item" onclick="showSection('clientes',this)"><span class="nav-icon">👥</span>Clientes<span class="nav-badge" id="badge-clientes" style="display:none"></span></a>
-      <a class="nav-item" onclick="showSection('polizas',this)"><span class="nav-icon">📋</span>Pólizas</a>
-      <a class="nav-item" onclick="showSection('cotizaciones',this)"><span class="nav-icon">💬</span>Cotizaciones</a>
-      <div class="nav-section">OPERACIONES</div>
-      <a class="nav-item" onclick="showSection('siniestros',this)"><span class="nav-icon">🚨</span>Siniestros<span class="nav-badge" id="badge-siniestros" style="display:none"></span></a>
-      <a class="nav-item" onclick="showSection('cobranzas',this)"><span class="nav-icon">💰</span>Cobranzas<span class="nav-badge" id="badge-cobranzas" style="display:none"></span></a>
-      <a class="nav-item" onclick="showSection('tareas',this)"><span class="nav-icon">✅</span>Tareas</a>
-      <div class="nav-section">ANÁLISIS</div>
-      <a class="nav-item" onclick="showSection('analisis',this)"><span class="nav-icon">📈</span>Análisis</a>
+    <nav class="sb-nav">
+      <div class="nav-sec">PRINCIPAL</div>
+      <button class="nav-btn active" data-sec="dashboard">📊 Dashboard</button>
+      <button class="nav-btn" data-sec="clientes">👥 Clientes</button>
+      <button class="nav-btn" data-sec="polizas">📋 Pólizas</button>
+      <button class="nav-btn" data-sec="cotizaciones">💬 Cotizaciones</button>
+      <div class="nav-sec">OPERACIONES</div>
+      <button class="nav-btn" data-sec="siniestros">🚨 Siniestros</button>
+      <button class="nav-btn" data-sec="cobranzas">💰 Cobranzas</button>
+      <button class="nav-btn" data-sec="tareas">✅ Tareas</button>
+      <div class="nav-sec">ANÁLISIS</div>
+      <button class="nav-btn" data-sec="analisis">📈 Análisis</button>
     </nav>
-    <div class="sidebar-footer">
-      <div class="sidebar-user">
-        <strong id="sb-nombre">Usuario</strong>
-        <span id="sb-email2"></span>
-      </div>
-      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    <div class="sb-foot">
+      <span class="sb-name" id="sb-nombre">—</span>
+      <span id="sb-email2" style="font-size:11px;color:var(--lt)"></span>
+      <button class="btn-out" id="btn-logout">Cerrar sesión</button>
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main-content">
+  <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="topbar-title">Dashboard</div>
-      <div class="topbar-actions">
-        <button class="btn btn-sm" onclick="showSection('clientes',document.querySelector(\'.nav-item:nth-child(2)\'))">+ Cliente</button>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalPoliza()">+ Póliza</button>
+      <div class="topbar-t" id="topbar-title">Dashboard</div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-sm btn-p" id="btn-nc">+ Cliente</button>
+        <button class="btn btn-sm btn-p" id="btn-np">+ Póliza</button>
       </div>
     </div>
+    <div class="page">
+      <div class="alerta alerta-ok" id="alerta-g"></div>
 
-    <div class="page-content">
-      <div class="alert alert-success" id="alert-global"></div>
-
-      <!-- ======= DASHBOARD ======= -->
-      <div id="sec-dashboard" class="section active">
-        <div class="grid3" id="dashboard-metrics">
-          <div class="metric"><div class="lbl">Clientes activos</div><div class="val" id="m-clientes">—</div><div class="sub">Total en cartera</div></div>
-          <div class="metric"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-polizas">—</div><div class="sub">Estado activo</div></div>
-          <div class="metric"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-siniestros" style="color:var(--red)">—</div><div class="sub">Requieren gestión</div></div>
-          <div class="metric"><div class="lbl">Cobranza pendiente</div><div class="val" id="m-cobranzas" style="color:var(--amber)">—</div><div class="sub">Cuotas vencidas</div></div>
-          <div class="metric"><div class="lbl">Cotizaciones activas</div><div class="val" id="m-cotizaciones">—</div><div class="sub">Enviadas sin respuesta</div></div>
-          <div class="metric"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tareas">—</div><div class="sub">Para hoy</div></div>
+      <!-- DASHBOARD -->
+      <div id="sec-dashboard" class="sec active">
+        <div class="g3">
+          <div class="metric"><div class="lbl">Clientes</div><div class="val" id="m-cl">—</div><div class="sub">Total en cartera</div></div>
+          <div class="metric"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol">—</div></div>
+          <div class="metric"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div></div>
+          <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="m-cob" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Cotizaciones activas</div><div class="val" id="m-cotz">—</div></div>
+          <div class="metric"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar">—</div></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="g2" style="margin-bottom:0">
           <div class="card">
-            <div class="card-title">Alertas prioritarias</div>
-            <div id="dashboard-alertas"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+            <div class="card-t">Pólizas por vencer (30 días)</div>
+            <div id="dash-venc"><div class="loading"><span class="spin"></span>Cargando...</div></div>
           </div>
           <div class="card">
-            <div class="card-title">Próximas renovaciones</div>
-            <div id="dashboard-renovaciones"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+            <div class="card-t">Siniestros abiertos</div>
+            <div id="dash-sin"><div class="loading"><span class="spin"></span>Cargando...</div></div>
           </div>
         </div>
       </div>
 
-      <!-- ======= CLIENTES ======= -->
-      <div id="sec-clientes" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <input class="search-input" type="text" placeholder="Buscar por nombre, DNI, email..." oninput="buscarClientes(this.value)">
+      <!-- CLIENTES -->
+      <div id="sec-clientes" class="sec">
+        <div class="toprow" id="cl-toprow">
+          <input class="srch" type="text" placeholder="Buscar por nombre, DNI, email..." id="srch-cl">
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <select style="padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);font-size:12px" onchange="filtrarClientesEstado(this.value)">
+            <select class="srch" style="width:auto" id="fil-cl">
               <option value="">Todos los estados</option>
               <option value="prospecto">Prospectos</option>
               <option value="activo">Activos</option>
@@ -287,189 +221,188 @@ tr:last-child td{border-bottom:none}
               <option value="siniestrado">Siniestrados</option>
               <option value="inactivo">Inactivos</option>
             </select>
-            <button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo cliente</button>
+            <button class="btn btn-sm btn-p" id="btn-nc2">+ Nuevo cliente</button>
           </div>
         </div>
-        <div class="tbl-wrap">
+        <div class="tbl" id="cl-tabla-wrap">
           <table>
             <thead><tr><th>Cliente</th><th>Estado</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>C.P.</th><th>Tipo seguro</th><th></th></tr></thead>
-            <tbody id="tabla-clientes"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando clientes...</div></td></tr></tbody>
+            <tbody id="tbody-cl"></tbody>
           </table>
+        </div>
+        <!-- FICHA CLIENTE -->
+        <div class="ficha-wrap" id="ficha-wrap">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <button class="btn btn-sm" id="btn-volver-cl">← Volver</button>
+            <div style="font-size:16px;font-weight:600;color:var(--blue)" id="ficha-titulo"></div>
+            <span id="ficha-badge"></span>
+          </div>
+          <div class="ficha-tabs" id="ficha-tabs"></div>
+          <div id="ficha-content"></div>
         </div>
       </div>
 
-      <!-- ======= PÓLIZAS ======= -->
-      <div id="sec-polizas" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <input class="search-input" type="text" placeholder="Buscar por N° póliza, cliente..." oninput="buscarPolizas(this.value)">
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <select style="padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);font-size:12px" onchange="filtrarPolizasRamo(this.value)">
-              <option value="">Todos los ramos</option>
-              <option value="Autos">Autos</option>
-              <option value="Vida">Vida</option>
-              <option value="Hogar">Hogar</option>
-              <option value="Salud">Salud / ART</option>
-              <option value="ART">ART</option>
-              <option value="Combinado">Combinado</option>
-              <option value="Empresas">Empresas</option>
-            </select>
-            <button class="btn btn-primary" onclick="abrirModalPoliza()">+ Nueva póliza</button>
-          </div>
+      <!-- PÓLIZAS -->
+      <div id="sec-polizas" class="sec">
+        <div class="toprow">
+          <input class="srch" type="text" placeholder="Buscar póliza..." id="srch-pol">
+          <select class="srch" style="width:auto" id="fil-pol">
+            <option value="">Todos los ramos</option>
+            <option>Autos</option><option>Vida</option><option>Hogar</option>
+            <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
+          </select>
         </div>
-        <div class="tbl-wrap">
+        <div class="tbl">
           <table>
             <thead><tr><th>N° Póliza</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Prima anual</th><th>Vencimiento</th><th>Estado</th></tr></thead>
-            <tbody id="tabla-polizas"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando pólizas...</div></td></tr></tbody>
+            <tbody id="tbody-pol"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ======= COTIZACIONES ======= -->
-      <div id="sec-cotizaciones" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <input class="search-input" type="text" placeholder="Buscar cotización...">
-          <button class="btn btn-primary" onclick="abrirModalCotizacion()">+ Nueva cotización</button>
+      <!-- COTIZACIONES -->
+      <div id="sec-cotizaciones" class="sec">
+        <div class="toprow">
+          <input class="srch" type="text" placeholder="Buscar cotización...">
+          <button class="btn btn-sm btn-p" id="btn-ncotz">+ Nueva cotización</button>
         </div>
-        <div class="grid3" style="margin-bottom:16px">
-          <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="cotz-enviadas">—</div></div>
-          <div class="metric"><div class="lbl">Aceptadas</div><div class="val" id="cotz-aceptadas" style="color:var(--green)">—</div></div>
+        <div class="g3" style="margin-bottom:14px">
+          <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="cotz-env">—</div></div>
+          <div class="metric"><div class="lbl">Aceptadas</div><div class="val" id="cotz-acep" style="color:var(--green)">—</div></div>
           <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="cotz-tasa">—</div></div>
         </div>
-        <div class="tbl-wrap">
+        <div class="tbl">
           <table>
             <thead><tr><th>N°</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Prima</th><th>Válida hasta</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="tabla-cotizaciones"><tr><td colspan="8"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+            <tbody id="tbody-cotz"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ======= SINIESTROS ======= -->
-      <div id="sec-siniestros" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <input class="search-input" type="text" placeholder="Buscar siniestro o cliente...">
-          <button class="btn btn-primary" onclick="abrirModalSiniestro()">+ Nuevo siniestro</button>
+      <!-- SINIESTROS -->
+      <div id="sec-siniestros" class="sec">
+        <div class="toprow">
+          <input class="srch" type="text" placeholder="Buscar siniestro...">
+          <button class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
         </div>
-        <div class="tbl-wrap">
+        <div class="tbl">
           <table>
-            <thead><tr><th>Expediente</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Fecha denuncia</th><th>Estado</th><th>Días abierto</th></tr></thead>
-            <tbody id="tabla-siniestros"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+            <thead><tr><th>Expediente</th><th>Cliente</th><th>Tipo</th><th>Aseguradora</th><th>Fecha denuncia</th><th>Estado</th><th>Días abierto</th></tr></thead>
+            <tbody id="tbody-sin"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ======= COBRANZAS ======= -->
-      <div id="sec-cobranzas" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <!-- COBRANZAS -->
+      <div id="sec-cobranzas" class="sec">
+        <div class="toprow">
           <div style="font-size:14px;font-weight:600">Gestión de cobranzas</div>
-          <button class="btn btn-primary" onclick="abrirModalCobranza()">+ Registrar cuota</button>
+          <button class="btn btn-sm btn-p" id="btn-ncob">+ Registrar cuota</button>
         </div>
-        <div class="grid3" style="margin-bottom:16px">
-          <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="cob-vencidas" style="color:var(--red)">—</div></div>
-          <div class="metric"><div class="lbl">Cuotas pendientes</div><div class="val" id="cob-pendientes" style="color:var(--amber)">—</div></div>
-          <div class="metric"><div class="lbl">Cobrado este mes</div><div class="val" id="cob-cobrado" style="color:var(--green)">—</div></div>
+        <div class="g3" style="margin-bottom:14px">
+          <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="cob-venc" style="color:var(--red)">—</div></div>
+          <div class="metric"><div class="lbl">Pendientes</div><div class="val" id="cob-pend" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Cobrado este mes</div><div class="val" id="cob-mes" style="color:var(--green)">—</div></div>
         </div>
-        <div class="tbl-wrap">
+        <div class="tbl">
           <table>
             <thead><tr><th>Cliente</th><th>Póliza</th><th>Cuota</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="tabla-cobranzas"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando...</div></td></tr></tbody>
+            <tbody id="tbody-cob"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ======= TAREAS ======= -->
-      <div id="sec-tareas" class="section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <!-- TAREAS -->
+      <div id="sec-tareas" class="sec">
+        <div class="toprow">
           <div style="display:flex;gap:5px;flex-wrap:wrap" id="tablero-tabs">
-            <button class="btn btn-sm active" style="border-color:var(--med-blue);color:var(--med-blue)" onclick="filtrarTablero('',this)">Todos</button>
-            <button class="btn btn-sm" onclick="filtrarTablero('ventas',this)">Ventas</button>
-            <button class="btn btn-sm" onclick="filtrarTablero('siniestros',this)">Siniestros</button>
-            <button class="btn btn-sm" onclick="filtrarTablero('cobranzas',this)">Cobranzas</button>
-            <button class="btn btn-sm" onclick="filtrarTablero('renovaciones',this)">Renovaciones</button>
-            <button class="btn btn-sm" onclick="filtrarTablero('general',this)">General</button>
+            <button class="btn btn-sm btn-p" onclick="setTablero('',this)">Todos</button>
+            <button class="btn btn-sm" onclick="setTablero('ventas',this)">Ventas</button>
+            <button class="btn btn-sm" onclick="setTablero('siniestros',this)">Siniestros</button>
+            <button class="btn btn-sm" onclick="setTablero('cobranzas',this)">Cobranzas</button>
+            <button class="btn btn-sm" onclick="setTablero('renovaciones',this)">Renovaciones</button>
+            <button class="btn btn-sm" onclick="setTablero('general',this)">General</button>
           </div>
-          <button class="btn btn-primary" onclick="abrirModalTarea()">+ Nueva tarea</button>
+          <button class="btn btn-sm btn-p" id="btn-ntar">+ Nueva tarea</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--gray)"></div>Pendiente <span id="cnt-pendiente" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
-            <div id="col-pendiente"></div>
+          <div style="background:var(--bg);border-radius:var(--r);padding:11px;min-height:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+              <div style="width:7px;height:7px;border-radius:50%;background:#888"></div>Pendiente
+              <span id="cnt-p" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 5px;border-radius:8px">0</span>
+            </div>
+            <div id="col-p"></div>
           </div>
-          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--med-blue)"></div>En curso <span id="cnt-encurso" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
-            <div id="col-encurso"></div>
+          <div style="background:var(--bg);border-radius:var(--r);padding:11px;min-height:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+              <div style="width:7px;height:7px;border-radius:50%;background:var(--med)"></div>En curso
+              <span id="cnt-e" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 5px;border-radius:8px">0</span>
+            </div>
+            <div id="col-e"></div>
           </div>
-          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></div>Esp. respuesta <span id="cnt-esperando" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
-            <div id="col-esperando"></div>
+          <div style="background:var(--bg);border-radius:var(--r);padding:11px;min-height:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+              <div style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></div>Esp. respuesta
+              <span id="cnt-r" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 5px;border-radius:8px">0</span>
+            </div>
+            <div id="col-r"></div>
           </div>
-          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;min-height:200px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>Cerrada <span id="cnt-cerrada" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 6px;border-radius:8px">0</span></div>
-            <div id="col-cerrada"></div>
+          <div style="background:var(--bg);border-radius:var(--r);padding:11px;min-height:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+              <div style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>Cerrada
+              <span id="cnt-c" style="margin-left:auto;font-size:10px;background:#fff;border:0.5px solid var(--border);padding:1px 5px;border-radius:8px">0</span>
+            </div>
+            <div id="col-c"></div>
           </div>
         </div>
       </div>
 
-      <!-- ======= ANÁLISIS ======= -->
-      <div id="sec-analisis" class="section">
-        <div class="grid3">
+      <!-- ANÁLISIS -->
+      <div id="sec-analisis" class="sec">
+        <div class="g3">
           <div class="metric"><div class="lbl">Prima total cartera</div><div class="val" id="an-prima">—</div><div class="sub">Anual</div></div>
-          <div class="metric"><div class="lbl">Tasa de retención</div><div class="val" id="an-retencion">—</div><div class="sub">Clientes activos vs total</div></div>
-          <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="an-cierre">—</div><div class="sub">Cotizaciones aceptadas</div></div>
+          <div class="metric"><div class="lbl">Tasa de retención</div><div class="val" id="an-ret">—</div></div>
+          <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="an-cie">—</div></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div class="card">
-            <div class="card-title">Producción por ramo</div>
-            <div id="analisis-ramos"><div class="loading"><span class="spinner"></span>Calculando...</div></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Producción por aseguradora</div>
-            <div id="analisis-aseg"><div class="loading"><span class="spinner"></span>Calculando...</div></div>
-          </div>
+        <div class="g2">
+          <div class="card"><div class="card-t">Producción por ramo</div><div id="an-ramos"><div class="loading"><span class="spin"></span>Calculando...</div></div></div>
+          <div class="card"><div class="card-t">Producción por aseguradora</div><div id="an-aseg"><div class="loading"><span class="spin"></span>Calculando...</div></div></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     MODALES
-============================================================ -->
-
-<!-- Modal Cliente -->
-<div class="modal-overlay" id="modal-cliente">
+<!-- MODAL NUEVO CLIENTE -->
+<div class="modal-ov" id="modal-cl">
   <div class="modal-box">
-    <div class="modal-title">Nuevo cliente <button class="modal-close" onclick="cerrarModal('modal-cliente')">✕</button></div>
+    <div class="modal-t">Nuevo cliente <button class="modal-x" onclick="cerrarModal('modal-cl')">✕</button></div>
 
-    <!-- DATOS PERSONALES -->
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.05em">DATOS PERSONALES</div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Nombre *</label><input type="text" id="cl-nombre" placeholder="Nombre"></div>
-      <div class="form-row"><label>Apellido *</label><input type="text" id="cl-apellido" placeholder="Apellido"></div>
+    <div class="sec-label">DATOS PERSONALES</div>
+    <div class="fg2">
+      <div class="frow"><label>Nombre *</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
+      <div class="frow"><label>Apellido *</label><input type="text" id="f-apellido" placeholder="Apellido"></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>DNI</label><input type="text" id="cl-dni" placeholder="XX.XXX.XXX"></div>
-      <div class="form-row"><label>Fecha de nacimiento</label><input type="date" id="cl-nacimiento"></div>
+    <div class="fg2">
+      <div class="frow"><label>DNI</label><input type="text" id="f-dni" placeholder="XX.XXX.XXX"></div>
+      <div class="frow"><label>Fecha de nacimiento</label><input type="date" id="f-nac"></div>
     </div>
-    <div class="form-row"><label>Dirección</label><input type="text" id="cl-direccion" placeholder="Calle, número, piso"></div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Localidad</label>
-        <select id="cl-localidad" onchange="autoCP(this.value)">
-          <option value="">Seleccionar localidad...</option>
+    <div class="frow"><label>Dirección</label><input type="text" id="f-dir" placeholder="Calle, número, piso/dpto"></div>
+    <div class="fg2">
+      <div class="frow"><label>Localidad</label>
+        <select id="f-loc">
+          <option value="">Seleccionar...</option>
           <optgroup label="Buenos Aires">
-            <option value="Buenos Aires|1000">Ciudad de Buenos Aires</option>
+            <option value="Ciudad de Buenos Aires|1000">Ciudad de Buenos Aires</option>
             <option value="La Plata|1900">La Plata</option>
             <option value="Mar del Plata|7600">Mar del Plata</option>
             <option value="Bahía Blanca|8000">Bahía Blanca</option>
             <option value="Quilmes|1878">Quilmes</option>
             <option value="Lanús|1824">Lanús</option>
             <option value="Lomas de Zamora|1832">Lomas de Zamora</option>
-            <option value="San Justo|1754">San Justo</option>
-            <option value="Merlo|1722">Merlo</option>
             <option value="Morón|1708">Morón</option>
             <option value="Tigre|1648">Tigre</option>
             <option value="San Isidro|1642">San Isidro</option>
-            <option value="Vicente López|1638">Vicente López</option>
-            <option value="Tres de Febrero|1674">Tres de Febrero</option>
             <option value="Tandil|7000">Tandil</option>
             <option value="Junín|6000">Junín</option>
             <option value="Pergamino|2700">Pergamino</option>
@@ -498,20 +431,16 @@ tr:last-child td{border-bottom:none}
             <option value="San Francisco|2400">San Francisco</option>
             <option value="Villa María|5900">Villa María</option>
             <option value="Alta Gracia|5186">Alta Gracia</option>
-            <option value="Jesús María|5220">Jesús María</option>
-            <option value="Bell Ville|2550">Bell Ville</option>
           </optgroup>
           <optgroup label="Mendoza">
             <option value="Mendoza|5500">Mendoza</option>
             <option value="San Rafael|5600">San Rafael</option>
             <option value="Godoy Cruz|5501">Godoy Cruz</option>
             <option value="Luján de Cuyo|5507">Luján de Cuyo</option>
-            <option value="Maipú|5515">Maipú</option>
           </optgroup>
           <optgroup label="Tucumán">
             <option value="San Miguel de Tucumán|4000">San Miguel de Tucumán</option>
             <option value="Tafí Viejo|4103">Tafí Viejo</option>
-            <option value="Yerba Buena|4107">Yerba Buena</option>
           </optgroup>
           <optgroup label="Entre Ríos">
             <option value="Paraná|3100">Paraná</option>
@@ -520,102 +449,71 @@ tr:last-child td{border-bottom:none}
           </optgroup>
           <optgroup label="Salta">
             <option value="Salta|4400">Salta</option>
-            <option value="San Ramón de la Nueva Orán|4530">Orán</option>
-            <option value="Tartagal|4560">Tartagal</option>
           </optgroup>
           <optgroup label="Chaco">
             <option value="Resistencia|3500">Resistencia</option>
-            <option value="Presidencia Roque Sáenz Peña|3700">Sáenz Peña</option>
           </optgroup>
           <optgroup label="Misiones">
             <option value="Posadas|3300">Posadas</option>
-            <option value="Oberá|3360">Oberá</option>
           </optgroup>
           <optgroup label="Corrientes">
             <option value="Corrientes|3400">Corrientes</option>
-            <option value="Goya|3450">Goya</option>
           </optgroup>
-          <optgroup label="Santiago del Estero">
-            <option value="Santiago del Estero|4200">Santiago del Estero</option>
-            <option value="La Banda|4300">La Banda</option>
-          </optgroup>
-          <optgroup label="Jujuy">
-            <option value="San Salvador de Jujuy|4600">San Salvador de Jujuy</option>
-            <option value="Palpalá|4612">Palpalá</option>
-          </optgroup>
-          <optgroup label="San Juan">
-            <option value="San Juan|5400">San Juan</option>
-            <option value="Rivadavia|5413">Rivadavia</option>
+          <optgroup label="Neuquén">
+            <option value="Neuquén|8300">Neuquén</option>
           </optgroup>
           <optgroup label="Río Negro">
             <option value="Bariloche|8400">Bariloche</option>
             <option value="Viedma|8500">Viedma</option>
-            <option value="General Roca|8332">General Roca</option>
-          </optgroup>
-          <optgroup label="Neuquén">
-            <option value="Neuquén|8300">Neuquén</option>
-            <option value="Zapala|8340">Zapala</option>
-          </optgroup>
-          <optgroup label="La Pampa">
-            <option value="Santa Rosa|6300">Santa Rosa</option>
-            <option value="General Pico|6360">General Pico</option>
           </optgroup>
           <optgroup label="Chubut">
             <option value="Comodoro Rivadavia|9000">Comodoro Rivadavia</option>
             <option value="Trelew|9100">Trelew</option>
-            <option value="Puerto Madryn|9120">Puerto Madryn</option>
           </optgroup>
-          <optgroup label="Santa Cruz">
-            <option value="Río Gallegos|9400">Río Gallegos</option>
-            <option value="El Calafate|9405">El Calafate</option>
+          <optgroup label="La Pampa">
+            <option value="Santa Rosa|6300">Santa Rosa</option>
           </optgroup>
-          <optgroup label="Tierra del Fuego">
-            <option value="Ushuaia|9410">Ushuaia</option>
-            <option value="Río Grande|9420">Río Grande</option>
-          </optgroup>
-          <optgroup label="Formosa">
-            <option value="Formosa|3600">Formosa</option>
-          </optgroup>
-          <optgroup label="Catamarca">
-            <option value="San Fernando del Valle|4700">San Fernando del Valle de Catamarca</option>
-          </optgroup>
-          <optgroup label="La Rioja">
-            <option value="La Rioja|5300">La Rioja</option>
+          <optgroup label="San Juan">
+            <option value="San Juan|5400">San Juan</option>
           </optgroup>
           <optgroup label="San Luis">
             <option value="San Luis|5700">San Luis</option>
-            <option value="Villa Mercedes|5730">Villa Mercedes</option>
+          </optgroup>
+          <optgroup label="Jujuy">
+            <option value="San Salvador de Jujuy|4600">San Salvador de Jujuy</option>
+          </optgroup>
+          <optgroup label="Santiago del Estero">
+            <option value="Santiago del Estero|4200">Santiago del Estero</option>
           </optgroup>
         </select>
       </div>
-      <div class="form-row"><label>Código postal</label>
-        <input type="text" id="cl-cp" placeholder="Automático según localidad" readonly style="background:#f0f0f0">
+      <div class="frow"><label>Código postal</label>
+        <input type="text" id="f-cp" placeholder="Se completa automático" style="background:#f0f0f0" readonly>
       </div>
     </div>
 
-    <!-- CONTACTO -->
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 8px;letter-spacing:.05em">CONTACTO</div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Teléfono principal</label><input type="text" id="cl-tel1" placeholder="341-XXX-XXXX"></div>
-      <div class="form-row"><label>Teléfono secundario</label><input type="text" id="cl-tel2" placeholder="341-XXX-XXXX"></div>
+    <div class="sec-label">CONTACTO</div>
+    <div class="fg2">
+      <div class="frow"><label>Teléfono principal</label><input type="text" id="f-tel1" placeholder="341-XXX-XXXX"></div>
+      <div class="frow"><label>Teléfono secundario</label><input type="text" id="f-tel2" placeholder="Opcional"></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Email principal</label><input type="email" id="cl-email1" placeholder="cliente@email.com"></div>
-      <div class="form-row"><label>Email secundario</label><input type="email" id="cl-email2"></div>
+    <div class="fg2">
+      <div class="frow"><label>Email principal</label><input type="email" id="f-email1" placeholder="cliente@email.com"></div>
+      <div class="frow"><label>Email secundario</label><input type="email" id="f-email2" placeholder="Opcional"></div>
     </div>
 
-    <!-- ESTADO -->
-    <div class="fgrid2">
-      <div class="form-row"><label>Estado</label>
-        <select id="cl-estado">
+    <div class="sec-label">PERFIL</div>
+    <div class="fg2">
+      <div class="frow"><label>Estado</label>
+        <select id="f-estado">
           <option value="prospecto">Prospecto</option>
           <option value="activo">Activo</option>
           <option value="renovacion">En renovación</option>
           <option value="inactivo">Inactivo</option>
         </select>
       </div>
-      <div class="form-row"><label>Canal de origen</label>
-        <select id="cl-canal">
+      <div class="frow"><label>Canal de origen</label>
+        <select id="f-canal">
           <option value="">Seleccionar...</option>
           <option>Referido</option>
           <option>Redes sociales</option>
@@ -626,11 +524,8 @@ tr:last-child td{border-bottom:none}
         </select>
       </div>
     </div>
-
-    <!-- TIPO DE SEGURO -->
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 8px;letter-spacing:.05em">TIPO DE SEGURO</div>
-    <div class="form-row"><label>Tipo de seguro principal</label>
-      <select id="cl-tipo-seguro">
+    <div class="frow"><label>Tipo de seguro principal</label>
+      <select id="f-tipo-seg">
         <option value="">Seleccionar tipo...</option>
         <option>Automotor</option>
         <option>Integral de comercio</option>
@@ -647,151 +542,139 @@ tr:last-child td{border-bottom:none}
       </select>
     </div>
 
-    <!-- VEHÍCULO -->
-    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px" id="sec-vehiculo">
-      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">VEHÍCULO ASEGURADO</div>
-      <div class="fgrid2">
-        <div class="form-row"><label>Marca</label>
-          <select id="cl-marca">
-            <option value="">Seleccionar marca...</option>
-            <option>Acura</option><option>Alfa Romeo</option><option>Audi</option>
-            <option>BMW</option><option>Chevrolet</option><option>Chrysler</option>
-            <option>Citroën</option><option>Dodge</option><option>Fiat</option>
-            <option>Ford</option><option>Honda</option><option>Hyundai</option>
-            <option>Jeep</option><option>Kia</option><option>Land Rover</option>
-            <option>Lexus</option><option>Mazda</option><option>Mercedes-Benz</option>
-            <option>Mini</option><option>Mitsubishi</option><option>Nissan</option>
-            <option>Peugeot</option><option>Porsche</option><option>RAM</option>
-            <option>Renault</option><option>Seat</option><option>Skoda</option>
-            <option>Subaru</option><option>Suzuki</option><option>Tesla</option>
-            <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
-            <option>Otro</option>
-          </select>
-        </div>
-        <div class="form-row"><label>Modelo</label><input type="text" id="cl-modelo" placeholder="Ej: Focus, Corsa, Gol"></div>
+    <div class="sec-label">VEHÍCULO ASEGURADO (opcional)</div>
+    <div class="fg2">
+      <div class="frow"><label>Marca</label>
+        <select id="f-marca">
+          <option value="">Seleccionar marca...</option>
+          <option>Alfa Romeo</option><option>Audi</option><option>BMW</option>
+          <option>Chevrolet</option><option>Chrysler</option><option>Citroën</option>
+          <option>Dodge</option><option>Fiat</option><option>Ford</option>
+          <option>Honda</option><option>Hyundai</option><option>Jeep</option>
+          <option>Kia</option><option>Land Rover</option><option>Mazda</option>
+          <option>Mercedes-Benz</option><option>Mini</option><option>Mitsubishi</option>
+          <option>Nissan</option><option>Peugeot</option><option>Porsche</option>
+          <option>RAM</option><option>Renault</option><option>Seat</option>
+          <option>Skoda</option><option>Subaru</option><option>Suzuki</option>
+          <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
+          <option>Otro</option>
+        </select>
       </div>
-      <div class="fgrid3">
-        <div class="form-row"><label>Año</label>
-          <select id="cl-anio"><option value="">Año...</option></select>
-        </div>
-        <div class="form-row"><label>Patente</label><input type="text" id="cl-patente" placeholder="AB123CD"></div>
-        <div class="form-row"><label>Color</label><input type="text" id="cl-color" placeholder="Plata"></div>
-      </div>
+      <div class="frow"><label>Modelo</label><input type="text" id="f-modelo" placeholder="Ej: Focus, Corsa, Gol"></div>
+    </div>
+    <div class="fg3">
+      <div class="frow"><label>Año</label><select id="f-anio"><option value="">Año...</option></select></div>
+      <div class="frow"><label>Patente</label><input type="text" id="f-patente" placeholder="AB123CD"></div>
+      <div class="frow"><label>Color</label><input type="text" id="f-color" placeholder="Plata"></div>
     </div>
 
-    <!-- NOTAS -->
-    <div class="form-row"><label>Notas internas</label>
-      <textarea id="cl-notas" placeholder="Notas sobre el cliente..."></textarea>
+    <div class="frow"><label>Notas internas</label>
+      <textarea id="f-notas" placeholder="Observaciones sobre el cliente..."></textarea>
     </div>
 
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-cliente')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="cerrarModal('modal-cl')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-cl">Guardar cliente</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Póliza -->
-<div class="modal-overlay" id="modal-poliza">
+<!-- MODAL NUEVA PÓLIZA -->
+<div class="modal-ov" id="modal-pol">
   <div class="modal-box">
-    <div class="modal-title">Nueva póliza <button class="modal-close" onclick="cerrarModal('modal-poliza')">✕</button></div>
-    <div class="form-row"><label>Cliente *</label>
-      <select id="pol-cliente"><option value="">Seleccionar cliente...</option></select>
-    </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>N° de póliza *</label><input type="text" id="pol-numero" placeholder="AUTO-2025-XXX"></div>
-      <div class="form-row"><label>Aseguradora *</label>
-        <select id="pol-aseguradora">
+    <div class="modal-t">Nueva póliza <button class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
+    <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
+    <div class="fg2">
+      <div class="frow"><label>N° de póliza *</label><input type="text" id="fp-num" placeholder="AUTO-2025-XXX"></div>
+      <div class="frow"><label>Aseguradora *</label>
+        <select id="fp-aseg">
           <option value="">Seleccionar...</option>
           <option>Sancor Seguros</option><option>Zurich Argentina</option>
           <option>Mapfre Argentina</option><option>Federación Patronal</option>
           <option>La Segunda</option><option>Provincia Seguros</option>
-          <option>San Cristóbal</option><option>Otro</option>
+          <option>San Cristóbal</option><option>Nación Seguros</option><option>Otro</option>
         </select>
       </div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Ramo *</label>
-        <select id="pol-ramo">
+    <div class="fg2">
+      <div class="frow"><label>Ramo *</label>
+        <select id="fp-ramo">
           <option value="">Seleccionar...</option>
           <option>Autos</option><option>Vida</option><option>Hogar</option>
           <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
         </select>
       </div>
-      <div class="form-row"><label>Tipo de cobertura</label><input type="text" id="pol-cobertura" placeholder="Todo riesgo, RC, etc."></div>
+      <div class="frow"><label>Tipo de cobertura</label><input type="text" id="fp-cob" placeholder="Todo riesgo, RC, etc."></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Fecha inicio *</label><input type="date" id="pol-inicio"></div>
-      <div class="form-row"><label>Fecha vencimiento *</label><input type="date" id="pol-vto"></div>
+    <div class="fg2">
+      <div class="frow"><label>Fecha inicio *</label><input type="date" id="fp-ini"></div>
+      <div class="frow"><label>Fecha vencimiento *</label><input type="date" id="fp-vto"></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Prima anual *</label><input type="number" id="pol-prima" placeholder="0"></div>
-      <div class="form-row"><label>Forma de pago</label>
-        <select id="pol-pago">
+    <div class="fg2">
+      <div class="frow"><label>Prima anual *</label><input type="number" id="fp-prima" placeholder="0"></div>
+      <div class="frow"><label>Forma de pago</label>
+        <select id="fp-pago">
           <option value="">Seleccionar...</option>
           <option>Contado</option><option>3 cuotas</option><option>6 cuotas</option>
           <option>12 cuotas</option><option>Débito automático</option>
         </select>
       </div>
     </div>
-    <div class="form-row"><label>Bien asegurado</label><input type="text" id="pol-bien" placeholder="Ford Focus 2019 ABC123 / Hogar Córdoba 1234..."></div>
-    <div class="form-row"><label>Notas</label><textarea id="pol-notas" placeholder="Notas sobre la póliza..."></textarea></div>
+    <div class="frow"><label>Bien asegurado</label><input type="text" id="fp-bien" placeholder="Ford Focus 2019 ABC123 / Hogar Córdoba 1234..."></div>
+    <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-poliza')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarPoliza()">Guardar póliza</button>
+      <button class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Cotización -->
-<div class="modal-overlay" id="modal-cotizacion">
+<!-- MODAL COTIZACIÓN -->
+<div class="modal-ov" id="modal-cotz">
   <div class="modal-box">
-    <div class="modal-title">Nueva cotización <button class="modal-close" onclick="cerrarModal('modal-cotizacion')">✕</button></div>
-    <div class="form-row"><label>Cliente / Prospecto *</label>
-      <select id="cotz-cliente"><option value="">Seleccionar...</option></select>
-    </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Ramo *</label>
-        <select id="cotz-ramo">
+    <div class="modal-t">Nueva cotización <button class="modal-x" onclick="cerrarModal('modal-cotz')">✕</button></div>
+    <div class="frow"><label>Cliente *</label><select id="fc-cl"><option value="">Seleccionar...</option></select></div>
+    <div class="fg2">
+      <div class="frow"><label>Ramo *</label>
+        <select id="fc-ramo">
           <option value="">Seleccionar...</option>
-          <option>Autos</option><option>Vida</option><option>Hogar</option><option>ART</option><option>Combinado</option><option>Empresas</option>
+          <option>Autos</option><option>Vida</option><option>Hogar</option>
+          <option>ART</option><option>Combinado</option><option>Empresas</option>
         </select>
       </div>
-      <div class="form-row"><label>Aseguradora *</label>
-        <select id="cotz-aseg">
+      <div class="frow"><label>Aseguradora *</label>
+        <select id="fc-aseg">
           <option value="">Seleccionar...</option>
           <option>Sancor Seguros</option><option>Zurich Argentina</option>
           <option>Mapfre Argentina</option><option>Federación Patronal</option><option>Otro</option>
         </select>
       </div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Prima cotizada</label><input type="number" id="cotz-prima" placeholder="0"></div>
-      <div class="form-row"><label>Válida hasta</label><input type="date" id="cotz-validez"></div>
+    <div class="fg2">
+      <div class="frow"><label>Prima cotizada</label><input type="number" id="fc-prima" placeholder="0"></div>
+      <div class="frow"><label>Válida hasta</label><input type="date" id="fc-val"></div>
     </div>
-    <div class="form-row"><label>Notas</label><textarea id="cotz-notas" placeholder="Detalles de la cotización..."></textarea></div>
+    <div class="frow"><label>Notas</label><textarea id="fc-notas" placeholder="Detalle de la cotización..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-cotizacion')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarCotizacion()">Guardar cotización</button>
+      <button class="btn" onclick="cerrarModal('modal-cotz')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-cotz">Guardar cotización</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Siniestro -->
-<div class="modal-overlay" id="modal-siniestro">
+<!-- MODAL SINIESTRO -->
+<div class="modal-ov" id="modal-sin">
   <div class="modal-box">
-    <div class="modal-title">Nuevo siniestro <button class="modal-close" onclick="cerrarModal('modal-siniestro')">✕</button></div>
-    <div class="form-row"><label>Cliente *</label>
-      <select id="sin-cliente"><option value="">Seleccionar...</option></select>
+    <div class="modal-t">Nuevo siniestro <button class="modal-x" onclick="cerrarModal('modal-sin')">✕</button></div>
+    <div class="frow"><label>Cliente *</label><select id="fs-cl"><option value="">Seleccionar...</option></select></div>
+    <div class="fg2">
+      <div class="frow"><label>N° expediente</label><input type="text" id="fs-exp" placeholder="SIN-2025-XXX"></div>
+      <div class="frow"><label>Aseguradora</label><input type="text" id="fs-aseg" placeholder="Sancor, Zurich..."></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>N° expediente</label><input type="text" id="sin-expediente" placeholder="SIN-2025-XXX"></div>
-      <div class="form-row"><label>Aseguradora</label><input type="text" id="sin-aseg" placeholder="Sancor, Zurich..."></div>
-    </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Fecha del hecho</label><input type="date" id="sin-fecha-hecho"></div>
-      <div class="form-row"><label>Tipo de siniestro</label>
-        <select id="sin-tipo">
+    <div class="fg2">
+      <div class="frow"><label>Fecha del hecho</label><input type="date" id="fs-fh"></div>
+      <div class="frow"><label>Tipo de siniestro</label>
+        <select id="fs-tipo">
           <option value="">Seleccionar...</option>
           <option>Choque</option><option>Robo total</option><option>Robo parcial</option>
           <option>Incendio</option><option>Granizo</option><option>Inundación</option>
@@ -799,648 +682,883 @@ tr:last-child td{border-bottom:none}
         </select>
       </div>
     </div>
-    <div class="form-row"><label>Descripción del hecho *</label><textarea id="sin-desc" placeholder="Describí lo que ocurrió..."></textarea></div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Taller asignado</label><input type="text" id="sin-taller" placeholder="Nombre del taller"></div>
-      <div class="form-row"><label>Fecha de inspección</label><input type="date" id="sin-inspeccion"></div>
+    <div class="frow"><label>Descripción *</label><textarea id="fs-desc" placeholder="Describí lo que ocurrió..."></textarea></div>
+    <div class="fg2">
+      <div class="frow"><label>Taller asignado</label><input type="text" id="fs-taller" placeholder="Nombre del taller"></div>
+      <div class="frow"><label>Fecha de inspección</label><input type="date" id="fs-insp"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-siniestro')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarSiniestro()">Registrar siniestro</button>
+      <button class="btn" onclick="cerrarModal('modal-sin')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-sin">Registrar siniestro</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Cobranza -->
-<div class="modal-overlay" id="modal-cobranza">
+<!-- MODAL COBRANZA -->
+<div class="modal-ov" id="modal-cob">
   <div class="modal-box">
-    <div class="modal-title">Registrar cuota <button class="modal-close" onclick="cerrarModal('modal-cobranza')">✕</button></div>
-    <div class="form-row"><label>Cliente *</label>
-      <select id="cob-cliente" onchange="cargarPolizasCliente(this.value,'cob-poliza')"><option value="">Seleccionar...</option></select>
+    <div class="modal-t">Registrar cuota <button class="modal-x" onclick="cerrarModal('modal-cob')">✕</button></div>
+    <div class="frow"><label>Cliente *</label><select id="fcob-cl" id="fcob-cl"><option value="">Seleccionar...</option></select></div>
+    <div class="frow"><label>Póliza *</label><select id="fcob-pol"><option value="">Primero seleccioná un cliente</option></select></div>
+    <div class="fg3">
+      <div class="frow"><label>N° cuota</label><input type="number" id="fcob-num" placeholder="1"></div>
+      <div class="frow"><label>Total cuotas</label><input type="number" id="fcob-tot" placeholder="12"></div>
+      <div class="frow"><label>Monto *</label><input type="number" id="fcob-monto" placeholder="0"></div>
     </div>
-    <div class="form-row"><label>Póliza *</label>
-      <select id="cob-poliza"><option value="">Primero seleccioná un cliente</option></select>
-    </div>
-    <div class="fgrid3">
-      <div class="form-row"><label>N° cuota</label><input type="number" id="cob-num" placeholder="1"></div>
-      <div class="form-row"><label>Total cuotas</label><input type="number" id="cob-total" placeholder="12"></div>
-      <div class="form-row"><label>Monto *</label><input type="number" id="cob-monto" placeholder="0"></div>
-    </div>
-    <div class="form-row"><label>Fecha de vencimiento *</label><input type="date" id="cob-vto"></div>
+    <div class="frow"><label>Fecha vencimiento *</label><input type="date" id="fcob-vto"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-cobranza')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarCobranza()">Guardar cuota</button>
+      <button class="btn" onclick="cerrarModal('modal-cob')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-cob">Guardar cuota</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Tarea -->
-<div class="modal-overlay" id="modal-tarea">
+<!-- MODAL TAREA -->
+<div class="modal-ov" id="modal-tar">
   <div class="modal-box">
-    <div class="modal-title">Nueva tarea <button class="modal-close" onclick="cerrarModal('modal-tarea')">✕</button></div>
-    <div class="form-row"><label>Título *</label><input type="text" id="tar-titulo" placeholder="Descripción de la tarea..."></div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Tablero *</label>
-        <select id="tar-tablero">
+    <div class="modal-t">Nueva tarea <button class="modal-x" onclick="cerrarModal('modal-tar')">✕</button></div>
+    <div class="frow"><label>Título *</label><input type="text" id="ft-tit" placeholder="Descripción de la tarea..."></div>
+    <div class="fg2">
+      <div class="frow"><label>Tablero *</label>
+        <select id="ft-tab">
           <option value="ventas">Ventas</option><option value="siniestros">Siniestros</option>
           <option value="cobranzas">Cobranzas</option><option value="renovaciones">Renovaciones</option>
           <option value="general">General</option>
         </select>
       </div>
-      <div class="form-row"><label>Tipo</label>
-        <select id="tar-tipo">
+      <div class="frow"><label>Tipo</label>
+        <select id="ft-tipo">
           <option>Llamar al cliente</option><option>Enviar cotización</option>
           <option>Gestionar siniestro</option><option>Cobrar cuota</option>
-          <option>Renovar póliza</option><option>Seguimiento post-venta</option>
-          <option>Trámite con aseguradora</option><option>Tarea libre</option>
+          <option>Renovar póliza</option><option>Seguimiento</option>
+          <option>Trámite aseguradora</option><option>Tarea libre</option>
         </select>
       </div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Prioridad</label>
-        <select id="tar-prio">
-          <option value="urgente">Urgente — ahora</option>
-          <option value="alta">Alta — hoy</option>
-          <option value="media" selected>Media — esta semana</option>
-          <option value="baja">Baja — cuando pueda</option>
+    <div class="fg2">
+      <div class="frow"><label>Prioridad</label>
+        <select id="ft-prio">
+          <option value="urgente">Urgente</option><option value="alta">Alta</option>
+          <option value="media" selected>Media</option><option value="baja">Baja</option>
         </select>
       </div>
-      <div class="form-row"><label>Cliente vinculado</label>
-        <select id="tar-cliente"><option value="">Sin vincular</option></select>
-      </div>
+      <div class="frow"><label>Cliente vinculado</label><select id="ft-cl"><option value="">Sin vincular</option></select></div>
     </div>
-    <div class="fgrid2">
-      <div class="form-row"><label>Fecha límite</label><input type="date" id="tar-fecha"></div>
-      <div class="form-row"><label>Notificación</label><input type="datetime-local" id="tar-notif"></div>
+    <div class="fg2">
+      <div class="frow"><label>Fecha límite</label><input type="date" id="ft-fecha"></div>
+      <div class="frow"><label>Recordatorio</label><input type="datetime-local" id="ft-notif"></div>
     </div>
-    <div class="form-row"><label>Descripción</label><textarea id="tar-desc" placeholder="Detalle de la tarea..."></textarea></div>
+    <div class="frow"><label>Descripción</label><textarea id="ft-desc" placeholder="Detalle..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-tarea')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarTarea()">Crear tarea</button>
+      <button class="btn" onclick="cerrarModal('modal-tar')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-tar">Crear tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INTERACCIÓN -->
+<div class="modal-ov" id="modal-int">
+  <div class="modal-box">
+    <div class="modal-t">Registrar interacción <button class="modal-x" onclick="cerrarModal('modal-int')">✕</button></div>
+    <div class="fg2">
+      <div class="frow"><label>Tipo</label>
+        <select id="fi-tipo">
+          <option value="llamada">Llamada</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+          <option value="reunion">Reunión</option>
+        </select>
+      </div>
+      <div class="frow"><label>Próximo contacto</label><input type="date" id="fi-prox"></div>
+    </div>
+    <div class="frow"><label>Resumen *</label><textarea id="fi-res" placeholder="¿De qué se habló? ¿Qué resultado tuvo?"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-int')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-int">Guardar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// CONFIGURACIÓN SUPABASE — REEMPLAZAR CON TUS DATOS
-// ============================================================
-const SUPABASE_URL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
-// ============================================================
+const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
+const SKEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
+const sb = window.supabase.createClient(SURL, SKEY);
 
-let sb = null;
-let currentUser = null;
-let allClientes = [];
-let allPolizas = [];
-let tablerofiltro = '';
+let user = null;
+let allCl = [];
+let fichaId = null;
+let fichaTab = 'resumen';
+let tablerof = '';
+let fichaClienteIdForInt = null;
 
-// Verificar configuración
-if(SUPABASE_URL === 'NEVER_MATCH'){
-  document.getElementById('config-notice').style.display='block';
-  document.getElementById('login-screen').style.display='none';
-} else {
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { autoRefreshToken: true, persistSession: true } });
-  checkSession();
+// ---- AUTH ----
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { user = session.user; mostrarApp(); }
 }
 
-async function checkSession(){
-  const {data:{session}} = await sb.auth.getSession();
-  if(session){
-    currentUser = session.user;
-    await initApp();
-  }
-}
+document.getElementById('btn-ingresar').onclick = async function() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass = document.getElementById('l-pass').value;
+  const err = document.getElementById('login-err');
+  err.classList.remove('show');
+  if (!email || !pass) { err.textContent = 'Completá email y contraseña'; err.classList.add('show'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = 'Error: ' + error.message; err.classList.add('show'); return; }
+  user = data.user;
+  mostrarApp();
+};
 
-// ============================================================
-// AUTH
-// ============================================================
-async function login(){
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  const errEl = document.getElementById("login-error");
-  errEl.classList.remove('show');
-  if(!email||!pass){errEl.textContent='Completá email y contraseña';errEl.classList.add('show');return;}
-  try {
-    console.log('Intentando login:', email);
-    const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
-    console.log('Respuesta Supabase:', JSON.stringify(error));
-    if(error){errEl.textContent='Error: '+error.message;errEl.classList.add('show');return;}
-    if(!data||!data.user){errEl.textContent='No se pudo iniciar sesión. Revisá tus datos.';errEl.classList.add('show');return;}
-    currentUser = data.user;
-    await initApp();
-  } catch(e) {
-    console.error('Error:', e);
-    errEl.textContent='Error de conexión: '+e.message;
-    errEl.classList.add('show');
-  }
-}
+document.getElementById('btn-toggle').onclick = function() {
+  const f = document.getElementById('reg-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+};
 
-async function registro(){
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  const nombre = document.getElementById('reg-nombre').value.trim();
-  if(!email||!pass||!nombre){alert('Completá todos los campos');return;}
-  try {
-    console.log('Registrando usuario:', email);
-    const {data,error} = await sb.auth.signUp({email,password:pass,options:{data:{nombre}}});
-    console.log('Resultado registro:', data, error);
-    if(error){alert('Error al crear cuenta: '+error.message);return;}
-    if(data.user && data.user.identities && data.user.identities.length === 0){
-      alert('Este email ya tiene una cuenta. Intentá iniciar sesión directamente.');
-      return;
-    }
-    alert('¡Cuenta creada correctamente! Ahora podés iniciar sesión directamente.');
-  } catch(e) {
-    console.error('Error registro:', e);
-    alert('Error de conexión: '+e.message);
-  }
-}
+document.getElementById('btn-registrar').onclick = async function() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass = document.getElementById('l-pass').value;
+  const nombre = document.getElementById('r-nombre').value.trim();
+  if (!email || !pass || !nombre) { alert('Completá todos los campos'); return; }
+  const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { nombre } } });
+  if (error) { alert('Error: ' + error.message); return; }
+  alert('Cuenta creada. Revisá tu email para confirmar, luego iniciá sesión.');
+};
 
-function toggleRegistro(){
-  const f = document.getElementById('registro-form');
-  f.style.display = f.style.display==='none'?'block':'none';
-}
-
-async function logout(){
+document.getElementById('btn-logout').onclick = async function() {
   await sb.auth.signOut();
+  user = null;
   document.getElementById('app').classList.remove('show');
-  document.getElementById('login-screen').style.display='flex';
-  currentUser = null;
-}
+  document.getElementById('login-screen').style.display = 'flex';
+};
 
-// ============================================================
-// INIT APP
-// ============================================================
-async function initApp(){
-  document.getElementById('login-screen').style.display='none';
+async function mostrarApp() {
+  document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('show');
-  // Perfil
-  const {data:perfil} = await sb.from('perfiles').select('*').eq('id',currentUser.id).single();
-  const nombre = perfil?.nombre || currentUser.email;
+  const { data: perfil } = await sb.from('perfiles').select('nombre').eq('id', user.id).single();
+  const nombre = perfil ? perfil.nombre : user.email;
   document.getElementById('sb-nombre').textContent = nombre;
-  document.getElementById('sb-email').textContent = currentUser.email;
-  document.getElementById('sb-email2').textContent = currentUser.email;
-  // Cargar datos
-  await Promise.all([cargarDashboard(), cargarClientes(), cargarPolizas()]);
+  document.getElementById('sb-email').textContent = user.email;
+  document.getElementById('sb-email2').textContent = user.email;
+  poblarAnios();
+  await cargarDashboard();
+  await cargarClientes();
 }
 
-// ============================================================
-// NAVEGACIÓN
-// ============================================================
-function showSection(id, el){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',clientes:'Clientes',polizas:'Pólizas',cotizaciones:'Cotizaciones',siniestros:'Siniestros',cobranzas:'Cobranzas',tareas:'Tareas',analisis:'Análisis'};
-  document.getElementById('topbar-title').textContent = titles[id]||id;
-  if(id==='clientes') cargarClientes();
-  if(id==='polizas') cargarPolizas();
-  if(id==='cotizaciones') cargarCotizaciones();
-  if(id==='siniestros') cargarSiniestros();
-  if(id==='cobranzas') cargarCobranzas();
-  if(id==='tareas') cargarTareas();
-  if(id==='analisis') cargarAnalisis();
-}
+// ---- NAVEGACIÓN ----
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const sec = this.dataset.sec;
+    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + sec).classList.add('active');
+    this.classList.add('active');
+    const titles = { dashboard: 'Dashboard', clientes: 'Clientes', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis' };
+    document.getElementById('topbar-title').textContent = titles[sec] || sec;
+    if (sec === 'clientes') cargarClientes();
+    if (sec === 'polizas') cargarPolizas();
+    if (sec === 'cotizaciones') cargarCotizaciones();
+    if (sec === 'siniestros') cargarSiniestros();
+    if (sec === 'cobranzas') cargarCobranzas();
+    if (sec === 'tareas') cargarTareas();
+    if (sec === 'analisis') cargarAnalisis();
+  });
+});
 
-// ============================================================
-// DASHBOARD
-// ============================================================
-async function cargarDashboard(){
-  const uid = currentUser.id;
-  const [cls,pols,sins,cobs,cotzs,tars] = await Promise.all([
-    sb.from('clientes').select('id,estado',{count:'exact'}).eq('productor_id',uid),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','activa'),
-    sb.from('siniestros').select('id',{count:'exact'}).eq('productor_id',uid).neq('estado','cerrado'),
-    sb.from('cobranzas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','vencida'),
-    sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','enviada'),
-    sb.from('tareas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','pendiente'),
+// ---- DASHBOARD ----
+async function cargarDashboard() {
+  const uid = user.id;
+  const [cl, pol, sin, cob, cotz, tar] = await Promise.all([
+    sb.from('clientes').select('id', { count: 'exact' }).eq('productor_id', uid),
+    sb.from('polizas').select('id', { count: 'exact' }).eq('productor_id', uid).eq('estado', 'activa'),
+    sb.from('siniestros').select('id', { count: 'exact' }).eq('productor_id', uid).neq('estado', 'cerrado'),
+    sb.from('cobranzas').select('id', { count: 'exact' }).eq('productor_id', uid).eq('estado', 'vencida'),
+    sb.from('cotizaciones').select('id', { count: 'exact' }).eq('productor_id', uid).eq('estado', 'enviada'),
+    sb.from('tareas').select('id', { count: 'exact' }).eq('productor_id', uid).eq('estado', 'pendiente'),
   ]);
-  document.getElementById('m-clientes').textContent = cls.count||0;
-  document.getElementById('m-polizas').textContent = pols.count||0;
-  document.getElementById('m-siniestros').textContent = sins.count||0;
-  document.getElementById('m-cobranzas').textContent = cobs.count||0;
-  document.getElementById('m-cotizaciones').textContent = cotzs.count||0;
-  document.getElementById('m-tareas').textContent = tars.count||0;
-  if((sins.count||0)>0) {document.getElementById('badge-siniestros').textContent=sins.count;document.getElementById('badge-siniestros').style.display='inline';}
-  if((cobs.count||0)>0) {document.getElementById('badge-cobranzas').textContent=cobs.count;document.getElementById('badge-cobranzas').style.display='inline';}
+  document.getElementById('m-cl').textContent = cl.count || 0;
+  document.getElementById('m-pol').textContent = pol.count || 0;
+  document.getElementById('m-sin').textContent = sin.count || 0;
+  document.getElementById('m-cob').textContent = cob.count || 0;
+  document.getElementById('m-cotz').textContent = cotz.count || 0;
+  document.getElementById('m-tar').textContent = tar.count || 0;
 
-  // Alertas
   const hoy = new Date().toISOString().split('T')[0];
-  const en30 = new Date(Date.now()+30*864e5).toISOString().split('T')[0];
-  const {data:venciendo} = await sb.from('polizas').select('numero,clientes(nombre,apellido),fecha_vencimiento').eq('productor_id',uid).lte('fecha_vencimiento',en30).gte('fecha_vencimiento',hoy).eq('estado','activa').order('fecha_vencimiento').limit(5);
-  const alertas = document.getElementById('dashboard-alertas');
-  if(!venciendo||!venciendo.length){
-    alertas.innerHTML='<div style="font-size:12px;color:var(--text-light);padding:8px 0">Sin alertas urgentes 🎉</div>';
-  } else {
-    alertas.innerHTML = venciendo.map(p=>{
-      const dias = Math.round((new Date(p.fecha_vencimiento)-new Date())/(864e5));
-      const color = dias<=5?'var(--red)':dias<=15?'var(--amber)':'var(--green)';
-      return `<div class="alert-item">
-        <div class="adot" style="background:${color}"></div>
-        <div>
-          <div style="font-size:12px;font-weight:500">${p.clientes?.nombre} ${p.clientes?.apellido||''} — ${p.numero}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Vence el ${p.fecha_vencimiento} (${dias} días)</div>
-        </div>
-      </div>`;
+  const en30 = new Date(Date.now() + 30 * 864e5).toISOString().split('T')[0];
+
+  const { data: venc } = await sb.from('polizas').select('numero,fecha_vencimiento,clientes(nombre,apellido)').eq('productor_id', uid).lte('fecha_vencimiento', en30).gte('fecha_vencimiento', hoy).order('fecha_vencimiento').limit(6);
+  const dv = document.getElementById('dash-venc');
+  if (!venc || !venc.length) { dv.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin vencimientos próximos 🎉</div>'; }
+  else {
+    dv.innerHTML = venc.map(function(p) {
+      const dias = Math.round((new Date(p.fecha_vencimiento) - new Date()) / 864e5);
+      const color = dias <= 5 ? 'var(--red)' : dias <= 15 ? 'var(--amber)' : 'var(--green)';
+      return '<div class="ai"><div class="adot" style="background:' + color + '"></div><div><div style="font-size:12px;font-weight:500">' + (p.clientes ? p.clientes.nombre + ' ' + p.clientes.apellido : '') + ' — ' + p.numero + '</div><div style="font-size:11px;color:var(--muted)">Vence ' + p.fecha_vencimiento + ' (' + dias + ' días)</div></div></div>';
     }).join('');
   }
 
-  // Renovaciones
-  const {data:renov} = await sb.from('polizas').select('numero,ramo,prima_anual,clientes(nombre,apellido),fecha_vencimiento').eq('productor_id',uid).lte('fecha_vencimiento',en30).gte('fecha_vencimiento',hoy).order('fecha_vencimiento').limit(5);
-  const renovDiv = document.getElementById('dashboard-renovaciones');
-  if(!renov||!renov.length){
-    renovDiv.innerHTML='<div style="font-size:12px;color:var(--text-light);padding:8px 0">Sin renovaciones próximas</div>';
-  } else {
-    renovDiv.innerHTML = renov.map(p=>`
-      <div class="alert-item">
-        <div class="adot" style="background:var(--amber)"></div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:500">${p.clientes?.nombre} ${p.clientes?.apellido||''}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${p.ramo} · Vto. ${p.fecha_vencimiento}</div>
-        </div>
-        <div style="font-size:12px;font-weight:500;color:var(--green)">$${(p.prima_anual||0).toLocaleString('es-AR')}</div>
-      </div>`).join('');
+  const { data: sins } = await sb.from('siniestros').select('numero_expediente,tipo_siniestro,clientes(nombre,apellido),estado,created_at').eq('productor_id', uid).neq('estado', 'cerrado').order('created_at').limit(5);
+  const ds = document.getElementById('dash-sin');
+  if (!sins || !sins.length) { ds.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin siniestros abiertos 🎉</div>'; }
+  else {
+    ds.innerHTML = sins.map(function(s) {
+      const dias = Math.round((new Date() - new Date(s.created_at)) / 864e5);
+      return '<div class="ai"><div class="adot" style="background:var(--red)"></div><div><div style="font-size:12px;font-weight:500">' + (s.clientes ? s.clientes.nombre + ' ' + s.clientes.apellido : '') + '</div><div style="font-size:11px;color:var(--muted)">' + (s.tipo_siniestro || 'Siniestro') + ' — ' + dias + ' días abierto</div></div></div>';
+    }).join('');
   }
 }
 
-// ============================================================
-// CLIENTES
-// ============================================================
-async function cargarClientes(filtro='',estado=''){
-  const tbody = document.getElementById('tabla-clientes');
-  tbody.innerHTML='<tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando clientes...</div></td></tr>';
-  let q = sb.from('clientes').select('*').eq('productor_id',currentUser.id).order('apellido');
-  if(estado) q=q.eq('estado',estado);
-  if(filtro) q=q.or(`nombre.ilike.%${filtro}%,apellido.ilike.%${filtro}%,dni.ilike.%${filtro}%,email_principal.ilike.%${filtro}%`);
-  const {data,error} = await q;
-  allClientes = data||[];
-  cargarSelectClientes();
-  if(!data||!data.length){
-    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No hay clientes aún</div><div class="empty-desc">Agregá tu primer cliente con el botón "Nuevo cliente"</div></div></td></tr>';
-    return;
-  }
-  const estadoBadge = {prospecto:'badge-azul',activo:'badge-verde',renovacion:'badge-amber',siniestrado:'badge-rojo',inactivo:'badge-gris'};
-  tbody.innerHTML = data.map(c=>'<tr>'
-    +'<td><div style="font-weight:500">'+c.nombre+' '+c.apellido+'</div><div style="font-size:11px;color:var(--text-light)">'+(c.email_principal||'')+'</div></td>'
-    +'<td><span class="badge '+(estadoBadge[c.estado]||'badge-gris')+'">'+c.estado+'</span></td>'
-    +'<td>'+(c.dni||'—')+'</td>'
-    +'<td>'+(c.telefono_principal||'—')+'</td>'
-    +'<td>'+(c.localidad||'—')+'</td>'
-    +'<td>'+(c.zona_geografica||'—')+'</td>'
-    +'<td>'+(c.canal_origen||'—')+'</td>'
-    +'<td><button class="btn btn-sm btn-p" onclick="verCliente(''+c.id+'')">Ver ficha</button></td>'
-    +'</tr>').join('');
-}
-
-function buscarClientes(q){clearTimeout(window._busqT);window._busqT=setTimeout(()=>cargarClientes(q),300);}
-function filtrarClientesEstado(e){cargarClientes('',e);}
-
-function cargarSelectClientes(){
-  const selects = ['pol-cliente','cotz-cliente','sin-cliente','cob-cliente','tar-cliente'];
-  selects.forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el) return;
-    const opt = id==='tar-cliente'?'<option value="">Sin vincular</option>':'<option value="">Seleccionar cliente...</option>';
-    el.innerHTML = opt + allClientes.map(c=>`<option value="${c.id}">${c.nombre} ${c.apellido}</option>`).join('');
-  });
-}
-
-async function guardarCliente(){
-  const localidadSel = document.getElementById('cl-localidad');
-  const localidadVal = localidadSel.value;
-  const localidadNombre = localidadVal ? localidadSel.options[localidadSel.selectedIndex].text : '';
-  const cpVal = document.getElementById('cl-cp').value.trim();
-
-  const datos = {
-    productor_id: currentUser.id,
-    nombre: document.getElementById('cl-nombre').value.trim(),
-    apellido: document.getElementById('cl-apellido').value.trim(),
-    dni: document.getElementById('cl-dni').value.trim(),
-    fecha_nacimiento: document.getElementById('cl-nacimiento').value||null,
-    direccion: document.getElementById('cl-direccion').value.trim(),
-    localidad: localidadNombre,
-    zona_geografica: cpVal,
-    telefono_principal: document.getElementById('cl-tel1').value.trim(),
-    telefono_secundario: document.getElementById('cl-tel2').value.trim(),
-    email_principal: document.getElementById('cl-email1').value.trim(),
-    email_secundario: document.getElementById('cl-email2').value.trim(),
-    estado: document.getElementById('cl-estado').value,
-    canal_origen: document.getElementById('cl-canal').value,
-    patente: document.getElementById('cl-patente').value.trim(),
-    marca_vehiculo: document.getElementById('cl-marca').value,
-    modelo_vehiculo: document.getElementById('cl-modelo').value.trim(),
-    anio_vehiculo: document.getElementById('cl-anio').value||null,
-    color_vehiculo: document.getElementById('cl-color').value.trim(),
-    notas: document.getElementById('cl-notas').value.trim(),
-  };
-  if(!datos.nombre||!datos.apellido){alert('Nombre y apellido son obligatorios');return;}
-  const {error} = await sb.from('clientes').insert(datos);
-  if(error){alert('Error al guardar: '+error.message);return;}
-  cerrarModal('modal-cliente');
-  mostrarAlerta('Cliente guardado correctamente');
-  await cargarClientes();
-  await cargarDashboard();
-}
-
-// ============================================================
-// PÓLIZAS
-// ============================================================
-async function cargarPolizas(filtro='',ramo=''){
-  const tbody = document.getElementById('tabla-polizas');
-  if(tbody) tbody.innerHTML='<tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando pólizas...</div></td></tr>';
-  let q = sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('fecha_vencimiento');
-  if(ramo) q=q.eq('ramo',ramo);
-  if(filtro) q=q.or(`numero.ilike.%${filtro}%`);
-  const {data} = await q;
-  allPolizas = data||[];
-  if(!tbody) return;
-  if(!data||!data.length){
-    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No hay pólizas aún</div><div class="empty-desc">Agregá tu primera póliza con el botón "Nueva póliza"</div></div></td></tr>';
-    return;
-  }
-  const eb={activa:'badge-verde',renovacion:'badge-amber',vencida:'badge-rojo',cancelada:'badge-gris'};
-  tbody.innerHTML = data.map(p=>`<tr>
-    <td style="font-weight:500">${p.numero}</td>
-    <td>${p.clientes?.nombre||''} ${p.clientes?.apellido||''}</td>
-    <td>${p.ramo}</td>
-    <td>${p.aseguradora}</td>
-    <td style="font-weight:500;color:var(--green)">$${(p.prima_anual||0).toLocaleString('es-AR')}</td>
-    <td>${p.fecha_vencimiento}</td>
-    <td><span class="badge ${eb[p.estado]||'badge-gris'}">${p.estado}</span></td>
-  </tr>`).join('');
-}
-function buscarPolizas(q){clearTimeout(window._busqP);window._busqP=setTimeout(()=>cargarPolizas(q),300);}
-function filtrarPolizasRamo(r){cargarPolizas('',r);}
-
-async function guardarPoliza(){
-  const datos={
-    productor_id:currentUser.id,
-    cliente_id:document.getElementById('pol-cliente').value||null,
-    numero:document.getElementById('pol-numero').value.trim(),
-    aseguradora:document.getElementById('pol-aseguradora').value,
-    ramo:document.getElementById('pol-ramo').value,
-    tipo_cobertura:document.getElementById('pol-cobertura').value.trim(),
-    fecha_inicio:document.getElementById('pol-inicio').value,
-    fecha_vencimiento:document.getElementById('pol-vto').value,
-    prima_anual:parseFloat(document.getElementById('pol-prima').value)||0,
-    forma_pago:document.getElementById('pol-pago').value,
-    bien_asegurado:document.getElementById('pol-bien').value.trim(),
-    notas:document.getElementById('pol-notas').value.trim(),
-  };
-  if(!datos.numero||!datos.ramo||!datos.aseguradora||!datos.fecha_inicio||!datos.fecha_vencimiento){alert('Completá los campos obligatorios');return;}
-  const {error}=await sb.from('polizas').insert(datos);
-  if(error){alert('Error: '+error.message);return;}
-  cerrarModal('modal-poliza');
-  mostrarAlerta('Póliza guardada correctamente');
-  await cargarPolizas();
-  await cargarDashboard();
-}
-
-// ============================================================
-// COTIZACIONES
-// ============================================================
-async function cargarCotizaciones(){
-  const tbody=document.getElementById('tabla-cotizaciones');
-  const {data}=await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
-  const total=data?.length||0;
-  const acept=data?.filter(c=>c.estado==='aceptada').length||0;
-  document.getElementById('cotz-enviadas').textContent=total;
-  document.getElementById('cotz-aceptadas').textContent=acept;
-  document.getElementById('cotz-tasa').textContent=total>0?Math.round(acept/total*100)+'%':'—';
-  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">No hay cotizaciones</div></div></td></tr>';return;}
-  const eb={enviada:'badge-azul',aceptada:'badge-verde',rechazada:'badge-rojo',vencida:'badge-gris'};
-  tbody.innerHTML=data.map(c=>`<tr>
-    <td>${c.numero||'—'}</td>
-    <td>${c.clientes?.nombre||''} ${c.clientes?.apellido||''}</td>
-    <td>${c.ramo}</td><td>${c.aseguradora}</td>
-    <td>$${(c.prima_cotizada||0).toLocaleString('es-AR')}</td>
-    <td>${c.fecha_validez||'—'}</td>
-    <td><span class="badge ${eb[c.estado]||'badge-gris'}">${c.estado}</span></td>
-    <td>${c.estado==='enviada'?`<button class="btn btn-sm btn-success" onclick="cambiarEstadoCotiz('${c.id}','aceptada')">Aceptar</button>`:'—'}</td>
-  </tr>`).join('');
-}
-async function guardarCotizacion(){
-  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('cotz-cliente').value||null,ramo:document.getElementById('cotz-ramo').value,aseguradora:document.getElementById('cotz-aseg').value,prima_cotizada:parseFloat(document.getElementById('cotz-prima').value)||0,fecha_validez:document.getElementById('cotz-validez').value||null,notas:document.getElementById('cotz-notas').value.trim()};
-  if(!datos.ramo||!datos.aseguradora){alert('Completá ramo y aseguradora');return;}
-  const {error}=await sb.from('cotizaciones').insert(datos);
-  if(error){alert('Error: '+error.message);return;}
-  cerrarModal('modal-cotizacion');mostrarAlerta('Cotización guardada');cargarCotizaciones();
-}
-async function cambiarEstadoCotiz(id,estado){
-  await sb.from('cotizaciones').update({estado}).eq('id',id);
-  mostrarAlerta('Estado actualizado');cargarCotizaciones();
-}
-
-// ============================================================
-// SINIESTROS
-// ============================================================
-async function cargarSiniestros(){
-  const tbody=document.getElementById('tabla-siniestros');
-  const {data}=await sb.from('siniestros').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
-  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🚨</div><div class="empty-title">Sin siniestros registrados</div></div></td></tr>';return;}
-  const eb={abierto:'badge-rojo',proceso:'badge-amber',documentacion:'badge-amber',taller:'badge-azul',liquidado:'badge-azul',cerrado:'badge-verde'};
-  tbody.innerHTML=data.map(s=>{
-    const dias=Math.round((new Date()-new Date(s.created_at))/(864e5));
-    const diasStyle=dias>15?'color:#E24B4A;font-weight:600':'color:#333';
-    const diasTxt=s.estado!=='cerrado'?dias+'d':'—';
+// ---- CLIENTES ----
+async function cargarClientes(filtro, estado) {
+  filtro = filtro || '';
+  estado = estado || '';
+  const tbody = document.getElementById('tbody-cl');
+  tbody.innerHTML = '<tr><td colspan="8"><div class="loading"><span class="spin"></span>Cargando...</div></td></tr>';
+  let q = sb.from('clientes').select('*').eq('productor_id', user.id).order('apellido');
+  if (estado) q = q.eq('estado', estado);
+  if (filtro) q = q.or('nombre.ilike.%' + filtro + '%,apellido.ilike.%' + filtro + '%,dni.ilike.%' + filtro + '%');
+  const { data } = await q;
+  allCl = data || [];
+  actualizarSelectsClientes();
+  if (!allCl.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">No hay clientes. Usá "+ Nuevo cliente" para agregar.</div></td></tr>'; return; }
+  const eb = { prospecto: 'bb', activo: 'bv', renovacion: 'ba', siniestrado: 'br', inactivo: 'bgr' };
+  tbody.innerHTML = allCl.map(function(c) {
     return '<tr>'
-      +'<td style="font-weight:500">'+(s.numero_expediente||'—')+'</td>'
-      +'<td>'+(s.clientes&&s.clientes.nombre?s.clientes.nombre+' '+s.clientes.apellido:'')+'</td>'
-      +'<td>'+(s.tipo_siniestro||'—')+'</td>'
-      +'<td>'+(s.aseguradora||'—')+'</td>'
-      +'<td>'+(s.fecha_denuncia||'—')+'</td>'
-      +'<td><span class="badge '+(eb[s.estado]||'badge-gris')+'">'+s.estado+'</span></td>'
-      +'<td><span style="'+diasStyle+'">'+diasTxt+'</span></td>'
-      +'</tr>';
+      + '<td><div style="font-weight:500">' + c.nombre + ' ' + c.apellido + '</div><div style="font-size:11px;color:var(--lt)">' + (c.email_principal || '') + '</div></td>'
+      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
+      + '<td>' + (c.dni || '—') + '</td>'
+      + '<td>' + (c.telefono_principal || '—') + '</td>'
+      + '<td>' + (c.localidad || '—') + '</td>'
+      + '<td>' + (c.zona_geografica || '—') + '</td>'
+      + '<td>' + (c.canal_origen || '—') + '</td>'
+      + '<td><button class="btn btn-sm btn-p" onclick="verFicha(\'' + c.id + '\')">Ver ficha</button></td>'
+      + '</tr>';
   }).join('');
 }
-async function guardarSiniestro(){
-  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('sin-cliente').value||null,numero_expediente:document.getElementById('sin-expediente').value.trim(),aseguradora:document.getElementById('sin-aseg').value.trim(),fecha_hecho:document.getElementById('sin-fecha-hecho').value||null,tipo_siniestro:document.getElementById('sin-tipo').value,descripcion:document.getElementById('sin-desc').value.trim(),taller:document.getElementById('sin-taller').value.trim(),fecha_inspeccion:document.getElementById('sin-inspeccion').value||null};
-  if(!datos.descripcion){alert('La descripción es obligatoria');return;}
-  const {error}=await sb.from('siniestros').insert(datos);
-  if(error){alert('Error: '+error.message);return;}
-  cerrarModal('modal-siniestro');mostrarAlerta('Siniestro registrado');cargarSiniestros();cargarDashboard();
-}
 
-// ============================================================
-// COBRANZAS
-// ============================================================
-async function cargarCobranzas(){
-  const tbody=document.getElementById('tabla-cobranzas');
-  const {data}=await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero)').eq('productor_id',currentUser.id).order('fecha_vencimiento');
-  const venc=data?.filter(c=>c.estado==='vencida').length||0;
-  const pend=data?.filter(c=>c.estado==='pagada'&&new Date(c.fecha_pago)>=new Date(new Date().getFullYear(),new Date().getMonth(),1)).length||0;
-  const cobrado=data?.filter(c=>c.estado==='pagada'&&new Date(c.fecha_pago)>=new Date(new Date().getFullYear(),new Date().getMonth(),1)).reduce((s,c)=>s+c.monto,0)||0;
-  document.getElementById('cob-vencidas').textContent=venc;
-  document.getElementById('cob-pendientes').textContent=data?.filter(c=>c.estado==='pendiente').length||0;
-  document.getElementById('cob-cobrado').textContent='$'+cobrado.toLocaleString('es-AR');
-  if(!data||!data.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💰</div><div class="empty-title">Sin cuotas registradas</div></div></td></tr>';return;}
-  const eb={pendiente:'badge-amber',vencida:'badge-rojo',pagada:'badge-verde'};
-  tbody.innerHTML=data.map(c=>`<tr>
-    <td>${c.clientes?.nombre||''} ${c.clientes?.apellido||''}</td>
-    <td>${c.polizas?.numero||'—'}</td>
-    <td>${c.numero_cuota} / ${c.total_cuotas||'?'}</td>
-    <td style="font-weight:500">$${(c.monto||0).toLocaleString('es-AR')}</td>
-    <td>${c.fecha_vencimiento}</td>
-    <td><span class="badge ${eb[c.estado]||'badge-gris'}">${c.estado}</span></td>
-    <td>${c.estado!=='pagada'?`<button class="btn btn-sm btn-success" onclick="marcarPagada('${c.id}')">Registrar pago</button>`:'✓ Pagada'}</td>
-  </tr>`).join('');
-}
-async function guardarCobranza(){
-  const datos={productor_id:currentUser.id,cliente_id:document.getElementById('cob-cliente').value||null,poliza_id:document.getElementById('cob-poliza').value||null,numero_cuota:parseInt(document.getElementById('cob-num').value)||1,total_cuotas:parseInt(document.getElementById('cob-total').value)||null,monto:parseFloat(document.getElementById('cob-monto').value)||0,fecha_vencimiento:document.getElementById('cob-vto').value};
-  if(!datos.fecha_vencimiento||!datos.monto){alert('Completá monto y fecha de vencimiento');return;}
-  const {error}=await sb.from('cobranzas').insert(datos);
-  if(error){alert('Error: '+error.message);return;}
-  cerrarModal('modal-cobranza');mostrarAlerta('Cuota registrada');cargarCobranzas();
-}
-async function marcarPagada(id){
-  await sb.from('cobranzas').update({estado:'pagada',fecha_pago:new Date().toISOString().split('T')[0]}).eq('id',id);
-  mostrarAlerta('Pago registrado correctamente');cargarCobranzas();
-}
-async function cargarPolizasCliente(clienteId,selectId){
-  const el=document.getElementById(selectId);
-  if(!clienteId){el.innerHTML='<option value="">Primero seleccioná un cliente</option>';return;}
-  const {data}=await sb.from('polizas').select('id,numero,ramo').eq('cliente_id',clienteId);
-  el.innerHTML='<option value="">Seleccionar póliza...</option>'+(data||[]).map(p=>`<option value="${p.id}">${p.numero} — ${p.ramo}</option>`).join('');
-}
+document.getElementById('srch-cl').addEventListener('input', function() {
+  clearTimeout(window._st);
+  window._st = setTimeout(function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); }, 300);
+});
+document.getElementById('fil-cl').addEventListener('change', function() {
+  cargarClientes(document.getElementById('srch-cl').value, this.value);
+});
 
-// ============================================================
-// TAREAS
-// ============================================================
-async function cargarTareas(){
-  const {data}=await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id',currentUser.id).order('created_at',{ascending:false});
-  const lista=tablerofiltro?data?.filter(t=>t.tablero===tablerofiltro):data||[];
-  ['pendiente','encurso','esperando','cerrada'].forEach(e=>{
-    const col=document.getElementById('col-'+e);
-    const cnt=document.getElementById('cnt-'+e);
-    const items=lista.filter(t=>t.estado===e);
-    cnt.textContent=items.length;
-    if(!items.length){col.innerHTML='<div style="text-align:center;padding:16px;font-size:11px;color:var(--text-light)">Sin tareas</div>';return;}
-    const prioColor={urgente:'var(--red)',alta:'var(--amber)',media:'var(--med-blue)',baja:'var(--gray)'};
-    const sig={pendiente:'encurso',encurso:'esperando',esperando:'cerrada'};
-    const sigBtn={pendiente:'Iniciar',encurso:'Esperando resp.',esperando:'Cerrar'};
-    col.innerHTML=items.map(t=>`<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:7px">
-      <div style="display:flex;gap:5px;justify-content:space-between;margin-bottom:4px">
-        <div style="font-size:12px;font-weight:500;flex:1">${t.titulo}</div>
-        <span style="font-size:9px;padding:2px 5px;border-radius:6px;background:${prioColor[t.prioridad]}18;color:${prioColor[t.prioridad]};font-weight:600;white-space:nowrap">${t.prioridad}</span>
-      </div>
-      ${t.clientes?`<div style="font-size:10px;color:var(--text-light);margin-bottom:5px">${t.clientes.nombre} ${t.clientes.apellido}</div>`:''}
-      <div style="font-size:10px;color:var(--text-light);margin-bottom:6px">${t.tipo}</div>
-      ${t.estado!=='cerrada'?`<button style="width:100%;padding:4px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer" onclick="moverTarea('${t.id}','${sig[t.estado]}')">${sigBtn[t.estado]}</button>`:''}
-    </div>`).join('');
+function actualizarSelectsClientes() {
+  ['fp-cl', 'fc-cl', 'fs-cl', 'fcob-cl', 'ft-cl'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const def = id === 'ft-cl' ? '<option value="">Sin vincular</option>' : '<option value="">Seleccionar cliente...</option>';
+    el.innerHTML = def + allCl.map(function(c) { return '<option value="' + c.id + '">' + c.nombre + ' ' + c.apellido + '</option>'; }).join('');
   });
 }
-function filtrarTablero(tab,btn){
-  tablerofiltro=tab;
-  document.querySelectorAll('#tablero-tabs .btn').forEach(b=>{b.style.borderColor='';b.style.color='';});
-  if(btn&&tab){btn.style.borderColor='var(--med-blue)';btn.style.color='var(--med-blue)';}
-  cargarTareas();
-}
-async function guardarTarea(){
-  const datos={productor_id:currentUser.id,titulo:document.getElementById('tar-titulo').value.trim(),tablero:document.getElementById('tar-tablero').value,tipo:document.getElementById('tar-tipo').value,prioridad:document.getElementById('tar-prio').value,cliente_id:document.getElementById('tar-cliente').value||null,fecha_limite:document.getElementById('tar-fecha').value||null,notif_fecha:document.getElementById('tar-notif').value||null,descripcion:document.getElementById('tar-desc').value.trim()};
-  if(!datos.titulo){alert('El título es obligatorio');return;}
-  const {error}=await sb.from('tareas').insert(datos);
-  if(error){alert('Error: '+error.message);return;}
-  cerrarModal('modal-tarea');mostrarAlerta('Tarea creada');cargarTareas();
-}
-async function moverTarea(id,estado){
-  await sb.from('tareas').update({estado}).eq('id',id);
-  cargarTareas();
+
+// ---- FICHA CLIENTE ----
+async function verFicha(id) {
+  fichaId = id;
+  fichaTab = 'resumen';
+  document.getElementById('cl-toprow').style.display = 'none';
+  document.getElementById('cl-tabla-wrap').style.display = 'none';
+  document.getElementById('ficha-wrap').classList.add('open');
+  await renderFicha();
 }
 
-// ============================================================
-// ANÁLISIS
-// ============================================================
-async function cargarAnalisis(){
-  const {data:pols}=await sb.from('polizas').select('ramo,aseguradora,prima_anual,estado').eq('productor_id',currentUser.id);
-  const {data:cls}=await sb.from('clientes').select('estado').eq('productor_id',currentUser.id);
-  const {data:cotzs}=await sb.from('cotizaciones').select('estado').eq('productor_id',currentUser.id);
-  const activas=pols?.filter(p=>p.estado==='activa')||[];
-  const totalPrima=activas.reduce((s,p)=>s+(p.prima_anual||0),0);
-  document.getElementById('an-prima').textContent='$'+totalPrima.toLocaleString('es-AR');
-  const totalCls=cls?.length||0;
-  const activosCls=cls?.filter(c=>['activo','renovacion','siniestrado'].includes(c.estado)).length||0;
-  document.getElementById('an-retencion').textContent=totalCls>0?Math.round(activosCls/totalCls*100)+'%':'—';
-  const totalC=cotzs?.length||0;
-  const acepC=cotzs?.filter(c=>c.estado==='aceptada').length||0;
-  document.getElementById('an-cierre').textContent=totalC>0?Math.round(acepC/totalC*100)+'%':'—';
-  // Por ramo
-  const ramos={};
-  activas.forEach(p=>{ramos[p.ramo]=(ramos[p.ramo]||0)+p.prima_anual;});
-  const maxR=Math.max(...Object.values(ramos),1);
-  const coloresR=['#378ADD','#1D9E75','#EF9F27','#7F77DD','#E24B4A','#888780','#D85A30'];
-  document.getElementById('analisis-ramos').innerHTML=Object.entries(ramos).sort((a,b)=>b[1]-a[1]).map(([r,v],i)=>`
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-        <span style="font-weight:500">${r}</span><span style="color:var(--green)">$${v.toLocaleString('es-AR')}</span>
-      </div>
-      <div class="pbar"><div class="pfill" style="width:${Math.round(v/maxR*100)}%;background:${coloresR[i%coloresR.length]}"></div></div>
-    </div>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Sin datos</div>';
-  // Por aseguradora
-  const aseg={};
-  activas.forEach(p=>{aseg[p.aseguradora]=(aseg[p.aseguradora]||0)+p.prima_anual;});
-  const maxA=Math.max(...Object.values(aseg),1);
-  document.getElementById('analisis-aseg').innerHTML=Object.entries(aseg).sort((a,b)=>b[1]-a[1]).map(([a,v],i)=>`
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-        <span style="font-weight:500">${a}</span><span style="color:var(--green)">$${v.toLocaleString('es-AR')}</span>
-      </div>
-      <div class="pbar"><div class="pfill" style="width:${Math.round(v/maxA*100)}%;background:${coloresR[i%coloresR.length]}"></div></div>
-    </div>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Sin datos</div>';
+document.getElementById('btn-volver-cl').onclick = function() {
+  fichaId = null;
+  document.getElementById('ficha-wrap').classList.remove('open');
+  document.getElementById('cl-toprow').style.display = 'flex';
+  document.getElementById('cl-tabla-wrap').style.display = 'block';
+};
+
+async function renderFicha() {
+  const { data: c } = await sb.from('clientes').select('*').eq('id', fichaId).single();
+  if (!c) return;
+  document.getElementById('ficha-titulo').textContent = c.nombre + ' ' + c.apellido;
+  const eb = { prospecto: 'background:#E6F1FB;color:#0C447C', activo: 'background:#EAF3DE;color:#27500A', renovacion: 'background:#FAEEDA;color:#633806', siniestrado: 'background:#FCEBEB;color:#791F1F', inactivo: 'background:#F1EFE8;color:#444441' };
+  document.getElementById('ficha-badge').innerHTML = '<span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;' + (eb[c.estado] || '') + '">' + (c.estado || '') + '</span>';
+
+  const tabs = [
+    { id: 'resumen', label: 'Resumen' },
+    { id: 'polizas', label: 'Pólizas' },
+    { id: 'siniestros', label: 'Siniestros' },
+    { id: 'cotizaciones', label: 'Cotizaciones' },
+    { id: 'tareas', label: 'Tareas' },
+    { id: 'historial', label: 'Historial' },
+    { id: 'datos', label: 'Datos personales' },
+  ];
+  document.getElementById('ficha-tabs').innerHTML = tabs.map(function(t) {
+    return '<button class="ftab' + (fichaTab === t.id ? ' active' : '') + '" onclick="setFichaTab(\'' + t.id + '\')">' + t.label + '</button>';
+  }).join('');
+
+  await renderFichaTab(c);
 }
 
-// ============================================================
-// MODALES Y UTILS
-// ============================================================
-function abrirModalCliente(){cargarSelectClientes();poblarAnios();document.getElementById('modal-cliente').classList.add('open');}
-function abrirModalPoliza(){cargarSelectClientes();document.getElementById('modal-poliza').classList.add('open');}
-function abrirModalCotizacion(){cargarSelectClientes();document.getElementById('modal-cotizacion').classList.add('open');}
-function abrirModalSiniestro(){cargarSelectClientes();document.getElementById('modal-siniestro').classList.add('open');}
-function abrirModalCobranza(){cargarSelectClientes();document.getElementById('modal-cobranza').classList.add('open');}
-function abrirModalTarea(){cargarSelectClientes();document.getElementById('modal-tarea').classList.add('open');}
-function cerrarModal(id){document.getElementById(id).classList.remove('open');}
-function verCliente(id){mostrarAlerta('Ficha 360° — próximamente en la siguiente versión');}
-function mostrarAlerta(msg){
-  const el=document.getElementById('alert-global');
-  el.textContent=msg;el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),3500);
+function setFichaTab(tab) {
+  fichaTab = tab;
+  renderFicha();
 }
-// ============================================================
-// LOCALIDAD → CÓDIGO POSTAL AUTOMÁTICO
-// ============================================================
-function autoCP(val){
-  if(!val){document.getElementById('cl-cp').value='';return;}
+
+async function renderFichaTab(c) {
+  const cont = document.getElementById('ficha-content');
+  if (fichaTab === 'resumen') { cont.innerHTML = await fichaResumen(c); }
+  else if (fichaTab === 'datos') { cont.innerHTML = fichaDatos(c); }
+  else if (fichaTab === 'polizas') { cont.innerHTML = await fichaPolizas(c); }
+  else if (fichaTab === 'siniestros') { cont.innerHTML = await fichaSiniestros(c); }
+  else if (fichaTab === 'cotizaciones') { cont.innerHTML = await fichaCotizaciones(c); }
+  else if (fichaTab === 'tareas') { cont.innerHTML = await fichaTareas(c); }
+  else if (fichaTab === 'historial') { cont.innerHTML = await fichaHistorial(c); }
+}
+
+async function fichaResumen(c) {
+  const { data: pols } = await sb.from('polizas').select('numero,ramo,aseguradora,prima_anual,estado,fecha_vencimiento').eq('cliente_id', c.id);
+  const { data: tars } = await sb.from('tareas').select('titulo,prioridad,estado').eq('cliente_id', c.id).neq('estado', 'cerrada').limit(3);
+  const { data: sins } = await sb.from('siniestros').select('numero_expediente,tipo_siniestro,estado').eq('cliente_id', c.id).neq('estado', 'cerrado');
+  const prima = (pols || []).reduce(function(s, p) { return s + (p.prima_anual || 0); }, 0);
+
+  return '<div class="g3" style="margin-bottom:14px">'
+    + '<div class="metric"><div class="lbl">Prima anual total</div><div class="val">$' + prima.toLocaleString('es-AR') + '</div></div>'
+    + '<div class="metric"><div class="lbl">Pólizas activas</div><div class="val">' + (pols || []).length + '</div></div>'
+    + '<div class="metric"><div class="lbl">Siniestros abiertos</div><div class="val" style="color:var(--red)">' + (sins || []).length + '</div></div>'
+    + '</div>'
+    + '<div class="g2">'
+    + '<div class="card"><div class="card-t">Datos de contacto</div>'
+    + '<div class="info-row"><span>Teléfono</span><span>' + (c.telefono_principal || '—') + '</span></div>'
+    + '<div class="info-row"><span>Email</span><span>' + (c.email_principal || '—') + '</span></div>'
+    + '<div class="info-row"><span>Localidad</span><span>' + (c.localidad || '—') + '</span></div>'
+    + '<div class="info-row"><span>C.P.</span><span>' + (c.zona_geografica || '—') + '</span></div>'
+    + (c.notas ? '<div style="margin-top:10px;font-size:12px;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:var(--rsm)">' + c.notas + '</div>' : '')
+    + '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirIntModal(\'' + c.id + '\')">+ Interacción</button>'
+    + '<button class="btn btn-sm" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Póliza</button>'
+    + '<button class="btn btn-sm" onclick="abrirModalTareaParaCliente(\'' + c.id + '\')">+ Tarea</button>'
+    + '</div></div>'
+    + '<div class="card"><div class="card-t">Pólizas activas</div>'
+    + ((pols && pols.length) ? pols.map(function(p) {
+        return '<div class="ai"><div class="adot" style="background:var(--green)"></div><div><div style="font-size:12px;font-weight:500">' + p.numero + ' — ' + p.ramo + '</div><div style="font-size:11px;color:var(--muted)">' + p.aseguradora + ' · Vto. ' + p.fecha_vencimiento + ' · $' + (p.prima_anual || 0).toLocaleString('es-AR') + '</div></div></div>';
+      }).join('') : '<div style="font-size:12px;color:var(--lt)">Sin pólizas. <button class="btn btn-sm btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Agregar póliza</button></div>')
+    + '</div></div>'
+    + ((tars && tars.length) ? '<div class="card" style="margin-top:0"><div class="card-t">Tareas pendientes</div>'
+    + tars.map(function(t) { return '<div class="ai"><div class="adot" style="background:var(--amber)"></div><span style="font-size:12px">' + t.titulo + '</span></div>'; }).join('') + '</div>' : '');
+}
+
+function fichaDatos(c) {
+  return '<div class="card">'
+    + '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm btn-p" onclick="editarCliente(\'' + c.id + '\')">Editar datos</button></div>'
+    + '<div class="g2">'
+    + ir('Nombre', c.nombre + ' ' + c.apellido) + ir('DNI', c.dni) + ir('Nacimiento', c.fecha_nacimiento)
+    + ir('Dirección', c.direccion) + ir('Localidad', c.localidad) + ir('C.P.', c.zona_geografica)
+    + ir('Teléfono 1', c.telefono_principal) + ir('Teléfono 2', c.telefono_secundario)
+    + ir('Email 1', c.email_principal) + ir('Email 2', c.email_secundario)
+    + ir('Canal origen', c.canal_origen) + ir('Estado', c.estado)
+    + '</div>'
+    + '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">VEHÍCULO</div>'
+    + '<div class="g2">'
+    + ir('Marca', c.marca_vehiculo) + ir('Modelo', c.modelo_vehiculo)
+    + ir('Año', c.anio_vehiculo) + ir('Patente', c.patente)
+    + ir('Color', c.color_vehiculo)
+    + '</div>'
+    + (c.notas ? '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)"><div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">NOTAS</div><div style="font-size:12px;color:var(--text)">' + c.notas + '</div></div>' : '')
+    + '</div>';
+}
+
+function ir(label, val) {
+  return '<div class="info-row"><span>' + label + '</span><span>' + (val || '—') + '</span></div>';
+}
+
+async function fichaPolizas(c) {
+  const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
+  const eb = { activa: 'bv', renovacion: 'ba', vencida: 'br', cancelada: 'bgr' };
+  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button></div>'
+    + ((!data || !data.length) ? '<div class="empty">Sin pólizas registradas.</div>'
+    : data.map(function(p) {
+      return '<div class="card">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+        + '<div><div style="font-weight:600;font-size:14px">' + p.numero + '</div><div style="font-size:12px;color:var(--muted)">' + p.ramo + ' · ' + p.aseguradora + '</div></div>'
+        + '<span class="badge ' + (eb[p.estado] || 'bgr') + '">' + p.estado + '</span>'
+        + '</div>'
+        + '<div class="g2">'
+        + ir('Prima anual', '$' + (p.prima_anual || 0).toLocaleString('es-AR'))
+        + ir('Vencimiento', p.fecha_vencimiento)
+        + ir('Forma de pago', p.forma_pago)
+        + ir('Cobertura', p.tipo_cobertura)
+        + ir('Bien asegurado', p.bien_asegurado)
+        + '</div>'
+        + '</div>';
+    }).join(''));
+}
+
+async function fichaSiniestros(c) {
+  const { data } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  const eb = { abierto: 'br', proceso: 'ba', documentacion: 'ba', taller: 'bb', liquidado: 'bb', cerrado: 'bv' };
+  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirModalSiniestroParaCliente(\'' + c.id + '\')">+ Nuevo siniestro</button></div>'
+    + ((!data || !data.length) ? '<div class="empty">Sin siniestros registrados.</div>'
+    : data.map(function(s) {
+      const dias = Math.round((new Date() - new Date(s.created_at)) / 864e5);
+      return '<div class="card" style="border-left:3px solid var(--red)">'
+        + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+        + '<div><div style="font-weight:600">' + (s.numero_expediente || 'Sin expediente') + '</div><div style="font-size:12px;color:var(--muted)">' + (s.tipo_siniestro || '') + ' · ' + s.fecha_denuncia + '</div></div>'
+        + '<div style="text-align:right"><span class="badge ' + (eb[s.estado] || 'bgr') + '">' + s.estado + '</span><div style="font-size:11px;color:' + (dias > 15 ? 'var(--red)' : 'var(--muted)') + ';margin-top:3px">' + dias + ' días</div></div>'
+        + '</div>'
+        + (s.descripcion ? '<div style="font-size:12px;color:var(--muted)">' + s.descripcion + '</div>' : '')
+        + (s.taller ? '<div style="font-size:11px;margin-top:6px">Taller: ' + s.taller + '</div>' : '')
+        + '</div>';
+    }).join(''));
+}
+
+async function fichaCotizaciones(c) {
+  const { data } = await sb.from('cotizaciones').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  const eb = { enviada: 'bb', aceptada: 'bv', rechazada: 'br', vencida: 'bgr' };
+  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirModalCotzParaCliente(\'' + c.id + '\')">+ Nueva cotización</button></div>'
+    + ((!data || !data.length) ? '<div class="empty">Sin cotizaciones.</div>'
+    : data.map(function(ct) {
+      return '<div class="card">'
+        + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+        + '<div><div style="font-weight:600">' + ct.ramo + ' · ' + ct.aseguradora + '</div><div style="font-size:11px;color:var(--muted)">Enviada: ' + (ct.fecha_envio || '—') + ' · Válida: ' + (ct.fecha_validez || '—') + '</div></div>'
+        + '<div style="text-align:right"><span class="badge ' + (eb[ct.estado] || 'bgr') + '">' + ct.estado + '</span><div style="font-size:13px;font-weight:600;color:var(--green);margin-top:3px">$' + (ct.prima_cotizada || 0).toLocaleString('es-AR') + '</div></div>'
+        + '</div>'
+        + (ct.estado === 'enviada' ? '<button class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + ct.id + '\',\'aceptada\')">Marcar aceptada</button>' : '')
+        + '</div>';
+    }).join(''));
+}
+
+async function fichaTareas(c) {
+  const { data } = await sb.from('tareas').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  const prioC = { urgente: 'var(--red)', alta: 'var(--amber)', media: 'var(--med)', baja: 'var(--lt)' };
+  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirModalTareaParaCliente(\'' + c.id + '\')">+ Nueva tarea</button></div>'
+    + ((!data || !data.length) ? '<div class="empty">Sin tareas.</div>'
+    : data.map(function(t) {
+      return '<div class="card">'
+        + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px">'
+        + '<div style="font-weight:500">' + t.titulo + '</div>'
+        + '<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:' + (prioC[t.prioridad] || 'var(--lt)') + '18;color:' + (prioC[t.prioridad] || 'var(--lt)') + ';font-weight:600">' + t.prioridad + '</span>'
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--muted)">' + t.tipo + ' · ' + t.tablero + (t.fecha_limite ? ' · Vence ' + t.fecha_limite : '') + '</div>'
+        + (t.estado !== 'cerrada' ? '<button class="btn btn-sm" style="margin-top:6px" onclick="moverTarea(\'' + t.id + '\',\'' + (t.estado === 'pendiente' ? 'encurso' : t.estado === 'encurso' ? 'esperando' : 'cerrada') + '\')">→ ' + (t.estado === 'pendiente' ? 'Iniciar' : t.estado === 'encurso' ? 'Esperando' : 'Cerrar') + '</button>' : '<span style="font-size:11px;color:var(--green)">✓ Cerrada</span>')
+        + '</div>';
+    }).join(''));
+}
+
+async function fichaHistorial(c) {
+  const { data } = await sb.from('interacciones').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  const iconos = { llamada: '📞', whatsapp: '💬', email: '✉️', reunion: '🤝', sistema: '⚙️' };
+  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
+    + '<button class="btn btn-sm btn-p" onclick="abrirIntModal(\'' + c.id + '\')">+ Registrar interacción</button></div>'
+    + ((!data || !data.length) ? '<div class="empty">Sin interacciones registradas.</div>'
+    : '<div class="card">' + data.map(function(i) {
+      return '<div class="ai">'
+        + '<div style="font-size:16px;flex-shrink:0">' + (iconos[i.tipo] || '📌') + '</div>'
+        + '<div style="flex:1"><div style="font-size:12px;font-weight:500">' + i.resumen + '</div>'
+        + '<div style="font-size:10px;color:var(--lt)">' + i.tipo + ' · ' + new Date(i.created_at).toLocaleDateString('es-AR') + (i.proximo_contacto ? ' · Próximo: ' + i.proximo_contacto : '') + '</div></div>'
+        + '</div>';
+    }).join('') + '</div>');
+}
+
+// Abrir modales pre-cargados para cliente
+function abrirIntModal(clienteId) {
+  fichaClienteIdForInt = clienteId;
+  document.getElementById('modal-int').classList.add('open');
+}
+function abrirModalPolizaParaCliente(clienteId) {
+  actualizarSelectsClientes();
+  document.getElementById('fp-cl').value = clienteId;
+  document.getElementById('modal-pol').classList.add('open');
+}
+function abrirModalTareaParaCliente(clienteId) {
+  actualizarSelectsClientes();
+  document.getElementById('ft-cl').value = clienteId;
+  document.getElementById('modal-tar').classList.add('open');
+}
+function abrirModalSiniestroParaCliente(clienteId) {
+  actualizarSelectsClientes();
+  document.getElementById('fs-cl').value = clienteId;
+  document.getElementById('modal-sin').classList.add('open');
+}
+function abrirModalCotzParaCliente(clienteId) {
+  actualizarSelectsClientes();
+  document.getElementById('fc-cl').value = clienteId;
+  document.getElementById('modal-cotz').classList.add('open');
+}
+
+// ---- GUARDAR CLIENTE ----
+document.getElementById('btn-guardar-cl').onclick = async function() {
+  const loc = document.getElementById('f-loc');
+  const locVal = loc.value;
+  const locNombre = locVal ? loc.options[loc.selectedIndex].text : '';
+  const cp = document.getElementById('f-cp').value;
+  const datos = {
+    productor_id: user.id,
+    nombre: document.getElementById('f-nombre').value.trim(),
+    apellido: document.getElementById('f-apellido').value.trim(),
+    dni: document.getElementById('f-dni').value.trim(),
+    fecha_nacimiento: document.getElementById('f-nac').value || null,
+    direccion: document.getElementById('f-dir').value.trim(),
+    localidad: locNombre,
+    zona_geografica: cp,
+    telefono_principal: document.getElementById('f-tel1').value.trim(),
+    telefono_secundario: document.getElementById('f-tel2').value.trim(),
+    email_principal: document.getElementById('f-email1').value.trim(),
+    email_secundario: document.getElementById('f-email2').value.trim(),
+    estado: document.getElementById('f-estado').value,
+    canal_origen: document.getElementById('f-canal').value,
+    marca_vehiculo: document.getElementById('f-marca').value,
+    modelo_vehiculo: document.getElementById('f-modelo').value.trim(),
+    anio_vehiculo: document.getElementById('f-anio').value || null,
+    patente: document.getElementById('f-patente').value.trim(),
+    color_vehiculo: document.getElementById('f-color').value.trim(),
+    notas: document.getElementById('f-notas').value.trim(),
+  };
+  if (!datos.nombre || !datos.apellido) { alert('Nombre y apellido son obligatorios'); return; }
+  const { error } = await sb.from('clientes').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-cl');
+  mostrarAlerta('Cliente guardado correctamente');
+  cargarClientes();
+  cargarDashboard();
+};
+
+// Localidad → CP automático
+document.getElementById('f-loc').addEventListener('change', function() {
+  const val = this.value;
+  if (!val) { document.getElementById('f-cp').value = ''; return; }
   const parts = val.split('|');
-  document.getElementById('cl-cp').value = parts[1]||'';
-  // Store localidad name
-  const sel = document.getElementById('cl-localidad');
-  const opt = sel.options[sel.selectedIndex];
-  sel.dataset.localidad = opt.text;
+  document.getElementById('f-cp').value = parts[1] || '';
+});
+
+// ---- GUARDAR PÓLIZA ----
+document.getElementById('btn-guardar-pol').onclick = async function() {
+  const datos = {
+    productor_id: user.id,
+    cliente_id: document.getElementById('fp-cl').value || null,
+    numero: document.getElementById('fp-num').value.trim(),
+    aseguradora: document.getElementById('fp-aseg').value,
+    ramo: document.getElementById('fp-ramo').value,
+    tipo_cobertura: document.getElementById('fp-cob').value.trim(),
+    fecha_inicio: document.getElementById('fp-ini').value,
+    fecha_vencimiento: document.getElementById('fp-vto').value,
+    prima_anual: parseFloat(document.getElementById('fp-prima').value) || 0,
+    forma_pago: document.getElementById('fp-pago').value,
+    bien_asegurado: document.getElementById('fp-bien').value.trim(),
+    notas: document.getElementById('fp-notas').value.trim(),
+  };
+  if (!datos.numero || !datos.ramo || !datos.aseguradora || !datos.fecha_inicio || !datos.fecha_vencimiento) { alert('Completá los campos obligatorios'); return; }
+  const { error } = await sb.from('polizas').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-pol');
+  mostrarAlerta('Póliza guardada');
+  if (fichaId) renderFicha();
+  cargarDashboard();
+};
+
+// ---- GUARDAR COTIZACIÓN ----
+document.getElementById('btn-guardar-cotz').onclick = async function() {
+  const datos = {
+    productor_id: user.id,
+    cliente_id: document.getElementById('fc-cl').value || null,
+    ramo: document.getElementById('fc-ramo').value,
+    aseguradora: document.getElementById('fc-aseg').value,
+    prima_cotizada: parseFloat(document.getElementById('fc-prima').value) || 0,
+    fecha_validez: document.getElementById('fc-val').value || null,
+    notas: document.getElementById('fc-notas').value.trim(),
+  };
+  if (!datos.ramo || !datos.aseguradora) { alert('Completá ramo y aseguradora'); return; }
+  const { error } = await sb.from('cotizaciones').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-cotz');
+  mostrarAlerta('Cotización guardada');
+  if (fichaId) renderFicha();
+};
+
+async function cambiarEstadoCotz(id, estado) {
+  await sb.from('cotizaciones').update({ estado }).eq('id', id);
+  mostrarAlerta('Estado actualizado');
+  if (fichaId) renderFicha();
 }
 
-// ============================================================
-// POBLAR AÑO VEHÍCULO
-// ============================================================
-function poblarAnios(){
-  const sel = document.getElementById('cl-anio');
-  if(!sel) return;
-  for(let y=2026; y>=1960; y--){
+// ---- GUARDAR SINIESTRO ----
+document.getElementById('btn-guardar-sin').onclick = async function() {
+  const datos = {
+    productor_id: user.id,
+    cliente_id: document.getElementById('fs-cl').value || null,
+    numero_expediente: document.getElementById('fs-exp').value.trim(),
+    aseguradora: document.getElementById('fs-aseg').value.trim(),
+    fecha_hecho: document.getElementById('fs-fh').value || null,
+    tipo_siniestro: document.getElementById('fs-tipo').value,
+    descripcion: document.getElementById('fs-desc').value.trim(),
+    taller: document.getElementById('fs-taller').value.trim(),
+    fecha_inspeccion: document.getElementById('fs-insp').value || null,
+  };
+  if (!datos.descripcion) { alert('La descripción es obligatoria'); return; }
+  const { error } = await sb.from('siniestros').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-sin');
+  mostrarAlerta('Siniestro registrado');
+  if (fichaId) renderFicha();
+  cargarDashboard();
+};
+
+// ---- GUARDAR INTERACCIÓN ----
+document.getElementById('btn-guardar-int').onclick = async function() {
+  const clienteId = fichaClienteIdForInt || (fichaId || null);
+  const datos = {
+    productor_id: user.id,
+    cliente_id: clienteId,
+    tipo: document.getElementById('fi-tipo').value,
+    resumen: document.getElementById('fi-res').value.trim(),
+    proximo_contacto: document.getElementById('fi-prox').value || null,
+  };
+  if (!datos.resumen) { alert('El resumen es obligatorio'); return; }
+  const { error } = await sb.from('interacciones').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-int');
+  mostrarAlerta('Interacción registrada');
+  fichaClienteIdForInt = null;
+  if (fichaId) renderFicha();
+};
+
+// ---- GUARDAR COBRANZA ----
+document.getElementById('btn-guardar-cob').onclick = async function() {
+  const datos = {
+    productor_id: user.id,
+    cliente_id: document.getElementById('fcob-cl').value || null,
+    poliza_id: document.getElementById('fcob-pol').value || null,
+    numero_cuota: parseInt(document.getElementById('fcob-num').value) || 1,
+    total_cuotas: parseInt(document.getElementById('fcob-tot').value) || null,
+    monto: parseFloat(document.getElementById('fcob-monto').value) || 0,
+    fecha_vencimiento: document.getElementById('fcob-vto').value,
+  };
+  if (!datos.fecha_vencimiento || !datos.monto) { alert('Completá monto y fecha'); return; }
+  const { error } = await sb.from('cobranzas').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-cob');
+  mostrarAlerta('Cuota registrada');
+  cargarCobranzas();
+};
+
+document.getElementById('fcob-cl').addEventListener('change', async function() {
+  const sel = document.getElementById('fcob-pol');
+  if (!this.value) { sel.innerHTML = '<option value="">Primero seleccioná un cliente</option>'; return; }
+  const { data } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
+  sel.innerHTML = '<option value="">Seleccionar póliza...</option>' + (data || []).map(function(p) { return '<option value="' + p.id + '">' + p.numero + ' — ' + p.ramo + '</option>'; }).join('');
+});
+
+// ---- GUARDAR TAREA ----
+document.getElementById('btn-guardar-tar').onclick = async function() {
+  const datos = {
+    productor_id: user.id,
+    titulo: document.getElementById('ft-tit').value.trim(),
+    tablero: document.getElementById('ft-tab').value,
+    tipo: document.getElementById('ft-tipo').value,
+    prioridad: document.getElementById('ft-prio').value,
+    cliente_id: document.getElementById('ft-cl').value || null,
+    fecha_limite: document.getElementById('ft-fecha').value || null,
+    notif_fecha: document.getElementById('ft-notif').value || null,
+    descripcion: document.getElementById('ft-desc').value.trim(),
+  };
+  if (!datos.titulo) { alert('El título es obligatorio'); return; }
+  const { error } = await sb.from('tareas').insert(datos);
+  if (error) { alert('Error: ' + error.message); return; }
+  cerrarModal('modal-tar');
+  mostrarAlerta('Tarea creada');
+  if (fichaId) renderFicha();
+  cargarTareas();
+};
+
+// ---- PÓLIZAS ----
+async function cargarPolizas() {
+  const tbody = document.getElementById('tbody-pol');
+  tbody.innerHTML = '<tr><td colspan="7"><div class="loading"><span class="spin"></span>Cargando...</div></td></tr>';
+  const { data } = await sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('fecha_vencimiento');
+  const eb = { activa: 'bv', renovacion: 'ba', vencida: 'br', cancelada: 'bgr' };
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin pólizas.</div></td></tr>'; return; }
+  tbody.innerHTML = data.map(function(p) {
+    return '<tr><td style="font-weight:500">' + p.numero + '</td>'
+      + '<td>' + (p.clientes ? p.clientes.nombre + ' ' + p.clientes.apellido : '—') + '</td>'
+      + '<td>' + p.ramo + '</td><td>' + p.aseguradora + '</td>'
+      + '<td style="font-weight:500;color:var(--green)">$' + (p.prima_anual || 0).toLocaleString('es-AR') + '</td>'
+      + '<td>' + p.fecha_vencimiento + '</td>'
+      + '<td><span class="badge ' + (eb[p.estado] || 'bgr') + '">' + p.estado + '</span></td></tr>';
+  }).join('');
+}
+
+// ---- COTIZACIONES ----
+async function cargarCotizaciones() {
+  const tbody = document.getElementById('tbody-cotz');
+  const { data } = await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
+  const total = data ? data.length : 0;
+  const acep = data ? data.filter(function(c) { return c.estado === 'aceptada'; }).length : 0;
+  document.getElementById('cotz-env').textContent = total;
+  document.getElementById('cotz-acep').textContent = acep;
+  document.getElementById('cotz-tasa').textContent = total > 0 ? Math.round(acep / total * 100) + '%' : '—';
+  const eb = { enviada: 'bb', aceptada: 'bv', rechazada: 'br', vencida: 'bgr' };
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Sin cotizaciones.</div></td></tr>'; return; }
+  tbody.innerHTML = data.map(function(c) {
+    return '<tr><td>' + (c.numero || '—') + '</td>'
+      + '<td>' + (c.clientes ? c.clientes.nombre + ' ' + c.clientes.apellido : '—') + '</td>'
+      + '<td>' + c.ramo + '</td><td>' + c.aseguradora + '</td>'
+      + '<td>$' + (c.prima_cotizada || 0).toLocaleString('es-AR') + '</td>'
+      + '<td>' + (c.fecha_validez || '—') + '</td>'
+      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
+      + '<td>' + (c.estado === 'enviada' ? '<button class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + c.id + '\',\'aceptada\')">Aceptar</button>' : '—') + '</td></tr>';
+  }).join('');
+}
+
+// ---- SINIESTROS ----
+async function cargarSiniestros() {
+  const tbody = document.getElementById('tbody-sin');
+  const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
+  const eb = { abierto: 'br', proceso: 'ba', documentacion: 'ba', taller: 'bb', liquidado: 'bb', cerrado: 'bv' };
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin siniestros.</div></td></tr>'; return; }
+  tbody.innerHTML = data.map(function(s) {
+    const dias = Math.round((new Date() - new Date(s.created_at)) / 864e5);
+    const diasColor = dias > 15 ? 'color:var(--red);font-weight:600' : '';
+    return '<tr><td style="font-weight:500">' + (s.numero_expediente || '—') + '</td>'
+      + '<td>' + (s.clientes ? s.clientes.nombre + ' ' + s.clientes.apellido : '—') + '</td>'
+      + '<td>' + (s.tipo_siniestro || '—') + '</td>'
+      + '<td>' + (s.aseguradora || '—') + '</td>'
+      + '<td>' + (s.fecha_denuncia || '—') + '</td>'
+      + '<td><span class="badge ' + (eb[s.estado] || 'bgr') + '">' + s.estado + '</span></td>'
+      + '<td><span style="' + diasColor + '">' + (s.estado !== 'cerrado' ? dias + 'd' : '—') + '</span></td></tr>';
+  }).join('');
+}
+
+// ---- COBRANZAS ----
+async function cargarCobranzas() {
+  const tbody = document.getElementById('tbody-cob');
+  const { data } = await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero)').eq('productor_id', user.id).order('fecha_vencimiento');
+  const venc = data ? data.filter(function(c) { return c.estado === 'vencida'; }).length : 0;
+  const pend = data ? data.filter(function(c) { return c.estado === 'pendiente'; }).length : 0;
+  const hoy = new Date(); const mes1 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const cob = data ? data.filter(function(c) { return c.estado === 'pagada' && new Date(c.fecha_pago) >= mes1; }).reduce(function(s, c) { return s + c.monto; }, 0) : 0;
+  document.getElementById('cob-venc').textContent = venc;
+  document.getElementById('cob-pend').textContent = pend;
+  document.getElementById('cob-mes').textContent = '$' + cob.toLocaleString('es-AR');
+  const eb = { pendiente: 'ba', vencida: 'br', pagada: 'bv' };
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin cuotas.</div></td></tr>'; return; }
+  tbody.innerHTML = data.map(function(c) {
+    return '<tr><td>' + (c.clientes ? c.clientes.nombre + ' ' + c.clientes.apellido : '—') + '</td>'
+      + '<td>' + (c.polizas ? c.polizas.numero : '—') + '</td>'
+      + '<td>' + c.numero_cuota + '/' + (c.total_cuotas || '?') + '</td>'
+      + '<td style="font-weight:500">$' + (c.monto || 0).toLocaleString('es-AR') + '</td>'
+      + '<td>' + c.fecha_vencimiento + '</td>'
+      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
+      + '<td>' + (c.estado !== 'pagada' ? '<button class="btn btn-sm btn-ok" onclick="marcarPagada(\'' + c.id + '\')">Registrar pago</button>' : '✓') + '</td></tr>';
+  }).join('');
+}
+
+async function marcarPagada(id) {
+  await sb.from('cobranzas').update({ estado: 'pagada', fecha_pago: new Date().toISOString().split('T')[0] }).eq('id', id);
+  mostrarAlerta('Pago registrado');
+  cargarCobranzas();
+}
+
+// ---- TAREAS ----
+async function cargarTareas() {
+  const { data } = await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
+  const lista = tablerof ? (data || []).filter(function(t) { return t.tablero === tablerof; }) : (data || []);
+  const estados = { p: 'pendiente', e: 'encurso', r: 'esperando', c: 'cerrada' };
+  Object.keys(estados).forEach(function(k) {
+    const items = lista.filter(function(t) { return t.estado === estados[k]; });
+    document.getElementById('cnt-' + k).textContent = items.length;
+    const col = document.getElementById('col-' + k);
+    if (!items.length) { col.innerHTML = '<div style="text-align:center;padding:14px;font-size:11px;color:var(--lt)">Sin tareas</div>'; return; }
+    const prioC = { urgente: 'var(--red)', alta: 'var(--amber)', media: 'var(--med)', baja: 'var(--lt)' };
+    const sig = { pendiente: 'encurso', encurso: 'esperando', esperando: 'cerrada' };
+    const sigL = { pendiente: 'Iniciar', encurso: 'Esperando', esperando: 'Cerrar' };
+    col.innerHTML = items.map(function(t) {
+      return '<div style="background:#fff;border:0.5px solid var(--border);border-radius:var(--rsm);padding:9px 10px;margin-bottom:6px">'
+        + '<div style="display:flex;gap:4px;justify-content:space-between;margin-bottom:3px">'
+        + '<div style="font-size:12px;font-weight:500;flex:1">' + t.titulo + '</div>'
+        + '<span style="font-size:9px;padding:2px 5px;border-radius:6px;background:' + (prioC[t.prioridad] || 'var(--lt)') + '18;color:' + (prioC[t.prioridad] || 'var(--lt)') + ';font-weight:600;white-space:nowrap">' + t.prioridad + '</span>'
+        + '</div>'
+        + (t.clientes ? '<div style="font-size:10px;color:var(--lt);margin-bottom:4px">' + t.clientes.nombre + ' ' + t.clientes.apellido + '</div>' : '')
+        + '<div style="font-size:10px;color:var(--lt);margin-bottom:5px">' + t.tipo + '</div>'
+        + (t.estado !== 'cerrada' ? '<button style="width:100%;padding:4px;background:var(--blue);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer" onclick="moverTarea(\'' + t.id + '\',\'' + sig[t.estado] + '\')">' + sigL[t.estado] + '</button>' : '')
+        + '</div>';
+    }).join('');
+  });
+}
+
+function setTablero(tab, btn) {
+  tablerof = tab;
+  document.querySelectorAll('#tablero-tabs .btn').forEach(function(b) { b.className = 'btn btn-sm'; });
+  if (btn) btn.className = 'btn btn-sm btn-p';
+  cargarTareas();
+}
+
+async function moverTarea(id, estado) {
+  await sb.from('tareas').update({ estado }).eq('id', id);
+  cargarTareas();
+  if (fichaId) renderFicha();
+}
+
+// ---- ANÁLISIS ----
+async function cargarAnalisis() {
+  const { data: pols } = await sb.from('polizas').select('ramo,aseguradora,prima_anual,estado').eq('productor_id', user.id);
+  const { data: cls } = await sb.from('clientes').select('estado').eq('productor_id', user.id);
+  const { data: cotzs } = await sb.from('cotizaciones').select('estado').eq('productor_id', user.id);
+  const activas = (pols || []).filter(function(p) { return p.estado === 'activa'; });
+  const total = activas.reduce(function(s, p) { return s + (p.prima_anual || 0); }, 0);
+  document.getElementById('an-prima').textContent = '$' + total.toLocaleString('es-AR');
+  const tot = (cls || []).length;
+  const act = (cls || []).filter(function(c) { return ['activo', 'renovacion', 'siniestrado'].includes(c.estado); }).length;
+  document.getElementById('an-ret').textContent = tot > 0 ? Math.round(act / tot * 100) + '%' : '—';
+  const totC = (cotzs || []).length;
+  const acepC = (cotzs || []).filter(function(c) { return c.estado === 'aceptada'; }).length;
+  document.getElementById('an-cie').textContent = totC > 0 ? Math.round(acepC / totC * 100) + '%' : '—';
+
+  const ramos = {};
+  activas.forEach(function(p) { ramos[p.ramo] = (ramos[p.ramo] || 0) + (p.prima_anual || 0); });
+  const maxR = Math.max.apply(null, Object.values(ramos).concat([1]));
+  const cols = ['#378ADD', '#1D9E75', '#EF9F27', '#7F77DD', '#E24B4A', '#888780', '#D85A30'];
+  document.getElementById('an-ramos').innerHTML = Object.entries(ramos).sort(function(a, b) { return b[1] - a[1]; }).map(function(entry, i) {
+    return '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">' + entry[0] + '</span><span style="color:var(--green)">$' + entry[1].toLocaleString('es-AR') + '</span></div><div class="pbar"><div class="pfill" style="width:' + Math.round(entry[1] / maxR * 100) + '%;background:' + cols[i % cols.length] + '"></div></div></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--lt)">Sin datos</div>';
+
+  const aseg = {};
+  activas.forEach(function(p) { aseg[p.aseguradora] = (aseg[p.aseguradora] || 0) + (p.prima_anual || 0); });
+  const maxA = Math.max.apply(null, Object.values(aseg).concat([1]));
+  document.getElementById('an-aseg').innerHTML = Object.entries(aseg).sort(function(a, b) { return b[1] - a[1]; }).map(function(entry, i) {
+    return '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">' + entry[0] + '</span><span style="color:var(--green)">$' + entry[1].toLocaleString('es-AR') + '</span></div><div class="pbar"><div class="pfill" style="width:' + Math.round(entry[1] / maxA * 100) + '%;background:' + cols[i % cols.length] + '"></div></div></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--lt)">Sin datos</div>';
+}
+
+// ---- BOTONES GLOBALES ----
+document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); };
+document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
+document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-pol').classList.add('open'); };
+document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
+document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-sin').classList.add('open'); });
+document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cob').classList.add('open'); });
+document.getElementById('btn-ntar') && (document.getElementById('btn-ntar').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-tar').classList.add('open'); });
+
+// ---- UTILS ----
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function mostrarAlerta(msg) {
+  const el = document.getElementById('alerta-g');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 3000);
+}
+
+function poblarAnios() {
+  const sel = document.getElementById('f-anio');
+  if (!sel || sel.options.length > 1) return;
+  for (let y = 2026; y >= 1960; y--) {
     const opt = document.createElement('option');
     opt.value = y; opt.textContent = y;
     sel.appendChild(opt);
   }
 }
 
-// ============================================================
-// GUARDAR CLIENTE — versión actualizada con localidad y CP
-// ============================================================
-// Cerrar modales con Escape
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-ov.open').forEach(function(m) { m.classList.remove('open'); });
+});
 
-// Poblar años al cargar
-document.addEventListener('DOMContentLoaded', poblarAnios);
+init();
 </script>
 </body>
 </html>
