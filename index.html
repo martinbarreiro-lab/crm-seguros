@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -1038,14 +1037,17 @@ async function cargarSiniestros(){
   const eb={abierto:'badge-rojo',proceso:'badge-amber',documentacion:'badge-amber',taller:'badge-azul',liquidado:'badge-azul',cerrado:'badge-verde'};
   tbody.innerHTML=data.map(s=>{
     const dias=Math.round((new Date()-new Date(s.created_at))/(864e5));
-    return`<tr>
-      <td style="font-weight:500">${s.numero_expediente||'—'}</td>
-      <td>${s.clientes?.nombre||''} ${s.clientes?.apellido||''}</td>
-      <td>${s.tipo_siniestro||'—'}</td><td>${s.aseguradora||'—'}</td>
-      <td>${s.fecha_denuncia||'—'}</td>
-      <td><span class="badge ${eb[s.estado]||'badge-gris'}">${s.estado}</span></td>
-      <td>${s.estado!=='cerrado'?`<span style="color:${dias>15?'var(--red)':'var(--text)';font-weight:${dias>15?'600':'400'}">${dias}d</span>`:'—'}</td>
-    </tr>`;
+    const diasStyle=dias>15?'color:#E24B4A;font-weight:600':'color:#333';
+    const diasTxt=s.estado!=='cerrado'?dias+'d':'—';
+    return '<tr>'
+      +'<td style="font-weight:500">'+(s.numero_expediente||'—')+'</td>'
+      +'<td>'+(s.clientes&&s.clientes.nombre?s.clientes.nombre+' '+s.clientes.apellido:'')+'</td>'
+      +'<td>'+(s.tipo_siniestro||'—')+'</td>'
+      +'<td>'+(s.aseguradora||'—')+'</td>'
+      +'<td>'+(s.fecha_denuncia||'—')+'</td>'
+      +'<td><span class="badge '+(eb[s.estado]||'badge-gris')+'">'+s.estado+'</span></td>'
+      +'<td><span style="'+diasStyle+'">'+diasTxt+'</span></td>'
+      +'</tr>';
   }).join('');
 }
 async function guardarSiniestro(){
