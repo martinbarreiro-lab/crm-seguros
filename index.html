@@ -292,7 +292,7 @@ tr:last-child td{border-bottom:none}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Cliente</th><th>Estado</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>Último contacto</th><th></th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Estado</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>C.P.</th><th>Tipo seguro</th><th></th></tr></thead>
             <tbody id="tabla-clientes"><tr><td colspan="7"><div class="loading"><span class="spinner"></span>Cargando clientes...</div></td></tr></tbody>
           </table>
         </div>
@@ -439,6 +439,9 @@ tr:last-child td{border-bottom:none}
 <div class="modal-overlay" id="modal-cliente">
   <div class="modal-box">
     <div class="modal-title">Nuevo cliente <button class="modal-close" onclick="cerrarModal('modal-cliente')">✕</button></div>
+
+    <!-- DATOS PERSONALES -->
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.05em">DATOS PERSONALES</div>
     <div class="fgrid2">
       <div class="form-row"><label>Nombre *</label><input type="text" id="cl-nombre" placeholder="Nombre"></div>
       <div class="form-row"><label>Apellido *</label><input type="text" id="cl-apellido" placeholder="Apellido"></div>
@@ -447,19 +450,161 @@ tr:last-child td{border-bottom:none}
       <div class="form-row"><label>DNI</label><input type="text" id="cl-dni" placeholder="XX.XXX.XXX"></div>
       <div class="form-row"><label>Fecha de nacimiento</label><input type="date" id="cl-nacimiento"></div>
     </div>
-    <div class="form-row"><label>Dirección</label><input type="text" id="cl-direccion" placeholder="Dirección completa"></div>
+    <div class="form-row"><label>Dirección</label><input type="text" id="cl-direccion" placeholder="Calle, número, piso"></div>
     <div class="fgrid2">
-      <div class="form-row"><label>Localidad</label><input type="text" id="cl-localidad" placeholder="Rosario"></div>
-      <div class="form-row"><label>Zona geográfica</label><input type="text" id="cl-zona" placeholder="Norte, Sur, Centro..."></div>
+      <div class="form-row"><label>Localidad</label>
+        <select id="cl-localidad" onchange="autoCP(this.value)">
+          <option value="">Seleccionar localidad...</option>
+          <optgroup label="Buenos Aires">
+            <option value="Buenos Aires|1000">Ciudad de Buenos Aires</option>
+            <option value="La Plata|1900">La Plata</option>
+            <option value="Mar del Plata|7600">Mar del Plata</option>
+            <option value="Bahía Blanca|8000">Bahía Blanca</option>
+            <option value="Quilmes|1878">Quilmes</option>
+            <option value="Lanús|1824">Lanús</option>
+            <option value="Lomas de Zamora|1832">Lomas de Zamora</option>
+            <option value="San Justo|1754">San Justo</option>
+            <option value="Merlo|1722">Merlo</option>
+            <option value="Morón|1708">Morón</option>
+            <option value="Tigre|1648">Tigre</option>
+            <option value="San Isidro|1642">San Isidro</option>
+            <option value="Vicente López|1638">Vicente López</option>
+            <option value="Tres de Febrero|1674">Tres de Febrero</option>
+            <option value="Tandil|7000">Tandil</option>
+            <option value="Junín|6000">Junín</option>
+            <option value="Pergamino|2700">Pergamino</option>
+          </optgroup>
+          <optgroup label="Santa Fe">
+            <option value="Rosario|2000">Rosario</option>
+            <option value="Santa Fe|3000">Santa Fe</option>
+            <option value="Rafaela|2300">Rafaela</option>
+            <option value="Venado Tuerto|2600">Venado Tuerto</option>
+            <option value="San Lorenzo|2200">San Lorenzo</option>
+            <option value="Reconquista|3560">Reconquista</option>
+            <option value="Cañada de Gómez|2500">Cañada de Gómez</option>
+            <option value="Casilda|2170">Casilda</option>
+            <option value="Esperanza|3080">Esperanza</option>
+            <option value="Capitán Bermúdez|2154">Capitán Bermúdez</option>
+            <option value="Funes|2132">Funes</option>
+            <option value="Granadero Baigorria|2152">Granadero Baigorria</option>
+            <option value="Pérez|2121">Pérez</option>
+            <option value="Fray Luis Beltrán|2124">Fray Luis Beltrán</option>
+            <option value="Villa Constitución|2919">Villa Constitución</option>
+          </optgroup>
+          <optgroup label="Córdoba">
+            <option value="Córdoba|5000">Córdoba</option>
+            <option value="Villa Carlos Paz|5152">Villa Carlos Paz</option>
+            <option value="Río Cuarto|5800">Río Cuarto</option>
+            <option value="San Francisco|2400">San Francisco</option>
+            <option value="Villa María|5900">Villa María</option>
+            <option value="Alta Gracia|5186">Alta Gracia</option>
+            <option value="Jesús María|5220">Jesús María</option>
+            <option value="Bell Ville|2550">Bell Ville</option>
+          </optgroup>
+          <optgroup label="Mendoza">
+            <option value="Mendoza|5500">Mendoza</option>
+            <option value="San Rafael|5600">San Rafael</option>
+            <option value="Godoy Cruz|5501">Godoy Cruz</option>
+            <option value="Luján de Cuyo|5507">Luján de Cuyo</option>
+            <option value="Maipú|5515">Maipú</option>
+          </optgroup>
+          <optgroup label="Tucumán">
+            <option value="San Miguel de Tucumán|4000">San Miguel de Tucumán</option>
+            <option value="Tafí Viejo|4103">Tafí Viejo</option>
+            <option value="Yerba Buena|4107">Yerba Buena</option>
+          </optgroup>
+          <optgroup label="Entre Ríos">
+            <option value="Paraná|3100">Paraná</option>
+            <option value="Concordia|3200">Concordia</option>
+            <option value="Gualeguaychú|2820">Gualeguaychú</option>
+          </optgroup>
+          <optgroup label="Salta">
+            <option value="Salta|4400">Salta</option>
+            <option value="San Ramón de la Nueva Orán|4530">Orán</option>
+            <option value="Tartagal|4560">Tartagal</option>
+          </optgroup>
+          <optgroup label="Chaco">
+            <option value="Resistencia|3500">Resistencia</option>
+            <option value="Presidencia Roque Sáenz Peña|3700">Sáenz Peña</option>
+          </optgroup>
+          <optgroup label="Misiones">
+            <option value="Posadas|3300">Posadas</option>
+            <option value="Oberá|3360">Oberá</option>
+          </optgroup>
+          <optgroup label="Corrientes">
+            <option value="Corrientes|3400">Corrientes</option>
+            <option value="Goya|3450">Goya</option>
+          </optgroup>
+          <optgroup label="Santiago del Estero">
+            <option value="Santiago del Estero|4200">Santiago del Estero</option>
+            <option value="La Banda|4300">La Banda</option>
+          </optgroup>
+          <optgroup label="Jujuy">
+            <option value="San Salvador de Jujuy|4600">San Salvador de Jujuy</option>
+            <option value="Palpalá|4612">Palpalá</option>
+          </optgroup>
+          <optgroup label="San Juan">
+            <option value="San Juan|5400">San Juan</option>
+            <option value="Rivadavia|5413">Rivadavia</option>
+          </optgroup>
+          <optgroup label="Río Negro">
+            <option value="Bariloche|8400">Bariloche</option>
+            <option value="Viedma|8500">Viedma</option>
+            <option value="General Roca|8332">General Roca</option>
+          </optgroup>
+          <optgroup label="Neuquén">
+            <option value="Neuquén|8300">Neuquén</option>
+            <option value="Zapala|8340">Zapala</option>
+          </optgroup>
+          <optgroup label="La Pampa">
+            <option value="Santa Rosa|6300">Santa Rosa</option>
+            <option value="General Pico|6360">General Pico</option>
+          </optgroup>
+          <optgroup label="Chubut">
+            <option value="Comodoro Rivadavia|9000">Comodoro Rivadavia</option>
+            <option value="Trelew|9100">Trelew</option>
+            <option value="Puerto Madryn|9120">Puerto Madryn</option>
+          </optgroup>
+          <optgroup label="Santa Cruz">
+            <option value="Río Gallegos|9400">Río Gallegos</option>
+            <option value="El Calafate|9405">El Calafate</option>
+          </optgroup>
+          <optgroup label="Tierra del Fuego">
+            <option value="Ushuaia|9410">Ushuaia</option>
+            <option value="Río Grande|9420">Río Grande</option>
+          </optgroup>
+          <optgroup label="Formosa">
+            <option value="Formosa|3600">Formosa</option>
+          </optgroup>
+          <optgroup label="Catamarca">
+            <option value="San Fernando del Valle|4700">San Fernando del Valle de Catamarca</option>
+          </optgroup>
+          <optgroup label="La Rioja">
+            <option value="La Rioja|5300">La Rioja</option>
+          </optgroup>
+          <optgroup label="San Luis">
+            <option value="San Luis|5700">San Luis</option>
+            <option value="Villa Mercedes|5730">Villa Mercedes</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-row"><label>Código postal</label>
+        <input type="text" id="cl-cp" placeholder="Automático según localidad" readonly style="background:#f0f0f0">
+      </div>
     </div>
+
+    <!-- CONTACTO -->
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 8px;letter-spacing:.05em">CONTACTO</div>
     <div class="fgrid2">
       <div class="form-row"><label>Teléfono principal</label><input type="text" id="cl-tel1" placeholder="341-XXX-XXXX"></div>
       <div class="form-row"><label>Teléfono secundario</label><input type="text" id="cl-tel2" placeholder="341-XXX-XXXX"></div>
     </div>
     <div class="fgrid2">
       <div class="form-row"><label>Email principal</label><input type="email" id="cl-email1" placeholder="cliente@email.com"></div>
-      <div class="form-row"><label>Email secundario</label><input type="email" id="cl-email2" placeholder="otro@email.com"></div>
+      <div class="form-row"><label>Email secundario</label><input type="email" id="cl-email2"></div>
     </div>
+
+    <!-- ESTADO -->
     <div class="fgrid2">
       <div class="form-row"><label>Estado</label>
         <select id="cl-estado">
@@ -469,21 +614,76 @@ tr:last-child td{border-bottom:none}
           <option value="inactivo">Inactivo</option>
         </select>
       </div>
-      <div class="form-row"><label>Canal de origen</label><input type="text" id="cl-canal" placeholder="Referido, redes, llamada..."></div>
-    </div>
-    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Vehículo asegurado (opcional)</div>
-      <div class="fgrid3">
-        <div class="form-row"><label>Patente</label><input type="text" id="cl-patente" placeholder="ABC123"></div>
-        <div class="form-row"><label>Marca</label><input type="text" id="cl-marca" placeholder="Ford"></div>
-        <div class="form-row"><label>Modelo</label><input type="text" id="cl-modelo" placeholder="Focus"></div>
+      <div class="form-row"><label>Canal de origen</label>
+        <select id="cl-canal">
+          <option value="">Seleccionar...</option>
+          <option>Referido</option>
+          <option>Redes sociales</option>
+          <option>WhatsApp</option>
+          <option>Llamada entrante</option>
+          <option>Visita presencial</option>
+          <option>Otro</option>
+        </select>
       </div>
+    </div>
+
+    <!-- TIPO DE SEGURO -->
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 8px;letter-spacing:.05em">TIPO DE SEGURO</div>
+    <div class="form-row"><label>Tipo de seguro principal</label>
+      <select id="cl-tipo-seguro">
+        <option value="">Seleccionar tipo...</option>
+        <option>Automotor</option>
+        <option>Integral de comercio</option>
+        <option>Vida individual</option>
+        <option>Accidentes personales</option>
+        <option>Combinado familiar</option>
+        <option>ART</option>
+        <option>Consorcio / Edificio</option>
+        <option>Embarcaciones</option>
+        <option>Mala praxis</option>
+        <option>Caución</option>
+        <option>Transporte / Carga</option>
+        <option>Agro / Rural</option>
+      </select>
+    </div>
+
+    <!-- VEHÍCULO -->
+    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px" id="sec-vehiculo">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">VEHÍCULO ASEGURADO</div>
       <div class="fgrid2">
-        <div class="form-row"><label>Año</label><input type="number" id="cl-anio" placeholder="2020"></div>
+        <div class="form-row"><label>Marca</label>
+          <select id="cl-marca">
+            <option value="">Seleccionar marca...</option>
+            <option>Acura</option><option>Alfa Romeo</option><option>Audi</option>
+            <option>BMW</option><option>Chevrolet</option><option>Chrysler</option>
+            <option>Citroën</option><option>Dodge</option><option>Fiat</option>
+            <option>Ford</option><option>Honda</option><option>Hyundai</option>
+            <option>Jeep</option><option>Kia</option><option>Land Rover</option>
+            <option>Lexus</option><option>Mazda</option><option>Mercedes-Benz</option>
+            <option>Mini</option><option>Mitsubishi</option><option>Nissan</option>
+            <option>Peugeot</option><option>Porsche</option><option>RAM</option>
+            <option>Renault</option><option>Seat</option><option>Skoda</option>
+            <option>Subaru</option><option>Suzuki</option><option>Tesla</option>
+            <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Modelo</label><input type="text" id="cl-modelo" placeholder="Ej: Focus, Corsa, Gol"></div>
+      </div>
+      <div class="fgrid3">
+        <div class="form-row"><label>Año</label>
+          <select id="cl-anio"><option value="">Año...</option></select>
+        </div>
+        <div class="form-row"><label>Patente</label><input type="text" id="cl-patente" placeholder="AB123CD"></div>
         <div class="form-row"><label>Color</label><input type="text" id="cl-color" placeholder="Plata"></div>
       </div>
     </div>
-    <div class="form-row"><label>Notas</label><textarea id="cl-notas" placeholder="Notas internas sobre el cliente..."></textarea></div>
+
+    <!-- NOTAS -->
+    <div class="form-row"><label>Notas internas</label>
+      <textarea id="cl-notas" placeholder="Notas sobre el cliente..."></textarea>
+    </div>
+
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn" onclick="cerrarModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button>
@@ -882,15 +1082,16 @@ async function cargarClientes(filtro='',estado=''){
     return;
   }
   const estadoBadge = {prospecto:'badge-azul',activo:'badge-verde',renovacion:'badge-amber',siniestrado:'badge-rojo',inactivo:'badge-gris'};
-  tbody.innerHTML = data.map(c=>`<tr>
-    <td><div style="font-weight:500">${c.nombre} ${c.apellido}</div><div style="font-size:11px;color:var(--text-light)">${c.email_principal||''}</div></td>
-    <td><span class="badge ${estadoBadge[c.estado]||'badge-gris'}">${c.estado}</span></td>
-    <td>${c.dni||'—'}</td>
-    <td>${c.telefono_principal||'—'}</td>
-    <td>${c.localidad||'—'}</td>
-    <td>${c.ultimo_contacto||'—'}</td>
-    <td><button class="btn btn-sm" onclick="verCliente('${c.id}')">Ver</button></td>
-  </tr>`).join('');
+  tbody.innerHTML = data.map(c=>'<tr>'
+    +'<td><div style="font-weight:500">'+c.nombre+' '+c.apellido+'</div><div style="font-size:11px;color:var(--text-light)">'+(c.email_principal||'')+'</div></td>'
+    +'<td><span class="badge '+(estadoBadge[c.estado]||'badge-gris')+'">'+c.estado+'</span></td>'
+    +'<td>'+(c.dni||'—')+'</td>'
+    +'<td>'+(c.telefono_principal||'—')+'</td>'
+    +'<td>'+(c.localidad||'—')+'</td>'
+    +'<td>'+(c.zona_geografica||'—')+'</td>'
+    +'<td>'+(c.canal_origen||'—')+'</td>'
+    +'<td><button class="btn btn-sm btn-p" onclick="verCliente(''+c.id+'')">Ver ficha</button></td>'
+    +'</tr>').join('');
 }
 
 function buscarClientes(q){clearTimeout(window._busqT);window._busqT=setTimeout(()=>cargarClientes(q),300);}
@@ -907,6 +1108,11 @@ function cargarSelectClientes(){
 }
 
 async function guardarCliente(){
+  const localidadSel = document.getElementById('cl-localidad');
+  const localidadVal = localidadSel.value;
+  const localidadNombre = localidadVal ? localidadSel.options[localidadSel.selectedIndex].text : '';
+  const cpVal = document.getElementById('cl-cp').value.trim();
+
   const datos = {
     productor_id: currentUser.id,
     nombre: document.getElementById('cl-nombre').value.trim(),
@@ -914,16 +1120,16 @@ async function guardarCliente(){
     dni: document.getElementById('cl-dni').value.trim(),
     fecha_nacimiento: document.getElementById('cl-nacimiento').value||null,
     direccion: document.getElementById('cl-direccion').value.trim(),
-    localidad: document.getElementById('cl-localidad').value.trim(),
-    zona_geografica: document.getElementById('cl-zona').value.trim(),
+    localidad: localidadNombre,
+    zona_geografica: cpVal,
     telefono_principal: document.getElementById('cl-tel1').value.trim(),
     telefono_secundario: document.getElementById('cl-tel2').value.trim(),
     email_principal: document.getElementById('cl-email1').value.trim(),
     email_secundario: document.getElementById('cl-email2').value.trim(),
     estado: document.getElementById('cl-estado').value,
-    canal_origen: document.getElementById('cl-canal').value.trim(),
+    canal_origen: document.getElementById('cl-canal').value,
     patente: document.getElementById('cl-patente').value.trim(),
-    marca_vehiculo: document.getElementById('cl-marca').value.trim(),
+    marca_vehiculo: document.getElementById('cl-marca').value,
     modelo_vehiculo: document.getElementById('cl-modelo').value.trim(),
     anio_vehiculo: document.getElementById('cl-anio').value||null,
     color_vehiculo: document.getElementById('cl-color').value.trim(),
@@ -1188,7 +1394,7 @@ async function cargarAnalisis(){
 // ============================================================
 // MODALES Y UTILS
 // ============================================================
-function abrirModalCliente(){cargarSelectClientes();document.getElementById('modal-cliente').classList.add('open');}
+function abrirModalCliente(){cargarSelectClientes();poblarAnios();document.getElementById('modal-cliente').classList.add('open');}
 function abrirModalPoliza(){cargarSelectClientes();document.getElementById('modal-poliza').classList.add('open');}
 function abrirModalCotizacion(){cargarSelectClientes();document.getElementById('modal-cotizacion').classList.add('open');}
 function abrirModalSiniestro(){cargarSelectClientes();document.getElementById('modal-siniestro').classList.add('open');}
@@ -1201,8 +1407,40 @@ function mostrarAlerta(msg){
   el.textContent=msg;el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),3500);
 }
+// ============================================================
+// LOCALIDAD → CÓDIGO POSTAL AUTOMÁTICO
+// ============================================================
+function autoCP(val){
+  if(!val){document.getElementById('cl-cp').value='';return;}
+  const parts = val.split('|');
+  document.getElementById('cl-cp').value = parts[1]||'';
+  // Store localidad name
+  const sel = document.getElementById('cl-localidad');
+  const opt = sel.options[sel.selectedIndex];
+  sel.dataset.localidad = opt.text;
+}
+
+// ============================================================
+// POBLAR AÑO VEHÍCULO
+// ============================================================
+function poblarAnios(){
+  const sel = document.getElementById('cl-anio');
+  if(!sel) return;
+  for(let y=2026; y>=1960; y--){
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    sel.appendChild(opt);
+  }
+}
+
+// ============================================================
+// GUARDAR CLIENTE — versión actualizada con localidad y CP
+// ============================================================
 // Cerrar modales con Escape
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
+
+// Poblar años al cargar
+document.addEventListener('DOMContentLoaded', poblarAnios);
 </script>
 </body>
 </html>
