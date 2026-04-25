@@ -169,24 +169,27 @@ tr:hover td{background:var(--bg)}
 #tar-comentarios::-webkit-scrollbar{width:4px}
 #tar-comentarios::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-/* ===== CARDS CLIENTES ===== */
-.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:4px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;transition:all .15s;margin-bottom:7px}
-.cl-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+
+/* Card clientes - mejoras */
+.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:4px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;transition:all .15s;margin-bottom:8px}
+.cl-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07);transform:translateY(-1px)}
 .cl-card.st-activo{border-left-color:#1D9E75}
 .cl-card.st-siniestrado{border-left-color:#E24B4A}
 .cl-card.st-renovacion{border-left-color:#EF9F27}
 .cl-card.st-prospecto{border-left-color:#4A90D9}
 .cl-card.st-inactivo{border-left-color:#9CA3AF}
 .cl-main{flex:1;min-width:0}
-.cl-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:8px}
-.cl-email{font-size:12px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cl-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.cl-sem{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.sem-verde{background:#1D9E75}
-.sem-amarillo{background:#EF9F27}
-.sem-rojo{background:#E24B4A}
-.sem-azul{background:#4A90D9}
-.sem-gris{background:#9CA3AF}
+.cl-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;gap:10px}
+.cl-name{font-size:14px;font-weight:600;color:var(--text)}
+.cl-alerts{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.cl-alert-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.cl-alert-label{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.al-sin{background:#FDEDEC;color:#922B21}
+.al-ren{background:#FEF9E7;color:#7D6608}
+.al-ok{background:#E8F8F0;color:#1A7A3C}
+.cl-data{font-size:12px;color:var(--muted);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.cl-data-icon{font-size:11px;flex-shrink:0}
+.cl-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}
 .cl-estado{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600}
 .est-activo{background:#E8F8F0;color:#1A7A3C}
 .est-siniestrado{background:#FDEDEC;color:#922B21}
@@ -200,12 +203,20 @@ tr:hover td{background:var(--bg)}
 .ram-art{background:#FDEDEC;color:#922B21}
 .ram-comb{background:#F5EEF8;color:#6C3483}
 .ram-emp{background:#F0F2F5;color:#4B5563}
-.cl-dni{font-size:11px;color:var(--lt)}
-.cl-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
-.wapp-btn{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+.cl-pol-cnt{font-size:10px;color:var(--lt);padding:2px 6px;border:0.5px solid var(--border);border-radius:8px}
+.cl-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-items:stretch;min-width:110px}
+.wapp-btn{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;text-align:center}
 .wapp-btn:hover{background:#D5F5E3}
+.mail-btn{background:#EBF4FC;color:#1A5276;border:0.5px solid #85B7EB;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;text-align:center;position:relative}
+.mail-btn:hover{background:#D6EAF8}
+.mail-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:0.5px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:200;min-width:180px;display:none}
+.mail-menu.open{display:block}
+.mail-menu-item{display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;cursor:pointer;color:var(--text);background:none;border:none;font-family:inherit;border-bottom:0.5px solid var(--border)}
+.mail-menu-item:last-child{border-bottom:none}
+.mail-menu-item:hover{background:var(--bg)}
 .cl-count{font-size:12px;color:var(--muted);margin-bottom:10px}
 .cl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 14px;background:var(--bg);border-radius:var(--rsm);margin-top:10px;align-items:center}
+
 </style>
 </head>
 <body>
@@ -1162,62 +1173,169 @@ async function cargarClientes(filtro, estado) {
   }
 
   const allIds = clientes.map(function(cl) { return cl.id; });
-  const { data: todasPols } = await sb.from('polizas').select('cliente_id,ramo').in('cliente_id', allIds).eq('estado', 'activa');
+
+  // Polizas activas por cliente
+  const { data: todasPols } = await sb.from('polizas').select('cliente_id,ramo,id').in('cliente_id', allIds).eq('estado', 'activa');
   const polPorCliente = {};
+  const polCntPorCliente = {};
   (todasPols || []).forEach(function(p) {
-    if (!polPorCliente[p.cliente_id]) polPorCliente[p.cliente_id] = [];
+    if (!polPorCliente[p.cliente_id]) { polPorCliente[p.cliente_id] = []; polCntPorCliente[p.cliente_id] = 0; }
     if (!polPorCliente[p.cliente_id].includes(p.ramo)) polPorCliente[p.cliente_id].push(p.ramo);
+    polCntPorCliente[p.cliente_id]++;
   });
 
+  // Siniestros abiertos
   const { data: sinsAbiertos } = await sb.from('siniestros').select('cliente_id').in('cliente_id', allIds).neq('estado', 'cerrado');
   const sinSet = new Set((sinsAbiertos || []).map(function(s) { return s.cliente_id; }));
 
+  // Renovaciones proximas 30 dias
   const en30 = new Date(Date.now() + 30 * 864e5).toISOString().split('T')[0];
   const hoy2 = new Date().toISOString().split('T')[0];
   const { data: polsVenc } = await sb.from('polizas').select('cliente_id').in('cliente_id', allIds).lte('fecha_vencimiento', en30).gte('fecha_vencimiento', hoy2).eq('estado', 'activa');
   const vencSet = new Set((polsVenc || []).map(function(p) { return p.cliente_id; }));
 
   const ramoClass = {Automotor:'ram-auto',Vida:'ram-vida',Hogar:'ram-hogar',ART:'ram-art',Combinado:'ram-comb',Empresas:'ram-emp'};
-  const semColor = {activo:'sem-verde',renovacion:'sem-amarillo',siniestrado:'sem-rojo',prospecto:'sem-azul',inactivo:'sem-gris'};
   const estClass = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
   const cardClass = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
 
   const html = [];
   clientes.forEach(function(cl) {
-    let semC = semColor[cl.estado] || 'sem-gris';
-    let cardC = cardClass[cl.estado] || '';
-    if (sinSet.has(cl.id)) { semC = 'sem-rojo'; cardC = 'st-siniestrado'; }
-    else if (vencSet.has(cl.id) && cl.estado !== 'siniestrado') { semC = 'sem-amarillo'; cardC = 'st-renovacion'; }
+    let cardC = cardClass[cl.estado] || 'st-inactivo';
 
+    // Alerts para semaforo derecho
+    const alerts = [];
+    if (sinSet.has(cl.id)) { alerts.push('<span class="cl-alert-label al-sin">Siniestro</span>'); }
+    if (vencSet.has(cl.id)) { alerts.push('<span class="cl-alert-label al-ren">Renovaci&oacute;n pr&oacute;x.</span>'); }
+    if (!sinSet.has(cl.id) && !vencSet.has(cl.id) && cl.estado === 'activo') { alerts.push('<span class="cl-alert-label al-ok">Al d&iacute;a</span>'); }
+
+    // Ramos chips
     const ramos = polPorCliente[cl.id] || [];
+    const polCnt = polCntPorCliente[cl.id] || 0;
     const ramoChips = ramos.slice(0,4).map(function(r) {
       return '<span class="cl-ramo ' + (ramoClass[r] || 'ram-emp') + '">' + r + '</span>';
     }).join('');
 
-    const identDoc = cl.dni ? 'DNI ' + cl.dni : '';
+    // Identificacion: CUIT para empresas, DNI para personas
+    const identDoc = cl.zona_geografica ? cl.zona_geografica : ''; // zona_geografica tiene CUIT si es empresa
+    const dniCuit = cl.dni ? 'DNI ' + cl.dni : (identDoc ? 'CUIT ' + identDoc : '');
+
+    // Direccion
+    const domicilio = [cl.direccion, cl.localidad].filter(Boolean).join(', ');
+
+    // WhatsApp
     const wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
+
+    // Email
+    const emailTo = cl.email_principal || '';
 
     const p = [];
     p.push('<div class="cl-card ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
     p.push('<div class="cl-main">');
-    p.push('<div class="cl-name"><div class="cl-sem ' + semC + '"></div>' + cl.apellido + ', ' + cl.nombre + '</div>');
-    p.push('<div class="cl-email">' + (cl.email_principal || 'Sin email') + '</div>');
+
+    // Nombre + alertas
+    p.push('<div class="cl-name-row">');
+    p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
+    p.push('<div class="cl-alerts">' + alerts.join('') + '</div>');
+    p.push('</div>');
+
+    // Datos de contacto
+    p.push('<div class="cl-data"><span class="cl-data-icon">&#9993;</span>' + (emailTo || 'Sin email') + '</div>');
+    if (cl.telefono_principal) {
+      p.push('<div class="cl-data"><span class="cl-data-icon">&#128222;</span>' + cl.telefono_principal + '</div>');
+    }
+
+    // Domicilio
+    if (domicilio) {
+      p.push('<div class="cl-data"><span class="cl-data-icon">&#127968;</span>' + domicilio + '</div>');
+    }
+
+    // DNI/CUIT
+    if (dniCuit) {
+      p.push('<div class="cl-data"><span class="cl-data-icon">&#128196;</span>' + dniCuit + '</div>');
+    }
+
+    // Chips ramos + contador polizas
     p.push('<div class="cl-meta">');
     p.push('<span class="cl-estado ' + (estClass[cl.estado] || 'est-inactivo') + '">' + cl.estado + '</span>');
     p.push(ramoChips);
-    if (identDoc) { p.push('<span class="cl-dni">' + identDoc + '</span>'); }
-    p.push('</div></div>');
+    if (polCnt > 0) { p.push('<span class="cl-pol-cnt">' + polCnt + ' p&oacute;liza' + (polCnt !== 1 ? 's' : '') + '</span>'); }
+    p.push('</div>');
+
+    p.push('</div>'); // cl-main
+
+    // Acciones
     p.push('<div class="cl-actions">');
     if (wappNum) {
-      p.push('<button class="wapp-btn" onclick="event.stopPropagation();window.open(\'https://wa.me/549' + wappNum + '\',\'_blank\')">WhatsApp</button>');
+      p.push('<button class="wapp-btn" onclick="event.stopPropagation();window.open(\'https://wa.me/549' + wappNum + '\',\'_blank\')">&#128172; WhatsApp</button>');
     }
-    p.push('</div></div>');
+    if (emailTo) {
+      p.push('<div style="position:relative">');
+      p.push('<button class="mail-btn" onclick="event.stopPropagation();toggleMailMenu(this)">&#9993; Mail</button>');
+      p.push('<div class="mail-menu">');
+      p.push('<button class="mail-menu-item" onclick="event.stopPropagation();abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
+      p.push('<button class="mail-menu-item" onclick="event.stopPropagation();abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&oacute;liza PDF</button>');
+      p.push('</div></div>');
+    }
+    p.push('</div>'); // cl-actions
+    p.push('</div>'); // cl-card
     html.push(p.join(''));
   });
 
-  html.push('<div class="cl-legend"><span>Sem&aacute;foro:</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-rojo"></span>Siniestro</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-amarillo"></span>Renovaci&oacute;n pr&oacute;xima</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-verde"></span>Al d&iacute;a</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-azul"></span>Prospecto</span></div>');
+  html.push('<div class="cl-legend"><span>Sem&aacute;foro:</span><span class="cl-alert-label al-sin">Siniestro</span><span class="cl-alert-label al-ren">Renovaci&oacute;n pr&oacute;x.</span><span class="cl-alert-label al-ok">Al d&iacute;a</span></div>');
   cont.innerHTML = html.join('');
 }
+
+function toggleMailMenu(btn) {
+  const menu = btn.nextElementSibling;
+  document.querySelectorAll('.mail-menu.open').forEach(function(m) {
+    if (m !== menu) m.classList.remove('open');
+  });
+  menu.classList.toggle('open');
+}
+
+function abrirMail(email, asunto, cuerpo) {
+  const subject = asunto || '';
+  const body = cuerpo || '';
+  window.location.href = 'mailto:' + email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+async function abrirMailConPoliza(clienteId, email) {
+  // Buscar la ultima poliza activa del cliente
+  const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', clienteId).eq('estado', 'activa').order('fecha_vencimiento', {ascending: false}).limit(1);
+  const pol = pols && pols.length ? pols[0] : null;
+  const { data: cl } = await sb.from('clientes').select('nombre,apellido').eq('id', clienteId).single();
+
+  if (!pol) {
+    mostrarAlerta('Este cliente no tiene pólizas activas para adjuntar.');
+    return;
+  }
+
+  const asunto = 'Su póliza de ' + pol.ramo + ' - ' + pol.numero;
+  const nombreCl = cl ? cl.nombre + ' ' + cl.apellido : '';
+  const lineas = [];
+  lineas.push('Estimado/a ' + nombreCl + ',');
+  lineas.push('');
+  lineas.push('Le enviamos el detalle de su p\u00f3liza:');
+  lineas.push('');
+  lineas.push('N\u00b0 P\u00f3liza: ' + pol.numero);
+  lineas.push('Aseguradora: ' + pol.aseguradora);
+  lineas.push('Ramo: ' + pol.ramo);
+  lineas.push('Vigencia: ' + pol.fecha_inicio + ' al ' + pol.fecha_vencimiento);
+  lineas.push('Bien asegurado: ' + (pol.bien_asegurado || '-'));
+  lineas.push('');
+  lineas.push('Mart\u00edn Barreiro');
+  lineas.push('Asesor de Seguros');
+  const cuerpo = lineas.join('\n');
+
+  abrirMail(email, asunto, cuerpo);
+  mostrarAlerta('Abriendo casilla de mail con los datos de la póliza...');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mail-btn') && !e.target.closest('.mail-menu')) {
+    document.querySelectorAll('.mail-menu.open').forEach(function(m) { m.classList.remove('open'); });
+  }
+});
 document.getElementById('fil-ramo-cl') && document.getElementById('fil-ramo-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
 document.getElementById('ord-cl') && document.getElementById('ord-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
 document.getElementById('srch-cl').addEventListener('input', function() {
