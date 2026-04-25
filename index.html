@@ -164,6 +164,10 @@ tr:hover td{background:var(--bg)}
 .ctx-item:hover{background:var(--bg)}
 .ctx-item.danger{color:var(--red)}
 .ctx-sep{height:1px;background:var(--border);margin:3px 0}
+
+/* Modal tarea detalle */
+#tar-comentarios::-webkit-scrollbar{width:4px}
+#tar-comentarios::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 </style>
 </head>
 <body>
@@ -860,6 +864,84 @@ tr:hover td{background:var(--bg)}
     </div>
   </div>
 </div>
+
+<!-- MODAL DETALLE TAREA -->
+<div class="modal-ov" id="modal-tar-det">
+  <div class="modal-box" style="max-width:720px">
+    <div class="modal-t">
+      <span id="tar-det-titulo">Detalle de tarea</span>
+      <button class="modal-x" onclick="cerrarModal('modal-tar-det')">&#10005;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:16px">
+      <div>
+        <div class="frow"><label>Título</label>
+          <input type="text" id="tar-edit-titulo" style="font-weight:600">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="frow"><label>Tablero</label>
+            <select id="tar-edit-tablero">
+              <option value="ventas">Ventas</option><option value="siniestros">Siniestros</option>
+              <option value="cobranzas">Cobranzas</option><option value="renovaciones">Renovaciones</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <div class="frow"><label>Estado</label>
+            <select id="tar-edit-estado">
+              <option value="pendiente">Pendiente</option><option value="encurso">En curso</option>
+              <option value="esperando">Esp. respuesta</option><option value="cerrada">Cerrada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="frow"><label>Prioridad</label>
+            <select id="tar-edit-prio">
+              <option value="urgente">Urgente</option><option value="alta">Alta</option>
+              <option value="media">Media</option><option value="baja">Baja</option>
+            </select>
+          </div>
+          <div class="frow"><label>Tipo</label>
+            <select id="tar-edit-tipo">
+              <option>Llamar al cliente</option><option>Enviar cotización</option>
+              <option>Gestionar siniestro</option><option>Cobrar cuota</option>
+              <option>Renovar póliza</option><option>Seguimiento</option>
+              <option>Trámite aseguradora</option><option>Tarea libre</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="frow"><label>Fecha límite</label>
+            <input type="date" id="tar-edit-fecha">
+          </div>
+          <div class="frow"><label>Recordatorio</label>
+            <input type="datetime-local" id="tar-edit-notif">
+          </div>
+        </div>
+        <div class="frow"><label>Cliente vinculado</label>
+          <select id="tar-edit-cliente"><option value="">Sin vincular</option></select>
+        </div>
+        <div class="frow"><label>Póliza vinculada</label>
+          <select id="tar-edit-poliza"><option value="">Sin vincular</option></select>
+        </div>
+        <div class="frow"><label>Descripción</label>
+          <textarea id="tar-edit-desc" style="min-height:80px" placeholder="Detalle..."></textarea>
+        </div>
+        <div id="tar-det-info" style="font-size:11px;color:var(--muted);padding:8px;background:var(--bg);border-radius:var(--rsm);margin-top:4px"></div>
+        <div style="display:flex;gap:6px;margin-top:12px;justify-content:flex-end">
+          <button class="btn btn-sm" onclick="cerrarModal('modal-tar-det')">Cancelar</button>
+          <button class="btn btn-sm btn-p" id="btn-tar-guardar">Guardar cambios</button>
+        </div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comentarios</div>
+        <div id="tar-comentarios" style="flex:1;overflow-y:auto;max-height:320px;margin-bottom:10px"></div>
+        <textarea id="nuevo-coment" placeholder="Agregar comentario..." style="padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit;resize:none;min-height:60px;margin-bottom:6px"></textarea>
+        <button class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
@@ -1749,52 +1831,116 @@ function irACliente(id) {
 async function verDetalleTarea(id) {
   const { data: t } = await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('id', id).single();
   if (!t) return;
-  const { data: notas } = await sb.from('notas_tareas').select('*').eq('tarea_id', id).order('created_at');
-  const sigMap = {pendiente:'encurso', encurso:'esperando', esperando:'cerrada'};
-  const sigLbl = {pendiente:'Iniciar', encurso:'Esp. respuesta', esperando:'Cerrar'};
-  const parts = [];
-  parts.push('<div style="margin-bottom:12px">');
-  parts.push('<div style="font-size:15px;font-weight:700;margin-bottom:6px">' + t.titulo + '</div>');
-  parts.push('<div style="font-size:12px;color:var(--muted);margin-bottom:3px">Tablero: <strong>' + t.tablero + '</strong> | Prioridad: <strong>' + t.prioridad + '</strong></div>');
-  if (t.clientes) { parts.push('<div style="font-size:12px;color:var(--muted)">Cliente: ' + t.clientes.nombre + ' ' + t.clientes.apellido + '</div>'); }
-  if (t.fecha_limite) { parts.push('<div style="font-size:12px;color:var(--muted)">Vence: ' + t.fecha_limite + '</div>'); }
-  if (t.descripcion) { parts.push('<div style="margin-top:8px;padding:9px;background:var(--bg);border-radius:var(--rsm);font-size:12px">' + t.descripcion + '</div>'); }
-  parts.push('</div>');
-  parts.push('<div style="border-top:1px solid var(--border);padding-top:10px">');
-  parts.push('<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Comentarios / Actividad</div>');
-  if (notas && notas.length) {
-    notas.forEach(function(n) {
-      parts.push('<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">' + n.texto + '<div style="font-size:10px;color:var(--lt);margin-top:2px">' + new Date(n.created_at).toLocaleString('es-AR') + '</div></div>');
+
+  // Set title
+  document.getElementById('tar-det-titulo').textContent = t.titulo;
+
+  // Fill form fields
+  document.getElementById('tar-edit-titulo').value = t.titulo || '';
+  document.getElementById('tar-edit-tablero').value = t.tablero || 'general';
+  document.getElementById('tar-edit-estado').value = t.estado || 'pendiente';
+  document.getElementById('tar-edit-prio').value = t.prioridad || 'media';
+  document.getElementById('tar-edit-tipo').value = t.tipo || '';
+  document.getElementById('tar-edit-fecha').value = t.fecha_limite || '';
+  document.getElementById('tar-edit-notif').value = t.notif_fecha ? t.notif_fecha.slice(0,16) : '';
+  document.getElementById('tar-edit-desc').value = t.descripcion || '';
+
+  // Populate cliente select
+  const clSel = document.getElementById('tar-edit-cliente');
+  clSel.innerHTML = '<option value="">Sin vincular</option>' + allCl.map(function(cl) {
+    return '<option value="' + cl.id + '"' + (cl.id === t.cliente_id ? ' selected' : '') + '>' + cl.nombre + ' ' + cl.apellido + '</option>';
+  }).join('');
+
+  // Populate poliza select based on cliente
+  const polSel = document.getElementById('tar-edit-poliza');
+  polSel.innerHTML = '<option value="">Sin vincular</option>';
+  if (t.cliente_id) {
+    const { data: pols } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', t.cliente_id);
+    (pols || []).forEach(function(p) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.numero + ' — ' + p.ramo;
+      polSel.appendChild(opt);
     });
-  } else {
-    parts.push('<div style="font-size:12px;color:var(--lt);padding:6px 0">Sin comentarios.</div>');
   }
-  parts.push('<div style="display:flex;gap:6px;margin-top:10px">');
-  parts.push('<input type="text" id="nuevo-coment" placeholder="Agregar comentario..." style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit">');
-  parts.push('<button class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>');
-  parts.push('</div></div>');
-  parts.push('<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">');
-  if (sigMap[t.estado]) {
-    parts.push('<button class="btn btn-sm btn-p" id="btn-tar-sig">&#8594; ' + sigLbl[t.estado] + '</button>');
-  }
-  if (t.estado !== 'cancelada' && t.estado !== 'cerrada') {
-    parts.push('<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" id="btn-tar-canc">Cancelar tarea</button>');
-  }
-  parts.push('</div>');
-  document.getElementById('tar-det-content').innerHTML = parts.join('');
-  document.getElementById('modal-tar-det').classList.add('open');
+
+  // Update polizas when cliente changes
+  clSel.onchange = async function() {
+    polSel.innerHTML = '<option value="">Sin vincular</option>';
+    if (!this.value) return;
+    const { data: pols } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
+    (pols || []).forEach(function(p) {
+      const opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.numero + ' — ' + p.ramo;
+      polSel.appendChild(opt);
+    });
+  };
+
+  // Info bar: days open + status history
+  const diasAbierta = Math.round((new Date() - new Date(t.created_at)) / 864e5);
+  const infoEl = document.getElementById('tar-det-info');
+  infoEl.innerHTML = 'Creada hace <strong>' + diasAbierta + ' días</strong> · Estado actual: <strong>' + t.estado + '</strong>'
+    + (t.fecha_limite ? ' · Vence: <strong>' + t.fecha_limite + '</strong>' : '');
+
+  // Load comments
+  await cargarComentariosTarea(id);
+
+  // Wire up buttons
+  document.getElementById('btn-tar-guardar').onclick = async function() {
+    const updates = {
+      titulo: document.getElementById('tar-edit-titulo').value.trim(),
+      tablero: document.getElementById('tar-edit-tablero').value,
+      estado: document.getElementById('tar-edit-estado').value,
+      prioridad: document.getElementById('tar-edit-prio').value,
+      tipo: document.getElementById('tar-edit-tipo').value,
+      fecha_limite: document.getElementById('tar-edit-fecha').value || null,
+      notif_fecha: document.getElementById('tar-edit-notif').value || null,
+      descripcion: document.getElementById('tar-edit-desc').value.trim(),
+      cliente_id: document.getElementById('tar-edit-cliente').value || null,
+    };
+    if (!updates.titulo) { alert('El título es obligatorio'); return; }
+    const { error } = await sb.from('tareas').update(updates).eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    // Log state change if changed
+    if (updates.estado !== t.estado) {
+      await sb.from('notas_tareas').insert({ tarea_id: id, texto: 'Estado cambiado de "' + t.estado + '" a "' + updates.estado + '"', tipo: 'sistema' });
+    }
+    cerrarModal('modal-tar-det');
+    mostrarAlerta('Tarea actualizada');
+    cargarTareas();
+    if (fichaId) renderFicha();
+  };
+
   const addBtn = document.getElementById('btn-add-coment');
   if (addBtn) { addBtn.onclick = function() { agregarComent(id); }; }
-  const sigBtn = document.getElementById('btn-tar-sig');
-  if (sigBtn) { sigBtn.onclick = function() { moverTarea(id, sigMap[t.estado]); cerrarModal('modal-tar-det'); }; }
-  const cancBtn = document.getElementById('btn-tar-canc');
-  if (cancBtn) { cancBtn.onclick = function() { moverTarea(id, 'cancelada'); cerrarModal('modal-tar-det'); }; }
+
+  document.getElementById('modal-tar-det').classList.add('open');
+}
+
+async function cargarComentariosTarea(id) {
+  const { data: notas } = await sb.from('notas_tareas').select('*').eq('tarea_id', id).order('created_at');
+  const cont = document.getElementById('tar-comentarios');
+  if (!cont) return;
+  if (!notas || !notas.length) {
+    cont.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:6px 0">Sin comentarios.</div>';
+    return;
+  }
+  const tipoBg = { sistema: '#F0F2F5', Avance: '#E8F8F0', Contacto: '#EBF4FC', Alerta: '#FDEDEC', General: '#fff' };
+  cont.innerHTML = notas.map(function(n) {
+    const bg = tipoBg[n.tipo] || '#fff';
+    return '<div style="padding:7px 8px;border-radius:6px;margin-bottom:6px;background:' + bg + ';border:1px solid var(--border)">'
+      + '<div style="font-size:12px;color:var(--text)">' + n.texto + '</div>'
+      + '<div style="font-size:10px;color:var(--lt);margin-top:3px">' + new Date(n.created_at).toLocaleString('es-AR') + ' · ' + (n.tipo || 'General') + '</div>'
+      + '</div>';
+  }).join('');
+  cont.scrollTop = cont.scrollHeight;
 }
 async function agregarComent(tareaId) {
   const txt = document.getElementById('nuevo-coment').value.trim();
   if (!txt) return;
   await sb.from('notas_tareas').insert({tarea_id: tareaId, texto: txt, tipo: 'General'});
-  verDetalleTarea(tareaId);
+  document.getElementById('nuevo-coment').value = '';
+  await cargarComentariosTarea(tareaId);
 }
 async function moverTarea(id, estado) {
   await sb.from('tareas').update({ estado }).eq('id', id);
