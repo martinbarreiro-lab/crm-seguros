@@ -168,6 +168,44 @@ tr:hover td{background:var(--bg)}
 /* Modal tarea detalle */
 #tar-comentarios::-webkit-scrollbar{width:4px}
 #tar-comentarios::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ===== CARDS CLIENTES ===== */
+.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:4px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;transition:all .15s;margin-bottom:7px}
+.cl-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.cl-card.st-activo{border-left-color:#1D9E75}
+.cl-card.st-siniestrado{border-left-color:#E24B4A}
+.cl-card.st-renovacion{border-left-color:#EF9F27}
+.cl-card.st-prospecto{border-left-color:#4A90D9}
+.cl-card.st-inactivo{border-left-color:#9CA3AF}
+.cl-main{flex:1;min-width:0}
+.cl-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.cl-email{font-size:12px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cl-sem{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sem-verde{background:#1D9E75}
+.sem-amarillo{background:#EF9F27}
+.sem-rojo{background:#E24B4A}
+.sem-azul{background:#4A90D9}
+.sem-gris{background:#9CA3AF}
+.cl-estado{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600}
+.est-activo{background:#E8F8F0;color:#1A7A3C}
+.est-siniestrado{background:#FDEDEC;color:#922B21}
+.est-renovacion{background:#FEF9E7;color:#7D6608}
+.est-prospecto{background:#EBF4FC;color:#1A5276}
+.est-inactivo{background:#F0F2F5;color:#4B5563}
+.cl-ramo{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:500}
+.ram-auto{background:#EBF4FC;color:#1A5276}
+.ram-vida{background:#E8F8F0;color:#1A7A3C}
+.ram-hogar{background:#FEF9E7;color:#7D6608}
+.ram-art{background:#FDEDEC;color:#922B21}
+.ram-comb{background:#F5EEF8;color:#6C3483}
+.ram-emp{background:#F0F2F5;color:#4B5563}
+.cl-dni{font-size:11px;color:var(--lt)}
+.cl-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.wapp-btn{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+.wapp-btn:hover{background:#D5F5E3}
+.cl-count{font-size:12px;color:var(--muted);margin-bottom:10px}
+.cl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 14px;background:var(--bg);border-radius:var(--rsm);margin-top:10px;align-items:center}
 </style>
 </head>
 <body>
@@ -268,9 +306,9 @@ tr:hover td{background:var(--bg)}
       <!-- CLIENTES -->
       <div id="sec-clientes" class="sec">
         <div class="toprow" id="cl-toprow">
-          <input class="srch" type="text" placeholder="Buscar por nombre, DNI, email..." id="srch-cl">
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <select class="srch" style="width:auto" id="fil-cl">
+          <input class="srch" type="text" placeholder="Nombre, apellido, DNI, CUIT, patente..." id="srch-cl" style="width:300px">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+            <select class="srch" style="width:auto;font-size:12px" id="fil-cl">
               <option value="">Todos los estados</option>
               <option value="prospecto">Prospectos</option>
               <option value="activo">Activos</option>
@@ -278,14 +316,26 @@ tr:hover td{background:var(--bg)}
               <option value="siniestrado">Siniestrados</option>
               <option value="inactivo">Inactivos</option>
             </select>
-            <button class="btn btn-sm btn-p" id="btn-nc2">+ Nuevo cliente</button>
+            <select class="srch" style="width:auto;font-size:12px" id="fil-ramo-cl">
+              <option value="">Todos los ramos</option>
+              <option value="Automotor">Automotor</option>
+              <option value="Vida">Vida</option>
+              <option value="Hogar">Hogar</option>
+              <option value="ART">ART</option>
+              <option value="Combinado">Combinado</option>
+              <option value="Empresas">Empresas</option>
+            </select>
+            <select class="srch" style="width:auto;font-size:12px" id="ord-cl">
+              <option value="apellido">Apellido A-Z</option>
+              <option value="reciente">Más recientes</option>
+              <option value="estado">Por estado</option>
+            </select>
+            <button class="btn btn-p" id="btn-nc2">+ Nuevo cliente</button>
           </div>
         </div>
-        <div class="tbl" id="cl-tabla-wrap">
-          <table>
-            <thead><tr><th>Cliente</th><th>Estado</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>C.P.</th><th>Tipo seguro</th><th></th></tr></thead>
-            <tbody id="tbody-cl"></tbody>
-          </table>
+        <div class="cl-count" id="cl-count"></div>
+        <div id="cl-tabla-wrap">
+          <div id="tbody-cl"></div>
         </div>
         <!-- FICHA CLIENTE -->
         <div class="ficha-wrap" id="ficha-wrap">
@@ -1078,30 +1128,98 @@ async function cargarDashboard() {
 async function cargarClientes(filtro, estado) {
   filtro = filtro || '';
   estado = estado || '';
-  const tbody = document.getElementById('tbody-cl');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="loading"><span class="spin"></span>Cargando...</div></td></tr>';
-  let q = sb.from('clientes').select('*').eq('productor_id', user.id).order('apellido');
-  if (estado) q = q.eq('estado', estado);
-  if (filtro) q = q.or('nombre.ilike.%' + filtro + '%,apellido.ilike.%' + filtro + '%,dni.ilike.%' + filtro + '%');
-  const { data } = await q;
-  allCl = data || [];
-  actualizarSelectsClientes();
-  if (!allCl.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">No hay clientes. Usá "+ Nuevo cliente" para agregar.</div></td></tr>'; return; }
-  const eb = { prospecto: 'bb', activo: 'bv', renovacion: 'ba', siniestrado: 'br', inactivo: 'bgr' };
-  tbody.innerHTML = allCl.map(function(c) {
-    return '<tr>'
-      + '<td><div style="font-weight:500">' + c.nombre + ' ' + c.apellido + '</div><div style="font-size:11px;color:var(--lt)">' + (c.email_principal || '') + '</div></td>'
-      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
-      + '<td>' + (c.dni || '—') + '</td>'
-      + '<td>' + (c.telefono_principal || '—') + '</td>'
-      + '<td>' + (c.localidad || '—') + '</td>'
-      + '<td>' + (c.zona_geografica || '—') + '</td>'
-      + '<td>' + (c.canal_origen || '—') + '</td>'
-      + '<td><button class="btn btn-sm btn-p" onclick="verFicha(\'' + c.id + '\')">Ver ficha</button></td>'
-      + '</tr>';
-  }).join('');
-}
+  const ramoFil = document.getElementById('fil-ramo-cl') ? document.getElementById('fil-ramo-cl').value : '';
+  const orden = document.getElementById('ord-cl') ? document.getElementById('ord-cl').value : 'apellido';
+  const cont = document.getElementById('tbody-cl');
+  cont.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
 
+  let q = sb.from('clientes').select('*').eq('productor_id', user.id);
+  if (estado) q = q.eq('estado', estado);
+  if (filtro) q = q.or('nombre.ilike.%' + filtro + '%,apellido.ilike.%' + filtro + '%,dni.ilike.%' + filtro + '%,patente.ilike.%' + filtro + '%');
+  if (orden === 'reciente') q = q.order('created_at', {ascending: false});
+  else if (orden === 'estado') q = q.order('estado');
+  else q = q.order('apellido');
+
+  const { data } = await q;
+  let clientes = data || [];
+
+  if (ramoFil && clientes.length) {
+    const ids = clientes.map(function(cl) { return cl.id; });
+    const { data: pols } = await sb.from('polizas').select('cliente_id').in('cliente_id', ids).eq('ramo', ramoFil).eq('estado', 'activa');
+    const idsConRamo = new Set((pols || []).map(function(p) { return p.cliente_id; }));
+    clientes = clientes.filter(function(cl) { return idsConRamo.has(cl.id); });
+  }
+
+  allCl = clientes;
+  actualizarSelectsClientes();
+
+  const countEl = document.getElementById('cl-count');
+  if (countEl) countEl.textContent = clientes.length + ' cliente' + (clientes.length !== 1 ? 's' : '');
+
+  if (!clientes.length) {
+    cont.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128101;</div><div class="empty-title">No hay clientes</div></div>';
+    return;
+  }
+
+  const allIds = clientes.map(function(cl) { return cl.id; });
+  const { data: todasPols } = await sb.from('polizas').select('cliente_id,ramo').in('cliente_id', allIds).eq('estado', 'activa');
+  const polPorCliente = {};
+  (todasPols || []).forEach(function(p) {
+    if (!polPorCliente[p.cliente_id]) polPorCliente[p.cliente_id] = [];
+    if (!polPorCliente[p.cliente_id].includes(p.ramo)) polPorCliente[p.cliente_id].push(p.ramo);
+  });
+
+  const { data: sinsAbiertos } = await sb.from('siniestros').select('cliente_id').in('cliente_id', allIds).neq('estado', 'cerrado');
+  const sinSet = new Set((sinsAbiertos || []).map(function(s) { return s.cliente_id; }));
+
+  const en30 = new Date(Date.now() + 30 * 864e5).toISOString().split('T')[0];
+  const hoy2 = new Date().toISOString().split('T')[0];
+  const { data: polsVenc } = await sb.from('polizas').select('cliente_id').in('cliente_id', allIds).lte('fecha_vencimiento', en30).gte('fecha_vencimiento', hoy2).eq('estado', 'activa');
+  const vencSet = new Set((polsVenc || []).map(function(p) { return p.cliente_id; }));
+
+  const ramoClass = {Automotor:'ram-auto',Vida:'ram-vida',Hogar:'ram-hogar',ART:'ram-art',Combinado:'ram-comb',Empresas:'ram-emp'};
+  const semColor = {activo:'sem-verde',renovacion:'sem-amarillo',siniestrado:'sem-rojo',prospecto:'sem-azul',inactivo:'sem-gris'};
+  const estClass = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
+  const cardClass = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
+
+  const html = [];
+  clientes.forEach(function(cl) {
+    let semC = semColor[cl.estado] || 'sem-gris';
+    let cardC = cardClass[cl.estado] || '';
+    if (sinSet.has(cl.id)) { semC = 'sem-rojo'; cardC = 'st-siniestrado'; }
+    else if (vencSet.has(cl.id) && cl.estado !== 'siniestrado') { semC = 'sem-amarillo'; cardC = 'st-renovacion'; }
+
+    const ramos = polPorCliente[cl.id] || [];
+    const ramoChips = ramos.slice(0,4).map(function(r) {
+      return '<span class="cl-ramo ' + (ramoClass[r] || 'ram-emp') + '">' + r + '</span>';
+    }).join('');
+
+    const identDoc = cl.dni ? 'DNI ' + cl.dni : '';
+    const wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
+
+    const p = [];
+    p.push('<div class="cl-card ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
+    p.push('<div class="cl-main">');
+    p.push('<div class="cl-name"><div class="cl-sem ' + semC + '"></div>' + cl.apellido + ', ' + cl.nombre + '</div>');
+    p.push('<div class="cl-email">' + (cl.email_principal || 'Sin email') + '</div>');
+    p.push('<div class="cl-meta">');
+    p.push('<span class="cl-estado ' + (estClass[cl.estado] || 'est-inactivo') + '">' + cl.estado + '</span>');
+    p.push(ramoChips);
+    if (identDoc) { p.push('<span class="cl-dni">' + identDoc + '</span>'); }
+    p.push('</div></div>');
+    p.push('<div class="cl-actions">');
+    if (wappNum) {
+      p.push('<button class="wapp-btn" onclick="event.stopPropagation();window.open(\'https://wa.me/549' + wappNum + '\',\'_blank\')">WhatsApp</button>');
+    }
+    p.push('</div></div>');
+    html.push(p.join(''));
+  });
+
+  html.push('<div class="cl-legend"><span>Sem&aacute;foro:</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-rojo"></span>Siniestro</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-amarillo"></span>Renovaci&oacute;n pr&oacute;xima</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-verde"></span>Al d&iacute;a</span><span style="display:flex;align-items:center;gap:4px"><span class="cl-sem sem-azul"></span>Prospecto</span></div>');
+  cont.innerHTML = html.join('');
+}
+document.getElementById('fil-ramo-cl') && document.getElementById('fil-ramo-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
+document.getElementById('ord-cl') && document.getElementById('ord-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
 document.getElementById('srch-cl').addEventListener('input', function() {
   clearTimeout(window._st);
   window._st = setTimeout(function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); }, 300);
