@@ -373,7 +373,8 @@ tr:hover td{background:var(--bg)}
       <div id="sec-tareas" class="sec">
         <div class="toprow">
           <div style="display:flex;gap:5px;flex-wrap:wrap" id="tablero-tabs">
-            <button class="btn btn-sm btn-p" onclick="setTablero('',this)">Todos</button>
+            <button class="btn btn-sm btn-p" onclick="setTablero('hoy',this)">Hoy</button>
+            <button class="btn btn-sm" onclick="setTablero('todas',this)">Todas</button>
             <button class="btn btn-sm" onclick="setTablero('ventas',this)">Ventas</button>
             <button class="btn btn-sm" onclick="setTablero('siniestros',this)">Siniestros</button>
             <button class="btn btn-sm" onclick="setTablero('cobranzas',this)">Cobranzas</button>
@@ -952,7 +953,7 @@ let user = null;
 let allCl = [];
 let fichaId = null;
 let fichaTab = 'resumen';
-let tablerof = '';
+let tablerof = 'hoy';
 let fichaClienteIdForInt = null;
 
 // ---- AUTH ----
@@ -1712,27 +1713,55 @@ async function marcarPagada(id) {
 // ---- TAREAS ----
 async function cargarTareas() {
   const filCl = document.getElementById('fil-tar-cl') ? document.getElementById('fil-tar-cl').value : '';
+  const hoy = new Date().toISOString().split('T')[0];
+
+  // Build query
   let q = sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', {ascending:false});
-  if (tablerof) q = q.eq('tablero', tablerof);
+
+  // Filter by tablero or special mode
+  if (tablerof === 'hoy') {
+    // Solo tareas de hoy (fecha_limite = hoy O creadas hoy sin fecha)
+    q = q.or('fecha_limite.eq.' + hoy + ',and(fecha_limite.is.null,estado.eq.pendiente)');
+  } else if (tablerof === 'todas' || tablerof === '') {
+    // Sin filtro - todas las tareas
+  } else {
+    // Filtro por tablero específico
+    q = q.eq('tablero', tablerof);
+  }
+
   if (filCl) q = q.eq('cliente_id', filCl);
   const { data } = await q;
-  const lista = data || [];
+  let lista = data || [];
+
+  // Para "Hoy": filtrar más estrictamente en el cliente (fecha_limite === hoy)
+  if (tablerof === 'hoy') {
+    lista = lista.filter(function(t) {
+      return t.fecha_limite === hoy || (!t.fecha_limite && t.estado === 'pendiente');
+    });
+  }
+
   const cols = {p:'pendiente', e:'encurso', r:'esperando', c:'cerrada', x:'cancelada'};
   const catCls = {ventas:'cat-ventas', siniestros:'cat-siniestros', cobranzas:'cat-cobranzas', renovaciones:'cat-renovaciones', general:'cat-general'};
   const prioCls = {urgente:'pi-urgente', alta:'pi-alta', media:'pi-media', baja:'pi-baja'};
   const prioEmoji = {urgente:'🔴', alta:'🟡', media:'🔵', baja:'⚪'};
   const sig = {pendiente:'encurso', encurso:'esperando', esperando:'cerrada'};
+
   Object.keys(cols).forEach(function(k) {
     const items = lista.filter(function(t) { return t.estado === cols[k]; });
     const cntEl = document.getElementById('cnt-' + k);
     if (cntEl) cntEl.textContent = items.length;
     const col = document.getElementById('col-' + k);
     if (!col) return;
-    if (!items.length) { col.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--lt)">Sin tareas</div>'; return; }
+    if (!items.length) {
+      const msg = tablerof === 'hoy' && k === 'p' ? 'No hay tareas para hoy 🎉' : 'Sin tareas';
+      col.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--lt)">' + msg + '</div>';
+      return;
+    }
     col.innerHTML = items.map(function(t) {
       const fechaStr = t.fecha_limite ? t.fecha_limite.slice(5).replace('-','/') : null;
-      const esVencida = t.fecha_limite && new Date(t.fecha_limite) < new Date();
-            const parts = [];
+      const esVencida = t.fecha_limite && new Date(t.fecha_limite) < new Date(hoy);
+      const esHoy = t.fecha_limite === hoy;
+      const parts = [];
       parts.push('<div class="task-card" data-id="' + t.id + '" onclick="handleTaskClick(this)" oncontextmenu="handleTaskCtx(event,this)">');
       parts.push('<div class="task-card-top">');
       const catClass = catCls[t.tablero] || 'cat-general';
@@ -1743,30 +1772,33 @@ async function cargarTareas() {
       parts.push('</div>');
       parts.push('<div class="task-card-body">');
       parts.push('<div class="task-title">' + t.titulo + '</div>');
-      if (t.clientes) { parts.push('<div class="task-client-name">\u{1F464} ' + t.clientes.nombre + ' ' + t.clientes.apellido + '</div>'); }
+      if (t.clientes) { parts.push('<div class="task-client-name">&#128100; ' + t.clientes.nombre + ' ' + t.clientes.apellido + '</div>'); }
       parts.push('<div class="task-tipo">' + t.tipo + '</div>');
       parts.push('</div>');
       parts.push('<div class="task-card-footer">');
       parts.push('<div class="task-actions-row">');
-      parts.push('<button class="t-action" onclick="event.stopPropagation();verDetalleTarea(\'' + t.id + '\')" title="Ver detalle">&#9999;</button>');
-      if (t.cliente_id) { parts.push('<button class="t-action" onclick="event.stopPropagation();irACliente(\'' + t.cliente_id + '\')" title="Ver cliente">&#128100;</button>'); }
-      if (sig[t.estado]) { parts.push('<button class="t-action" onclick="event.stopPropagation();moverTarea(\'' + t.id + '\',\'' + sig[t.estado] + '\')" title="Avanzar">&#8594;</button>'); }
+      parts.push('<button class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
+      if (t.cliente_id) { parts.push('<button class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
+      if (sig[t.estado]) { parts.push('<button class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
       parts.push('</div>');
       if (fechaStr) {
-        const chipClass = esVencida ? 'date-chip late' : 'date-chip';
+        let chipClass = 'date-chip';
+        if (esVencida) chipClass += ' late';
+        else if (esHoy) chipClass = 'date-chip' + '" style="background:#EAF3DE;color:#27500A';
         parts.push('<span class="' + chipClass + '">' + fechaStr + '</span>');
       }
       parts.push('</div>');
       parts.push('</div>');
-      return parts.join('')
+      return parts.join('');
     }).join('');
   });
 }
-
 let ctxTareaId = null;
 
 
 function handleTaskClick(el) {
+  // Don't open detail if clicking action buttons
+  if (event.target.closest('[data-act]')) return;
   const id = el.getAttribute('data-id');
   if (id) verDetalleTarea(id);
 }
@@ -1776,6 +1808,20 @@ function handleTaskCtx(e, el) {
   const id = el.getAttribute('data-id');
   if (id) showCtx(e, id);
 }
+
+// Handle action button clicks via event delegation
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  e.stopPropagation();
+  const card = btn.closest('[data-id]');
+  if (!card) return;
+  const id = card.getAttribute('data-id');
+  const act = btn.getAttribute('data-act');
+  if (act === 'ver') { verDetalleTarea(id); }
+  else if (act === 'cliente') { const clid = btn.getAttribute('data-clid'); if (clid) irACliente(clid); }
+  else if (act === 'sig') { const sig = btn.getAttribute('data-sig'); if (sig) moverTarea(id, sig); }
+});
 
 
 function showCtx(e, id) {
