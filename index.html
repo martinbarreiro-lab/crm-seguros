@@ -507,7 +507,14 @@ tr:hover td{background:var(--bg)}
       <div class="frow"><label>DNI</label><input type="text" id="f-dni" placeholder="XX.XXX.XXX"></div>
       <div class="frow"><label>Fecha de nacimiento</label><input type="date" id="f-nac"></div>
     </div>
-    <div class="frow"><label>Dirección</label><input type="text" id="f-dir" placeholder="Calle, número, piso/dpto"></div>
+    <div class="fg2">
+      <div class="frow"><label>Calle</label><input type="text" id="f-calle" placeholder="Ej: Corrientes"></div>
+      <div class="frow"><label>Número</label><input type="text" id="f-num" placeholder="1234"></div>
+    </div>
+    <div class="fg2">
+      <div class="frow"><label>Piso (opcional)</label><input type="text" id="f-piso" placeholder="2"></div>
+      <div class="frow"><label>Departamento (opcional)</label><input type="text" id="f-dpto" placeholder="B o 4"></div>
+    </div>
     <div class="fg2">
       <div class="frow"><label>Localidad</label>
         <select id="f-loc">
@@ -1205,8 +1212,8 @@ async function cargarClientes(filtro, estado) {
   html.push('<div class="cl-th">Cliente</div>');
   html.push('<div class="cl-th">Contacto</div>');
   html.push('<div class="cl-th">Domicilio</div>');
-  html.push('<div class="cl-th">Identificaci&oacute;n</div>');
-  html.push('<div class="cl-th"></div>');
+  html.push('<div class="cl-th">DNI / CUIT</div>');
+  html.push('<div class="cl-th">Acciones</div>');
   html.push('</div>');
 
   clientes.forEach(function(cl) {
@@ -1254,14 +1261,13 @@ async function cargarClientes(filtro, estado) {
     // Col 3: Domicilio
     p.push('<div class="cl-col">');
     if (domicilio1) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#127968;</span><span>' + domicilio1 + '</span></div>'); }
-    if (domicilio2) { p.push('<div class="cl-data-line" style="padding-left:16px"><span>' + domicilio2 + '</span></div>'); }
+    if (domicilio2) { p.push('<div class="cl-data-line"><span class="cl-data-icon" style="opacity:0">&#127968;</span><span style="color:var(--lt)">' + domicilio2 + '</span></div>'); }
+    if (!domicilio1 && !domicilio2) { p.push('<div class="cl-data-line" style="color:var(--lt)">Sin domicilio</div>'); }
     p.push('</div>');
 
-    // Col 4: DNI / CUIT + polizas
+    // Col 4: DNI / CUIT
     p.push('<div class="cl-col">');
     if (identDoc) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#128196;</span><span>' + identDoc + '</span></div>'); }
-    if (ramoChips) { p.push('<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:4px">' + ramoChips + '</div>'); }
-    if (polCnt > 0) { p.push('<div class="cl-pol-cnt">' + polCnt + ' p&oacute;liza' + (polCnt !== 1 ? 's' : '') + '</div>'); }
     p.push('</div>');
 
     // Col 5: Acciones
@@ -1610,7 +1616,16 @@ document.getElementById('btn-guardar-cl').onclick = async function() {
     apellido: document.getElementById('f-apellido').value.trim(),
     dni: document.getElementById('f-dni').value.trim(),
     fecha_nacimiento: document.getElementById('f-nac').value || null,
-    direccion: document.getElementById('f-dir').value.trim(),
+    direccion: (function() {
+      const calle = document.getElementById('f-calle') ? document.getElementById('f-calle').value.trim() : '';
+      const num = document.getElementById('f-num') ? document.getElementById('f-num').value.trim() : '';
+      const piso = document.getElementById('f-piso') ? document.getElementById('f-piso').value.trim() : '';
+      const dpto = document.getElementById('f-dpto') ? document.getElementById('f-dpto').value.trim() : '';
+      let dir = [calle, num].filter(Boolean).join(' ');
+      if (piso) dir += ', Piso ' + piso;
+      if (dpto) dir += ', Dpto ' + dpto;
+      return dir;
+    })(),
     localidad: locNombre,
     zona_geografica: cp,
     telefono_principal: document.getElementById('f-tel1').value.trim(),
@@ -2457,7 +2472,7 @@ init();
 </div>
 
 /* ===== CARDS CLIENTES ===== */
-.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:4px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:14px 20px;display:grid;grid-template-columns:1.8fr 1.4fr 1.4fr 1fr auto;gap:16px;align-items:center;cursor:pointer;transition:all .15s;margin-bottom:7px}
+.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:4px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:14px 20px;display:grid;grid-template-columns:minmax(160px,2fr) minmax(160px,1.8fr) minmax(140px,1.5fr) minmax(120px,1.2fr) 120px;gap:20px;align-items:center;cursor:pointer;transition:all .15s;margin-bottom:7px}
 .cl-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07);transform:translateY(-1px)}
 .cl-card.st-activo{border-left-color:#1D9E75}
 .cl-card.st-siniestrado{border-left-color:#E24B4A}
@@ -2501,6 +2516,6 @@ init();
 .mail-menu-item:last-child{border-bottom:none}
 .mail-menu-item:hover{background:var(--bg)}
 .cl-count{font-size:12px;color:var(--muted);margin-bottom:10px}
-.cl-table-header{display:grid;grid-template-columns:1.8fr 1.4fr 1.4fr 1fr auto;gap:16px;padding:6px 20px 6px 24px;margin-bottom:4px}
+.cl-table-header{display:grid;grid-template-columns:minmax(160px,2fr) minmax(160px,1.8fr) minmax(140px,1.5fr) minmax(120px,1.2fr) 120px;gap:20px;padding:6px 20px 6px 24px;margin-bottom:4px}
 .cl-th{font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.05em}
 .cl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 14px;background:var(--bg);border-radius:var(--rsm);margin-top:10px;align-items:center}
