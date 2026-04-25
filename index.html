@@ -1719,13 +1719,9 @@ async function cargarTareas() {
   let q = sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', {ascending:false});
 
   // Filter by tablero or special mode
-  if (tablerof === 'hoy') {
-    // Solo tareas de hoy (fecha_limite = hoy O creadas hoy sin fecha)
-    q = q.or('fecha_limite.eq.' + hoy + ',and(fecha_limite.is.null,estado.eq.pendiente)');
-  } else if (tablerof === 'todas' || tablerof === '') {
-    // Sin filtro - todas las tareas
-  } else {
-    // Filtro por tablero específico
+  // For 'hoy' and 'todas' - fetch all, filter client-side
+  // For specific tablero - filter server-side
+  if (tablerof !== 'hoy' && tablerof !== 'todas' && tablerof !== '') {
     q = q.eq('tablero', tablerof);
   }
 
@@ -1988,6 +1984,15 @@ async function agregarComent(tareaId) {
   document.getElementById('nuevo-coment').value = '';
   await cargarComentariosTarea(tareaId);
 }
+function setTablero(tab, btn) {
+  tablerof = tab;
+  document.querySelectorAll('#tablero-tabs .btn').forEach(function(b) {
+    b.className = 'btn btn-sm';
+  });
+  if (btn) btn.className = 'btn btn-p btn-sm';
+  cargarTareas();
+}
+
 async function moverTarea(id, estado) {
   await sb.from('tareas').update({ estado }).eq('id', id);
   cargarTareas();
