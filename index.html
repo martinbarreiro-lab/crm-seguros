@@ -1001,7 +1001,15 @@ tr:hover td{background:var(--bg)}
       </div>
       <div style="border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comentarios</div>
-        <div id="tar-
+        <div id="tar-comentarios" style="flex:1;overflow-y:auto;max-height:320px;margin-bottom:10px"></div>
+        <textarea id="nuevo-coment" placeholder="Agregar comentario..." style="padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit;resize:none;min-height:60px;margin-bottom:6px"></textarea>
+        <button class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
 const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
 const SKEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
 const sb = window.supabase.createClient(SURL, SKEY);
@@ -2305,9 +2313,9 @@ async function cargarAnalisis() {
 }
 
 // ---- BOTONES GLOBALES ----
-document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); };
+document.getElementById('btn-nc') && (document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
 document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
-document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); };
+document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
 document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-sin').classList.add('open'); });
 document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cob').classList.add('open'); });
@@ -2447,20 +2455,7 @@ init();  const html = [];
     html.push(p.join(''));
   });
 
-  html.push('</div>');
-#9660;</button>');
-      p.push('<div class="mail-menu">');
-      p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
-      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
-      p.push('</div></div>');
-    }
-    p.push('</div>');
-    p.push('</div>');
-    html.push(p.join(''));
-  });
-
-  html.push('</div>');
-</script>
+  html.push('</div>');</script>
 </body>
 </html><!-- Modal Póliza -->
 <div class="modal-ov" id="modal-pol">
