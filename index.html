@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MB Seguros — CRM</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-<style>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --blue:#4A90D9;--med:#2E6DA4;--light:#EBF4FC;
@@ -19,7 +20,7 @@
   --r:10px;--rsm:7px;
   --shadow:0 2px 8px rgba(0,0,0,.08)
 }
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
 input,select,textarea,button{font-family:inherit;font-size:14px}
 
 /* LOGIN */
@@ -54,7 +55,7 @@ input,select,textarea,button{font-family:inherit;font-size:14px}
 .btn-out:hover{color:var(--red)}
 .main{margin-left:220px;flex:1;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;background:var(--white);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50}
-.topbar-t{font-size:16px;font-weight:600}
+.topbar-t{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px}
 .page{padding:24px;flex:1}
 .sec{display:none}.sec.active{display:block}
 
@@ -172,19 +173,19 @@ tr:hover td{background:var(--bg)}
 
 
 /* ===== TABLA CLIENTES ===== */
-.cl-table{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;background:var(--white)}
-.cl-table-header{display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.1fr 130px;background:var(--bg);border-bottom:1px solid var(--border);padding:9px 0}
-.cl-th{font-size:10px;font-weight:600;color:var(--lt);text-transform:uppercase;letter-spacing:.06em;padding:0 12px}
-.cl-row{display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.1fr 130px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);border-left:3px solid transparent;cursor:pointer;background:var(--white);transition:background .15s}
+.cl-table{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.cl-table-header{display:grid;grid-template-columns:2.2fr 1.8fr 1.6fr 1.1fr 110px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;padding:10px 0}
+.cl-th{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;padding:0 16px}
+.cl-row{display:grid;grid-template-columns:2.2fr 1.8fr 1.6fr 1.1fr 110px;align-items:center;min-height:64px;padding:12px 0;border-bottom:1px solid #e5e7eb;border-left:3px solid transparent;cursor:pointer;background:#fff;transition:all 0.2s ease}
 .cl-row:last-child{border-bottom:none}
-.cl-row:hover{background:#FAFBFC}
+.cl-row:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.05);transform:translateY(-1px)}
 .cl-row.st-activo{border-left-color:#1D9E75}
 .cl-row.st-prospecto{border-left-color:#4A90D9}
 .cl-row.st-inactivo{border-left-color:#9CA3AF}
 .cl-row.st-renovacion{border-left-color:#EF9F27}
 .cl-row.st-siniestrado{border-left-color:#E24B4A}
-.cl-col{padding:0 12px;min-width:0}
-.cl-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-col{padding:0 16px;min-width:0}
+.cl-name{font-size:15px;font-weight:600;color:#111827;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.1px}
 .cl-badges{display:flex;gap:4px;flex-wrap:wrap}
 .cl-estado{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600;display:inline-block}
 .est-activo{background:#E8F8F0;color:#1A7A3C}
@@ -192,22 +193,23 @@ tr:hover td{background:var(--bg)}
 .est-inactivo{background:#F0F2F5;color:#4B5563}
 .est-renovacion{background:#FEF9E7;color:#7D6608}
 .est-siniestrado{background:#FDEDEC;color:#922B21}
-.cl-dline{font-size:12px;color:var(--muted);margin-bottom:3px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-dline{font-size:13px;color:#6B7280;margin-bottom:4px;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cl-dline:last-child{margin-bottom:0}
-.cl-dline .di{font-size:10px;color:var(--lt);flex-shrink:0;width:14px}
-.cl-dline-sub{font-size:11px;color:var(--lt);padding-left:18px;margin-top:1px}
-.cl-actions{display:flex;gap:6px;padding:0 10px;align-items:center}
-.btn-wa{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 10px;font-size:11px;cursor:pointer;font-weight:500;flex:1;text-align:center;font-family:inherit;white-space:nowrap}
-.btn-wa:hover{background:#D5F5E3}
-.mail-wrap{position:relative;flex:1}
-.mail-btn{background:#EBF4FC;color:#1A5276;border:0.5px solid #85B7EB;border-radius:var(--rsm);padding:6px 10px;font-size:11px;cursor:pointer;font-weight:500;width:100%;text-align:center;font-family:inherit}
-.mail-btn:hover{background:#D6EAF8}
-.mail-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:0.5px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:200;min-width:170px;display:none}
+.cl-dline .di{font-size:11px;color:#9CA3AF;flex-shrink:0;width:14px}
+.cl-dline-sub{font-size:12px;color:#9CA3AF;padding-left:20px;margin-top:2px}
+.cl-actions{display:flex;flex-direction:column;gap:5px;padding:0 12px;align-items:stretch}
+.btn-wa{background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;border-radius:6px;padding:0 10px;height:32px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:90px;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px;transition:background .15s}
+.btn-wa:hover{background:#D1FAE5}
+.mail-wrap{position:relative;width:90px}
+.mail-btn{background:#fff;color:#374151;border:1px solid #D1D5DB;border-radius:6px;padding:0 10px;height:32px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;width:90px;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .15s}
+.mail-btn:hover{background:#F9FAFB;border-color:#9CA3AF}
+.mail-menu{position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;min-width:175px;display:none}
 .mail-menu.open{display:block}
-.mail-menu-item{display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;cursor:pointer;color:var(--text);background:none;border:none;font-family:inherit;border-bottom:0.5px solid var(--border)}
+.mail-menu-item{display:block;width:100%;text-align:left;padding:10px 14px;font-size:12px;cursor:pointer;color:#374151;background:none;border:none;font-family:inherit;border-bottom:1px solid #f3f4f6}
 .mail-menu-item:last-child{border-bottom:none}
-.mail-menu-item:hover{background:var(--bg)}
-.cl-count{font-size:12px;color:var(--muted);margin-bottom:8px}
+.mail-menu-item:hover{background:#F9FAFB}
+.cl-count{font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:500}
+.wapp-icon{font-size:12px}
 </style>
 </head>
 <body>
@@ -275,10 +277,7 @@ tr:hover td{background:var(--bg)}
   <div class="main">
     <div class="topbar">
       <div class="topbar-t" id="topbar-title">Dashboard</div>
-      <div style="display:flex;gap:7px">
-        <button class="btn btn-sm btn-p" id="btn-nc">+ Cliente</button>
-        <button class="btn btn-sm btn-p" id="btn-np">+ Póliza</button>
-      </div>
+      <div style="display:flex;gap:7px" id="topbar-actions"></div>
     </div>
     <div class="page">
       <div class="alerta alerta-ok" id="alerta-g"></div>
@@ -326,6 +325,14 @@ tr:hover td{background:var(--bg)}
               <option value="ART">ART</option>
               <option value="Combinado">Combinado</option>
               <option value="Empresas">Empresas</option>
+            </select>
+            <select class="srch" style="width:auto;font-size:12px" id="fil-aseg-cl">
+              <option value="">Todas las compañías</option>
+              <option value="Federación Patronal">Federación Patronal</option>
+              <option value="La Segunda">La Segunda</option>
+              <option value="Sancor">Sancor</option>
+              <option value="RUS">RUS</option>
+              <option value="Zurich">Zurich</option>
             </select>
             <select class="srch" style="width:auto;font-size:12px" id="ord-cl">
               <option value="apellido">Apellido A-Z</option>
@@ -994,16 +1001,7 @@ tr:hover td{background:var(--bg)}
       </div>
       <div style="border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comentarios</div>
-        <div id="tar-comentarios" style="flex:1;overflow-y:auto;max-height:320px;margin-bottom:10px"></div>
-        <textarea id="nuevo-coment" placeholder="Agregar comentario..." style="padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit;resize:none;min-height:60px;margin-bottom:6px"></textarea>
-        <button class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<script>
+        <div id="tar-
 const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
 const SKEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
 const sb = window.supabase.createClient(SURL, SKEY);
@@ -1138,6 +1136,7 @@ async function cargarClientes(filtro, estado) {
   filtro = filtro || '';
   estado = estado || '';
   const ramoFil = document.getElementById('fil-ramo-cl') ? document.getElementById('fil-ramo-cl').value : '';
+  const asegFil = document.getElementById('fil-aseg-cl') ? document.getElementById('fil-aseg-cl').value : '';
   const orden = document.getElementById('ord-cl') ? document.getElementById('ord-cl').value : 'apellido';
   const cont = document.getElementById('tbody-cl');
   cont.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
@@ -1152,11 +1151,20 @@ async function cargarClientes(filtro, estado) {
   const { data } = await q;
   let clientes = data || [];
 
+  // Filter by ramo
   if (ramoFil && clientes.length) {
     const ids = clientes.map(function(cl) { return cl.id; });
     const { data: pols } = await sb.from('polizas').select('cliente_id').in('cliente_id', ids).eq('ramo', ramoFil).eq('estado', 'activa');
     const idsConRamo = new Set((pols || []).map(function(p) { return p.cliente_id; }));
     clientes = clientes.filter(function(cl) { return idsConRamo.has(cl.id); });
+  }
+
+  // Filter by aseguradora
+  if (asegFil && clientes.length) {
+    const ids = clientes.map(function(cl) { return cl.id; });
+    const { data: polsA } = await sb.from('polizas').select('cliente_id').in('cliente_id', ids).ilike('aseguradora', '%' + asegFil + '%');
+    const idsConAseg = new Set((polsA || []).map(function(p) { return p.cliente_id; }));
+    clientes = clientes.filter(function(cl) { return idsConAseg.has(cl.id); });
   }
 
   allCl = clientes;
@@ -1170,60 +1178,34 @@ async function cargarClientes(filtro, estado) {
     return;
   }
 
-  const allIds = clientes.map(function(cl) { return cl.id; });
-
-  // Polizas activas por cliente
-  const { data: todasPols } = await sb.from('polizas').select('cliente_id,ramo,id').in('cliente_id', allIds).eq('estado', 'activa');
-  const polPorCliente = {};
-  const polCntPorCliente = {};
-  (todasPols || []).forEach(function(p) {
-    if (!polPorCliente[p.cliente_id]) { polPorCliente[p.cliente_id] = []; polCntPorCliente[p.cliente_id] = 0; }
-    if (!polPorCliente[p.cliente_id].includes(p.ramo)) polPorCliente[p.cliente_id].push(p.ramo);
-    polCntPorCliente[p.cliente_id]++;
-  });
-
-  // Siniestros abiertos
-  const { data: sinsAbiertos } = await sb.from('siniestros').select('cliente_id').in('cliente_id', allIds).neq('estado', 'cerrado');
-  const sinSet = new Set((sinsAbiertos || []).map(function(s) { return s.cliente_id; }));
-
-  // Renovaciones proximas 30 dias
-  const en30 = new Date(Date.now() + 30 * 864e5).toISOString().split('T')[0];
-  const hoy2 = new Date().toISOString().split('T')[0];
-  const { data: polsVenc } = await sb.from('polizas').select('cliente_id').in('cliente_id', allIds).lte('fecha_vencimiento', en30).gte('fecha_vencimiento', hoy2).eq('estado', 'activa');
-  const vencSet = new Set((polsVenc || []).map(function(p) { return p.cliente_id; }));
-
-  const ramoClass = {Automotor:'ram-auto',Vida:'ram-vida',Hogar:'ram-hogar',ART:'ram-art',Combinado:'ram-comb',Empresas:'ram-emp'};
-  const estClass = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
-  const cardClass = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
+  const estMap = {activo:'est-activo', renovacion:'est-renovacion', siniestrado:'est-siniestrado', prospecto:'est-prospecto', inactivo:'est-inactivo'};
+  const cardMap = {activo:'st-activo', renovacion:'st-renovacion', siniestrado:'st-siniestrado', prospecto:'st-prospecto', inactivo:'st-inactivo'};
+  const visibleEstados = ['activo', 'prospecto', 'inactivo'];
 
   const html = [];
-
-  // Single header
   html.push('<div class="cl-table">');
   html.push('<div class="cl-table-header">');
-  html.push('<div class="cl-th" style="padding-left:10px">Cliente</div>');
+  html.push('<div class="cl-th" style="padding-left:18px">Cliente</div>');
   html.push('<div class="cl-th">Contacto</div>');
   html.push('<div class="cl-th">Domicilio</div>');
   html.push('<div class="cl-th">DNI / CUIT</div>');
   html.push('<div class="cl-th">Acciones</div>');
   html.push('</div>');
 
-  var visibleEstados = ['activo', 'prospecto', 'inactivo'];
-  var estMap = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
-  var cardMap = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
-
   clientes.forEach(function(cl) {
-    var cardC = cardMap[cl.estado] || 'st-inactivo';
-    var estadoVisible = visibleEstados.includes(cl.estado) ? cl.estado : null;
-    var dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
-    var domicilio1 = cl.direccion || '';
-    var domicilio2 = cl.localidad || '';
-    var wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
-    var emailTo = cl.email_principal || '';
+    const cardC = cardMap[cl.estado] || 'st-inactivo';
+    const estadoVisible = visibleEstados.includes(cl.estado) ? cl.estado : null;
+    const dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
+    const domicilio1 = cl.direccion || '';
+    const domicilio2 = cl.localidad || '';
+    const wappNum = cl.telefono_principal || '';
+    const emailTo = cl.email_principal || '';
+    const telDisplay = cl.telefono_principal || '';
 
-    var p = [];
+    const p = [];
     p.push('<div class="cl-row ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
 
+    // Col 1: Nombre + estado
     p.push('<div class="cl-col">');
     p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
     if (estadoVisible) {
@@ -1231,27 +1213,33 @@ async function cargarClientes(filtro, estado) {
     }
     p.push('</div>');
 
+    // Col 2: Contacto - email + telefono con icono whatsapp
     p.push('<div class="cl-col">');
     if (emailTo) { p.push('<div class="cl-dline"><span class="di">&#9993;</span>' + emailTo + '</div>'); }
-    if (cl.telefono_principal) { p.push('<div class="cl-dline"><span class="di">&#9990;</span>' + cl.telefono_principal + '</div>'); }
+    if (telDisplay) {
+      p.push('<div class="cl-dline"><span class="di">&#128242;</span>' + telDisplay + '</div>');
+    }
     p.push('</div>');
 
+    // Col 3: Domicilio
     p.push('<div class="cl-col">');
     if (domicilio1) { p.push('<div class="cl-dline"><span class="di">&#8962;</span>' + domicilio1 + '</div>'); }
     if (domicilio2) { p.push('<div class="cl-dline-sub">' + domicilio2 + '</div>'); }
     p.push('</div>');
 
+    // Col 4: DNI/CUIT
     p.push('<div class="cl-col">');
-    if (dniCuit) { p.push('<div class="cl-dline"><span class="di">&#9642;</span>' + dniCuit + '</div>'); }
+    if (dniCuit) { p.push('<div class="cl-dline" style="font-size:13px">' + dniCuit + '</div>'); }
     p.push('</div>');
 
+    // Col 5: Acciones - stacked buttons 90x32
     p.push('<div class="cl-actions" onclick="event.stopPropagation()">');
     if (wappNum) {
-      p.push('<button class="btn-wa" onclick="window.open(\'https://wa.me/' + wappNum + '\',\'_blank\')">WhatsApp</button>');
+      p.push('<button class="btn-wa" onclick="window.open(\'https://wa.me/' + wappNum + '\',\'_blank\')"><span class="wapp-icon">&#128172;</span>WhatsApp</button>');
     }
     if (emailTo) {
       p.push('<div class="mail-wrap">');
-      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">Mail &#9660;</button>');
+      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">&#9993; Mail &#9660;</button>');
       p.push('<div class="mail-menu">');
       p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
       p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
@@ -1265,60 +1253,6 @@ async function cargarClientes(filtro, estado) {
   html.push('</div>');
   cont.innerHTML = html.join('');
 }
-
-function toggleMailMenu(btn) {
-  const menu = btn.nextElementSibling;
-  document.querySelectorAll('.mail-menu.open').forEach(function(m) {
-    if (m !== menu) m.classList.remove('open');
-  });
-  menu.classList.toggle('open');
-}
-
-function abrirMail(email, asunto, cuerpo) {
-  const subject = asunto || '';
-  const body = cuerpo || '';
-  window.location.href = 'mailto:' + email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-}
-
-async function abrirMailConPoliza(clienteId, email) {
-  // Buscar la ultima poliza activa del cliente
-  const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', clienteId).eq('estado', 'activa').order('fecha_vencimiento', {ascending: false}).limit(1);
-  const pol = pols && pols.length ? pols[0] : null;
-  const { data: cl } = await sb.from('clientes').select('nombre,apellido').eq('id', clienteId).single();
-
-  if (!pol) {
-    mostrarAlerta('Este cliente no tiene pólizas activas para adjuntar.');
-    return;
-  }
-
-  const asunto = 'Su póliza de ' + pol.ramo + ' - ' + pol.numero;
-  const nombreCl = cl ? cl.nombre + ' ' + cl.apellido : '';
-  const lineas = [];
-  lineas.push('Estimado/a ' + nombreCl + ',');
-  lineas.push('');
-  lineas.push('Le enviamos el detalle de su p\u00f3liza:');
-  lineas.push('');
-  lineas.push('N\u00b0 P\u00f3liza: ' + pol.numero);
-  lineas.push('Aseguradora: ' + pol.aseguradora);
-  lineas.push('Ramo: ' + pol.ramo);
-  lineas.push('Vigencia: ' + pol.fecha_inicio + ' al ' + pol.fecha_vencimiento);
-  lineas.push('Bien asegurado: ' + (pol.bien_asegurado || '-'));
-  lineas.push('');
-  lineas.push('Mart\u00edn Barreiro');
-  lineas.push('Asesor de Seguros');
-  const cuerpo = lineas.join('\n');
-
-  abrirMail(email, asunto, cuerpo);
-  mostrarAlerta('Abriendo casilla de mail con los datos de la póliza...');
-}
-
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.mail-btn') && !e.target.closest('.mail-menu')) {
-    document.querySelectorAll('.mail-menu.open').forEach(function(m) { m.classList.remove('open'); });
-  }
-});
-document.getElementById('fil-ramo-cl') && document.getElementById('fil-ramo-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
-document.getElementById('ord-cl') && document.getElementById('ord-cl').addEventListener('change', function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
 document.getElementById('srch-cl').addEventListener('input', function() {
   clearTimeout(window._st);
   window._st = setTimeout(function() { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); }, 300);
@@ -2503,6 +2437,18 @@ init();  const html = [];
     if (emailTo) {
       p.push('<div class="mail-wrap">');
       p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">Mail &#9660;</button>');
+      p.push('<div class="mail-menu">');
+      p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
+      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
+      p.push('</div></div>');
+    }
+    p.push('</div>');
+    p.push('</div>');
+    html.push(p.join(''));
+  });
+
+  html.push('</div>');
+#9660;</button>');
       p.push('<div class="mail-menu">');
       p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
       p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
