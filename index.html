@@ -1207,88 +1207,71 @@ async function cargarClientes(filtro, estado) {
 
   const html = [];
 
-  // Header row
+  // Single header
+  html.push('<div class="cl-table">');
   html.push('<div class="cl-table-header">');
-  html.push('<div class="cl-th">Cliente</div>');
+  html.push('<div class="cl-th" style="padding-left:10px">Cliente</div>');
   html.push('<div class="cl-th">Contacto</div>');
   html.push('<div class="cl-th">Domicilio</div>');
   html.push('<div class="cl-th">DNI / CUIT</div>');
   html.push('<div class="cl-th">Acciones</div>');
   html.push('</div>');
 
+  var visibleEstados = ['activo', 'prospecto', 'inactivo'];
+  var estMap = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
+  var cardMap = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
+
   clientes.forEach(function(cl) {
-    let cardC = cardClass[cl.estado] || 'st-inactivo';
+    var cardC = cardMap[cl.estado] || 'st-inactivo';
+    var estadoVisible = visibleEstados.includes(cl.estado) ? cl.estado : null;
+    var dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
+    var domicilio1 = cl.direccion || '';
+    var domicilio2 = cl.localidad || '';
+    var wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
+    var emailTo = cl.email_principal || '';
 
-    const alerts = [];
-    if (sinSet.has(cl.id)) { alerts.push('<span class="cl-alert-label al-sin">Siniestro</span>'); }
-    if (vencSet.has(cl.id)) { alerts.push('<span class="cl-alert-label al-ren">Renovaci&oacute;n pr&oacute;x.</span>'); }
-    if (!sinSet.has(cl.id) && !vencSet.has(cl.id) && cl.estado === 'activo') { alerts.push('<span class="cl-alert-label al-ok">Al d&iacute;a</span>'); }
+    var p = [];
+    p.push('<div class="cl-row ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
 
-    const ramos = polPorCliente[cl.id] || [];
-    const polCnt = polCntPorCliente[cl.id] || 0;
-    const ramoChips = ramos.slice(0,3).map(function(r) {
-      return '<span class="cl-ramo ' + (ramoClass[r] || 'ram-emp') + '">' + r + '</span>';
-    }).join(' ');
-
-    const dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
-    const cuit = cl.zona_geografica && !cl.dni ? 'CUIT ' + cl.zona_geografica : '';
-    const identDoc = dniCuit || cuit;
-
-    const domicilio1 = cl.direccion || '';
-    const domicilio2 = cl.localidad || '';
-
-    const wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
-    const emailTo = cl.email_principal || '';
-
-    const p = [];
-    p.push('<div class="cl-card ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
-
-    // Col 1: Nombre + estado + alertas (todos en una fila)
     p.push('<div class="cl-col">');
     p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
-    p.push('<div class="cl-alerts">');
-    p.push('<span class="cl-estado ' + (estClass[cl.estado] || 'est-inactivo') + '">' + cl.estado + '</span>');
-    alerts.forEach(function(a) { p.push(a); });
-    p.push('</div>');
+    if (estadoVisible) {
+      p.push('<div class="cl-badges"><span class="cl-estado ' + (estMap[cl.estado] || 'est-inactivo') + '">' + estadoVisible + '</span></div>');
+    }
     p.push('</div>');
 
-    // Col 2: Contacto
     p.push('<div class="cl-col">');
-    if (emailTo) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#9993;</span><span>' + emailTo + '</span></div>'); }
-    if (cl.telefono_principal) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#128222;</span><span>' + cl.telefono_principal + '</span></div>'); }
+    if (emailTo) { p.push('<div class="cl-dline"><span class="di">&#9993;</span>' + emailTo + '</div>'); }
+    if (cl.telefono_principal) { p.push('<div class="cl-dline"><span class="di">&#9990;</span>' + cl.telefono_principal + '</div>'); }
     p.push('</div>');
 
-    // Col 3: Domicilio
     p.push('<div class="cl-col">');
-    if (domicilio1) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#127968;</span><span>' + domicilio1 + '</span></div>'); }
-    if (domicilio2) { p.push('<div class="cl-data-line"><span class="cl-data-icon" style="opacity:0">&#127968;</span><span style="color:var(--lt)">' + domicilio2 + '</span></div>'); }
-    if (!domicilio1 && !domicilio2) { p.push('<div class="cl-data-line" style="color:var(--lt)">Sin domicilio</div>'); }
+    if (domicilio1) { p.push('<div class="cl-dline"><span class="di">&#8962;</span>' + domicilio1 + '</div>'); }
+    if (domicilio2) { p.push('<div class="cl-dline-sub">' + domicilio2 + '</div>'); }
     p.push('</div>');
 
-    // Col 4: DNI / CUIT
     p.push('<div class="cl-col">');
-    if (identDoc) { p.push('<div class="cl-data-line"><span class="cl-data-icon">&#128196;</span><span>' + identDoc + '</span></div>'); }
+    if (dniCuit) { p.push('<div class="cl-dline"><span class="di">&#9642;</span>' + dniCuit + '</div>'); }
     p.push('</div>');
 
-    // Col 5: Acciones
     p.push('<div class="cl-actions" onclick="event.stopPropagation()">');
     if (wappNum) {
-      p.push('<button class="wapp-btn" onclick="window.open(\'https://wa.me/549' + wappNum + '\',\'_blank\')">&#128172; WhatsApp</button>');
+      p.push('<button class="btn-wa" onclick="window.open(\'https://wa.me/' + wappNum + '\',\'_blank\')">WhatsApp</button>');
     }
     if (emailTo) {
-      p.push('<div style="position:relative">');
-      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">&#9993; Mail &#9660;</button>');
+      p.push('<div class="mail-wrap">');
+      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">Mail &#9660;</button>');
       p.push('<div class="mail-menu">');
       p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
-      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&oacute;liza PDF</button>');
+      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
       p.push('</div></div>');
     }
     p.push('</div>');
-
     p.push('</div>');
     html.push(p.join(''));
   });
-  html.push('<div class="cl-legend"><span>Sem&aacute;foro:</span><span class="cl-alert-label al-sin">Siniestro</span><span class="cl-alert-label al-ren">Renovaci&oacute;n pr&oacute;x.</span><span class="cl-alert-label al-ok">Al d&iacute;a</span></div>');
+
+  html.push('</div>');
   cont.innerHTML = html.join('');
 }
 
@@ -1578,6 +1561,10 @@ async function guardarEdicionCliente(id) {
     patente: document.getElementById('ed-patente').value.trim().toUpperCase(),
     notas: document.getElementById('ed-notas').value.trim(),
   };
+  updates.telefono_principal = normalizarTelefono(updates.telefono_principal);
+  updates.telefono_secundario = normalizarTelefono(updates.telefono_secundario);
+  updates.email_principal = normalizarEmail(updates.email_principal);
+  updates.email_secundario = normalizarEmail(updates.email_secundario);
   if (!updates.nombre || !updates.apellido) { alert('Nombre y apellido son obligatorios'); return; }
   const { error } = await sb.from('clientes').update(updates).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
@@ -1746,6 +1733,11 @@ document.getElementById('btn-guardar-cl').onclick = async function() {
     color_vehiculo: document.getElementById('f-color').value.trim(),
     notas: document.getElementById('f-notas').value.trim(),
   };
+  // Normalize phones and emails
+  datos.telefono_principal = normalizarTelefono(datos.telefono_principal);
+  datos.telefono_secundario = normalizarTelefono(datos.telefono_secundario);
+  datos.email_principal = normalizarEmail(datos.email_principal);
+  datos.email_secundario = normalizarEmail(datos.email_secundario);
   if (!datos.nombre || !datos.apellido) { alert('Nombre y apellido son obligatorios'); return; }
   const { error } = await sb.from('clientes').insert(datos);
   if (error) { alert('Error: ' + error.message); return; }
@@ -2446,7 +2438,91 @@ function setupUploads() {
 }
 
 setupUploads();
-init();
+function normalizarTelefono(tel) {
+  if (!tel) return '';
+  var t = tel.replace(/[\s\-().+]/g, '');
+  if (t.startsWith('0')) t = t.substring(1);
+  if (t.startsWith('54')) t = t.substring(2);
+  if (t.startsWith('9')) t = t.substring(1);
+  var match = t.match(/^(\d{3})(15)(\d+)$/);
+  if (!match) match = t.match(/^(\d{4})(15)(\d+)$/);
+  if (match) t = match[1] + match[3];
+  return '549' + t;
+}
+
+function normalizarEmail(email) {
+  if (!email) return '';
+  return email.trim().toLowerCase();
+}
+
+
+init();  const html = [];
+
+  // Single header
+  html.push('<div class="cl-table">');
+  html.push('<div class="cl-table-header">');
+  html.push('<div class="cl-th" style="padding-left:10px">Cliente</div>');
+  html.push('<div class="cl-th">Contacto</div>');
+  html.push('<div class="cl-th">Domicilio</div>');
+  html.push('<div class="cl-th">DNI / CUIT</div>');
+  html.push('<div class="cl-th">Acciones</div>');
+  html.push('</div>');
+
+  var visibleEstados = ['activo', 'prospecto', 'inactivo'];
+  var estClass2 = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
+  var cardClass2 = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
+
+  clientes.forEach(function(cl) {
+    var cardC = cardMap[cl.estado] || 'st-inactivo';
+    var estadoVisible = visibleEstados.includes(cl.estado) ? cl.estado : null;
+    var dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
+    var domicilio1 = cl.direccion || '';
+    var domicilio2 = cl.localidad || '';
+    var wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
+    var emailTo = cl.email_principal || '';
+
+    var p = [];
+    p.push('<div class="cl-row ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
+
+    p.push('<div class="cl-col">');
+    p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
+    if (estadoVisible) {
+      p.push('<div class="cl-badges"><span class="cl-estado ' + (estMap[cl.estado] || 'est-inactivo') + '">' + estadoVisible + '</span></div>');
+    }
+    p.push('</div>');
+
+    p.push('<div class="cl-col">');
+    if (emailTo) { p.push('<div class="cl-dline"><span class="di">&#9993;</span>' + emailTo + '</div>'); }
+    if (cl.telefono_principal) { p.push('<div class="cl-dline"><span class="di">&#9990;</span>' + cl.telefono_principal + '</div>'); }
+    p.push('</div>');
+
+    p.push('<div class="cl-col">');
+    if (domicilio1) { p.push('<div class="cl-dline"><span class="di">&#8962;</span>' + domicilio1 + '</div>'); }
+    if (domicilio2) { p.push('<div class="cl-dline-sub">' + domicilio2 + '</div>'); }
+    p.push('</div>');
+
+    p.push('<div class="cl-col">');
+    if (dniCuit) { p.push('<div class="cl-dline"><span class="di">&#9642;</span>' + dniCuit + '</div>'); }
+    p.push('</div>');
+
+    p.push('<div class="cl-actions" onclick="event.stopPropagation()">');
+    if (wappNum) {
+      p.push('<button class="btn-wa" onclick="window.open(\'https://wa.me/' + wappNum + '\',\'_blank\')">WhatsApp</button>');
+    }
+    if (emailTo) {
+      p.push('<div class="mail-wrap">');
+      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">Mail &#9660;</button>');
+      p.push('<div class="mail-menu">');
+      p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
+      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
+      p.push('</div></div>');
+    }
+    p.push('</div>');
+    p.push('</div>');
+    html.push(p.join(''));
+  });
+
+  html.push('</div>');
 </script>
 </body>
 </html><!-- Modal Póliza -->
@@ -2576,51 +2652,40 @@ init();
   </div>
 </div>
 
-/* ===== CARDS CLIENTES ===== */
-.cl-card{background:var(--white);border:0.5px solid var(--border);border-left:3px solid transparent;border-radius:0 var(--r) var(--r) 0;padding:12px 14px;display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.2fr 110px;gap:0;align-items:center;cursor:pointer;transition:all .15s;margin-bottom:6px}
-.cl-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07);transform:translateY(-1px)}
-.cl-card.st-activo{border-left-color:#1D9E75}
-.cl-card.st-siniestrado{border-left-color:#E24B4A}
-.cl-card.st-renovacion{border-left-color:#EF9F27}
-.cl-card.st-prospecto{border-left-color:#4A90D9}
-.cl-card.st-inactivo{border-left-color:#9CA3AF}
-.cl-col{padding:0 10px;min-width:0}
-.cl-col-label{font-size:10px;font-weight:600;color:var(--lt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
-.cl-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cl-alerts{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
-.cl-alert-label{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
-.al-sin{background:#FDEDEC;color:#922B21}
-.al-ren{background:#FEF9E7;color:#7D6608}
-.al-ok{background:#E8F8F0;color:#1A7A3C}
-.cl-data-line{font-size:12px;color:var(--muted);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
-.cl-data-line:last-child{margin-bottom:0}
-.cl-data-icon{font-size:11px;flex-shrink:0;color:var(--lt)}
-.cl-meta-col{display:flex;flex-direction:column;gap:4px}
+/* ===== TABLA CLIENTES ===== */
+.cl-table{border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.cl-table-header{display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.1fr 130px;background:var(--bg);border-bottom:0.5px solid var(--border);padding:9px 16px}
+.cl-th{font-size:10px;font-weight:600;color:var(--lt);text-transform:uppercase;letter-spacing:.06em;padding:0 8px}
+.cl-row{display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.1fr 130px;align-items:center;padding:12px 16px;border-bottom:0.5px solid var(--border);border-left:3px solid transparent;cursor:pointer;background:var(--white);transition:background .15s}
+.cl-row:last-child{border-bottom:none}
+.cl-row:hover{background:var(--bg)}
+.cl-row.st-activo{border-left-color:#1D9E75}
+.cl-row.st-prospecto{border-left-color:#4A90D9}
+.cl-row.st-inactivo{border-left-color:#9CA3AF}
+.cl-row.st-renovacion{border-left-color:#EF9F27}
+.cl-row.st-siniestrado{border-left-color:#E24B4A}
+.cl-col{padding:0 8px;min-width:0}
+.cl-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-badges{display:flex;gap:4px;flex-wrap:wrap}
 .cl-estado{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600;display:inline-block}
 .est-activo{background:#E8F8F0;color:#1A7A3C}
-.est-siniestrado{background:#FDEDEC;color:#922B21}
-.est-renovacion{background:#FEF9E7;color:#7D6608}
 .est-prospecto{background:#EBF4FC;color:#1A5276}
 .est-inactivo{background:#F0F2F5;color:#4B5563}
-.cl-ramo{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:500}
-.ram-auto{background:#EBF4FC;color:#1A5276}
-.ram-vida{background:#E8F8F0;color:#1A7A3C}
-.ram-hogar{background:#FEF9E7;color:#7D6608}
-.ram-art{background:#FDEDEC;color:#922B21}
-.ram-comb{background:#F5EEF8;color:#6C3483}
-.ram-emp{background:#F0F2F5;color:#4B5563}
-.cl-pol-cnt{font-size:10px;color:var(--lt);margin-top:3px}
-.cl-actions{display:flex;flex-direction:column;gap:5px;min-width:110px}
-.wapp-btn{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;text-align:center;width:100%}
-.wapp-btn:hover{background:#D5F5E3}
-.mail-btn{background:#EBF4FC;color:#1A5276;border:0.5px solid #85B7EB;border-radius:var(--rsm);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;text-align:center;position:relative;width:100%}
+.est-renovacion{background:#FEF9E7;color:#7D6608}
+.est-siniestrado{background:#FDEDEC;color:#922B21}
+.cl-dline{font-size:12px;color:var(--muted);margin-bottom:3px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-dline:last-child{margin-bottom:0}
+.cl-dline .di{font-size:10px;color:var(--lt);flex-shrink:0;width:13px}
+.cl-dline-sub{font-size:11px;color:var(--lt);padding-left:18px;margin-top:1px}
+.cl-actions{display:flex;gap:6px;padding:0 4px;align-items:center}
+.btn-wa{background:#E8F8F0;color:#1A7A3C;border:0.5px solid #A9DFBF;border-radius:var(--rsm);padding:6px 10px;font-size:11px;cursor:pointer;font-weight:500;flex:1;text-align:center;font-family:inherit}
+.btn-wa:hover{background:#D5F5E3}
+.mail-wrap{position:relative;flex:1}
+.mail-btn{background:#EBF4FC;color:#1A5276;border:0.5px solid #85B7EB;border-radius:var(--rsm);padding:6px 10px;font-size:11px;cursor:pointer;font-weight:500;width:100%;text-align:center;font-family:inherit}
 .mail-btn:hover{background:#D6EAF8}
-.mail-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:0.5px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:200;min-width:180px;display:none}
+.mail-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:0.5px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:200;min-width:170px;display:none}
 .mail-menu.open{display:block}
 .mail-menu-item{display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;cursor:pointer;color:var(--text);background:none;border:none;font-family:inherit;border-bottom:0.5px solid var(--border)}
 .mail-menu-item:last-child{border-bottom:none}
 .mail-menu-item:hover{background:var(--bg)}
-.cl-count{font-size:12px;color:var(--muted);margin-bottom:10px}
-.cl-table-header{display:grid;grid-template-columns:2fr 1.8fr 1.6fr 1.2fr 110px;gap:0;padding:6px 14px 6px 18px;margin-bottom:2px}
-.cl-th{font-size:10px;font-weight:500;color:var(--lt);text-transform:uppercase;letter-spacing:.06em;padding:0 10px}
-.cl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:10px 14px;background:var(--bg);border-radius:var(--rsm);margin-top:10px;align-items:center}
+.cl-count{font-size:12px;color:var(--muted);margin-bottom:8px}
