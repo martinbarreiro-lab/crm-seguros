@@ -259,25 +259,45 @@ tr:hover td{background:var(--bg)}
 /* ===== FICHA CLIENTE MEJORADA ===== */
 .btn-volver{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#fff;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-weight:500;color:#374151;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.05)}
 .btn-volver:hover{border-color:#4A90D9;color:#4A90D9}
-.ficha-quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.fqa-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid;font-family:'Inter',sans-serif;transition:all .15s}
-.fqa-wapp{background:#F0FDF4;color:#166534;border-color:#86EFAC}
-.fqa-wapp:hover{background:#DCFCE7}
+
+/* Quick actions */
+.ficha-quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.fqa-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid;font-family:'Inter',sans-serif;transition:all .15s}
 .fqa-task{background:#EFF6FF;color:#1E40AF;border-color:#BFDBFE}
 .fqa-task:hover{background:#DBEAFE}
 .fqa-pol{background:#F5F3FF;color:#5B21B6;border-color:#DDD6FE}
 .fqa-pol:hover{background:#EDE9FE}
 .fqa-int{background:#FFF7ED;color:#92400E;border-color:#FED7AA}
 .fqa-int:hover{background:#FFEDD5}
-.ficha-fin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
-.ficha-fin-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.ficha-fin-label{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.ficha-fin-val{font-size:22px;font-weight:700;color:#111827;letter-spacing:-.5px}
-.ficha-fin-sub{font-size:11px;color:#6B7280;margin-top:3px}
+
+/* Metric cards */
+.ficha-fin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.ficha-fin-card{background:#fff;border:1px solid #E5E7EB;border-left:4px solid #E5E7EB;border-radius:0 10px 10px 0;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:box-shadow .2s}
+.ficha-fin-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.ficha-fin-card.blue{border-left-color:#4A90D9}
+.ficha-fin-card.green{border-left-color:#22C55E}
+.ficha-fin-card.red{border-left-color:#EF4444}
+.ficha-fin-card.amber{border-left-color:#F59E0B}
+.ficha-fin-label{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;font-family:'Inter',sans-serif}
+.ficha-fin-val{font-size:26px;font-weight:700;color:#111827;letter-spacing:-.5px;line-height:1;font-family:'Inter',sans-serif}
+.ficha-fin-sub{font-size:12px;color:#6B7280;margin-top:5px;font-family:'Inter',sans-serif}
+
+/* Section cards in ficha */
+.ficha-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px;font-family:'Inter',sans-serif}
+.ficha-card-title{font-size:12px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #F3F4F6}
+
+/* Contact info */
+.ficha-info-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F9FAFB;font-size:13px}
+.ficha-info-row:last-child{border-bottom:none}
+.ficha-info-icon{width:28px;height:28px;border-radius:6px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ficha-info-label{color:#9CA3AF;font-size:12px;min-width:80px}
+.ficha-info-val{color:#111827;font-weight:500;flex:1}
+
+/* Timeline */
 .timeline{display:flex;flex-direction:column;gap:0;position:relative;padding-left:4px}
 .timeline::before{content:'';position:absolute;left:17px;top:0;bottom:0;width:2px;background:#E5E7EB}
 .tl-item{display:flex;gap:14px;padding:10px 0;position:relative}
-.tl-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #fff;box-shadow:0 0 0 2px #E5E7EB;font-size:13px;background:#fff}
+.tl-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #fff;box-shadow:0 0 0 2px #E5E7EB;font-size:14px;background:#fff}
 .tl-dot-blue{background:#EFF6FF}
 .tl-dot-green{background:#F0FDF4}
 .tl-dot-red{background:#FEF2F2}
@@ -285,12 +305,16 @@ tr:hover td{background:var(--bg)}
 .tl-content{flex:1;padding-top:6px}
 .tl-title{font-size:13px;font-weight:500;color:#111827;margin-bottom:2px}
 .tl-meta{font-size:11px;color:#9CA3AF}
+
+/* Vencimientos */
 .venc-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F3F4F6}
 .venc-item:last-child{border-bottom:none}
-.venc-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px}
+.venc-badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px}
 .venc-urgente{background:#FEF2F2;color:#991B1B}
 .venc-pronto{background:#FFFBEB;color:#92400E}
 .venc-ok{background:#F0FDF4;color:#166534}
+
+/* Task items */
 .ficha-task-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F3F4F6}
 .ficha-task-item:last-child{border-bottom:none}
 .ft-estado{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -1548,52 +1572,55 @@ async function fichaResumen(c) {
     const d=new Date(p.fecha_vencimiento);
     return d>=hoy && d<=en60;
   }).sort(function(a,b){return new Date(a.fecha_vencimiento)-new Date(b.fecha_vencimiento);});
-  const wappNum = c.telefono_principal||'';
   const html=[];
 
-  // Quick actions
+  // Quick actions - no WhatsApp
   html.push('<div class="ficha-quick-actions">');
-  if(wappNum){html.push('<button class="fqa-btn fqa-wapp" data-wa="'+wappNum+'" onclick="openWa(this)">&#128172; WhatsApp</button>');}
-  html.push('<button class="fqa-btn fqa-task" onclick="abrirTareaParaCliente(\''+c.id+'\')">&#10003; Nueva tarea</button>');
-  html.push('<button class="fqa-btn fqa-pol" onclick="abrirPolizaParaCliente(\''+c.id+'\')">&#128196; Nueva p\u00f3liza</button>');
-  html.push('<button class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">&#128172; Interacci\u00f3n</button>');
+  html.push('<button class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">&#10003; Nueva tarea</button>');
+  html.push('<button class="fqa-btn fqa-pol" onclick="abrirModalPolizaParaCliente(\''+c.id+'\')">&#128196; Nueva p\u00f3liza</button>');
+  html.push('<button class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">&#128172; Registrar interacci\u00f3n</button>');
   html.push('</div>');
 
-  // Financial summary
+  // Metric cards with color bars
   html.push('<div class="ficha-fin-cards">');
-  html.push('<div class="ficha-fin-card"><div class="ficha-fin-label">Premio anual</div><div class="ficha-fin-val">$'+premioAnual.toLocaleString('es-AR')+'</div><div class="ficha-fin-sub">Cartera activa</div></div>');
-  html.push('<div class="ficha-fin-card"><div class="ficha-fin-label">P\u00f3lizas activas</div><div class="ficha-fin-val">'+polsActivas.length+'</div><div class="ficha-fin-sub">Vigentes</div></div>');
-  html.push('<div class="ficha-fin-card"><div class="ficha-fin-label">Siniestros</div><div class="ficha-fin-val">'+(sins||[]).length+'</div><div class="ficha-fin-sub">Abiertos</div></div>');
-  html.push('<div class="ficha-fin-card"><div class="ficha-fin-label">Tareas</div><div class="ficha-fin-val">'+(tars||[]).filter(function(t){return t.estado!=='cerrada'&&t.estado!=='cancelada';}).length+'</div><div class="ficha-fin-sub">Pendientes</div></div>');
+  html.push('<div class="ficha-fin-card green"><div class="ficha-fin-label">Premio anual</div><div class="ficha-fin-val">$'+premioAnual.toLocaleString('es-AR')+'</div><div class="ficha-fin-sub">Cartera activa</div></div>');
+  html.push('<div class="ficha-fin-card blue"><div class="ficha-fin-label">P\u00f3lizas activas</div><div class="ficha-fin-val">'+polsActivas.length+'</div><div class="ficha-fin-sub">Vigentes</div></div>');
+  html.push('<div class="ficha-fin-card red"><div class="ficha-fin-label">Siniestros</div><div class="ficha-fin-val">'+(sins||[]).length+'</div><div class="ficha-fin-sub">Abiertos</div></div>');
+  html.push('<div class="ficha-fin-card amber"><div class="ficha-fin-label">Tareas</div><div class="ficha-fin-val">'+(tars||[]).filter(function(t){return t.estado!=='cerrada'&&t.estado!=='cancelada';}).length+'</div><div class="ficha-fin-sub">Pendientes</div></div>');
   html.push('</div>');
 
   const left=[];
-  left.push('<div class="card" style="margin-bottom:12px"><div class="card-title" style="font-size:13px;font-weight:600;margin-bottom:12px">Contacto r\u00e1pido</div>');
-  left.push(ir('Tel\u00e9fono',c.telefono_principal)+ir('Email',c.email_principal)+ir('Localidad',c.localidad));
+  // Contact card with icons
+  left.push('<div class="ficha-card"><div class="ficha-card-title">Contacto</div>');
+  if(c.telefono_principal){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><span class="ficha-info-label">Tel\u00e9fono</span><span class="ficha-info-val">'+c.telefono_principal+'</span></div>');}
+  if(c.email_principal){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><span class="ficha-info-label">Email</span><span class="ficha-info-val">'+c.email_principal+'</span></div>');}
+  if(c.localidad){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><span class="ficha-info-label">Localidad</span><span class="ficha-info-val">'+c.localidad+'</span></div>');}
+  if(c.direccion){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span class="ficha-info-label">Direcci\u00f3n</span><span class="ficha-info-val">'+c.direccion+'</span></div>');}
   left.push('</div>');
+
   if(polsVenc.length){
-    left.push('<div class="card"><div class="card-title" style="font-size:13px;font-weight:600;margin-bottom:12px">Vencimientos pr\u00f3ximos</div>');
+    left.push('<div class="ficha-card"><div class="ficha-card-title">Vencimientos pr\u00f3ximos</div>');
     polsVenc.forEach(function(p){
       const dias=Math.round((new Date(p.fecha_vencimiento)-new Date())/864e5);
       const cls=dias<=10?'venc-urgente':dias<=30?'venc-pronto':'venc-ok';
-      left.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:500">'+p.numero+'</div><div style="font-size:11px;color:#6B7280">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
+      left.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
     });
     left.push('</div>');
   }
 
   const right=[];
   if(tars&&tars.length){
-    right.push('<div class="card"><div class="card-title" style="font-size:13px;font-weight:600;margin-bottom:12px">Tareas recientes</div>');
+    right.push('<div class="ficha-card"><div class="ficha-card-title">Tareas recientes</div>');
     const eCol={pendiente:'ft-pendiente',encurso:'ft-encurso',esperando:'ft-esperando',cerrada:'ft-cerrada',cancelada:'ft-cancelada'};
     tars.forEach(function(t){
-      right.push('<div class="ficha-task-item"><div class="ft-estado '+(eCol[t.estado]||'ft-pendiente')+'"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.titulo+'</div><div style="font-size:11px;color:#9CA3AF">'+t.tablero+' \u00b7 '+t.estado+'</div></div></div>');
+      right.push('<div class="ficha-task-item"><div class="ft-estado '+(eCol[t.estado]||'ft-pendiente')+'"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.titulo+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+t.tablero+' \u00b7 '+t.estado+'</div></div></div>');
     });
     right.push('</div>');
   }
   if(polsActivas.length){
-    right.push('<div class="card" style="margin-top:12px"><div class="card-title" style="font-size:13px;font-weight:600;margin-bottom:12px">P\u00f3lizas vigentes</div>');
+    right.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div>');
     polsActivas.forEach(function(p){
-      right.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:500">'+p.numero+'</div><div style="font-size:11px;color:#6B7280">'+p.ramo+' \u00b7 '+p.aseguradora+' \u00b7 Vto. '+p.fecha_vencimiento+'</div></div><div style="font-size:13px;font-weight:600;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
+      right.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+p.fecha_vencimiento+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
     });
     right.push('</div>');
   }
@@ -1810,7 +1837,7 @@ async function fichaTareas(c) {
   const eLbl={pendiente:'Pendiente',encurso:'En curso',esperando:'Esp. respuesta',cerrada:'Cerrada',cancelada:'Cancelada'};
   const prioC={urgente:'#991B1B',alta:'#92400E',media:'#1E40AF',baja:'#6B7280'};
   const html=[];
-  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="fqa-btn fqa-task" onclick="abrirTareaParaCliente(\''+c.id+'\')">+ Nueva tarea</button></div>');
+  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">+ Nueva tarea</button></div>');
   if(!data||!data.length){
     html.push('<div class="empty-state"><div class="empty-icon">&#10003;</div><div class="empty-title">Sin tareas</div></div>');
     return html.join('');
@@ -1866,14 +1893,14 @@ function abrirIntModal(clienteId) {
   document.getElementById('modal-int').classList.add('open');
 }
 function abrirModalPolizaParaCliente(clienteId) {
+function abrirModalPolizaParaCliente(clienteId) {
   actualizarSelectsClientes();
-  document.getElementById('fp-cl').value = clienteId;
-  document.getElementById('modal-pol').classList.add('open');
+  poblarAniosPoliza();
+  setTimeout(function() { var sel=document.getElementById('fp-cl'); if(sel) sel.value=clienteId; document.getElementById('modal-pol').classList.add('open'); }, 80);
 }
 function abrirModalTareaParaCliente(clienteId) {
   actualizarSelectsClientes();
-  document.getElementById('ft-cl').value = clienteId;
-  document.getElementById('modal-tar').classList.add('open');
+  setTimeout(function() { var sel=document.getElementById('ft-cl'); if(sel) sel.value=clienteId; document.getElementById('modal-tar').classList.add('open'); }, 80);
 }
 function abrirModalSiniestroParaCliente(clienteId) {
   actualizarSelectsClientes();
@@ -2717,7 +2744,13 @@ init();  const html = [];
     html.push(p.join(''));
   });
 
-  html.push('</div>');</script>
+  html.push('</div>');
+}
+
+setupUploads();
+setupCtxHandlers();
+init();
+</script>
 </body>
 </html><!-- Modal Póliza -->
 <div class="modal-ov" id="modal-pol">
