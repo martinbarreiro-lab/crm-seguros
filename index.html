@@ -1576,9 +1576,9 @@ async function fichaResumen(c) {
 
   // Quick actions
   html.push('<div class="ficha-quick-actions">');
-  html.push('<button class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">&#10003; Nueva tarea</button>');
-  html.push('<button class="fqa-btn fqa-pol" onclick="abrirModalPolizaParaCliente(\''+c.id+'\')">&#128196; Nueva p\u00f3liza</button>');
-  html.push('<button class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">&#128172; Registrar interacci\u00f3n</button>');
+  html.push('<button class="fqa-btn fqa-task" data-cid="'+c.id+'" onclick="fichaAbrirTarea(this)">&#10003; Nueva tarea</button>');
+  html.push('<button class="fqa-btn fqa-pol" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">&#128196; Nueva p\u00f3liza</button>');
+  html.push('<button class="fqa-btn fqa-int" data-cid="'+c.id+'" onclick="fichaAbrirInt(this)">&#128172; Registrar interacci\u00f3n</button>');
   html.push('</div>');
 
   // Metric cards
@@ -1603,7 +1603,7 @@ async function fichaResumen(c) {
     });
     html.push('</div>');
   } else {
-    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button class="fqa-btn fqa-pol" style="margin-top:10px" onclick="abrirModalPolizaParaCliente(\''+c.id+'\')">+ Nueva p\u00f3liza</button></div></div>');
+    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva p\u00f3liza</button></div></div>');
   }
 
   // Tareas recientes
@@ -1912,6 +1912,12 @@ async function fichaHistorial(c) {
 }
 function abrirIntModal(clienteId) {
   fichaClienteIdForInt = clienteId;
+  var res = document.getElementById('fi-res');
+  var prox = document.getElementById('fi-prox');
+  var tipo = document.getElementById('fi-tipo');
+  if (res) res.value = '';
+  if (prox) prox.value = '';
+  if (tipo) tipo.selectedIndex = 0;
   document.getElementById('modal-int').classList.add('open');
 }
 function abrirModalPolizaParaCliente(clienteId) {
@@ -2767,6 +2773,39 @@ init();  const html = [];
   });
 
   html.push('</div>');
+}
+
+async function fichaAbrirTarea(el) {
+  const cid = el.getAttribute('data-cid') || fichaId;
+  if (!allCl.length) await cargarClientes();
+  actualizarSelectsClientes();
+  setTimeout(function() {
+    const sel = document.getElementById('ft-cl');
+    if (sel && cid) sel.value = cid;
+    document.getElementById('modal-tar').classList.add('open');
+  }, 100);
+}
+
+async function fichaAbrirPoliza(el) {
+  const cid = el.getAttribute('data-cid') || fichaId;
+  if (!allCl.length) await cargarClientes();
+  actualizarSelectsClientes();
+  poblarAniosPoliza();
+  setTimeout(function() {
+    const sel = document.getElementById('fp-cl');
+    if (sel && cid) sel.value = cid;
+    document.getElementById('modal-pol').classList.add('open');
+  }, 100);
+}
+
+function fichaAbrirInt(el) {
+  const cid = el.getAttribute('data-cid') || fichaId;
+  // Clear modal fields first
+  const campos = ['fi-tipo', 'fi-res', 'fi-prox'];
+  document.getElementById('fi-res') && (document.getElementById('fi-res').value = '');
+  document.getElementById('fi-prox') && (document.getElementById('fi-prox').value = '');
+  fichaClienteIdForInt = cid;
+  document.getElementById('modal-int').classList.add('open');
 }
 
 setupUploads();
