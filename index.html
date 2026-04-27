@@ -854,57 +854,6 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
-<!-- MODAL NUEVA PÓLIZA -->
-<div class="modal-ov" id="modal-pol">
-  <div class="modal-box">
-    <div class="modal-t">Nueva póliza <button class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
-    <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
-    <div class="fg2">
-      <div class="frow"><label>N° de póliza *</label><input type="text" id="fp-num" placeholder="AUTO-2025-XXX"></div>
-      <div class="frow"><label>Aseguradora *</label>
-        <select id="fp-aseg">
-          <option value="">Seleccionar...</option>
-          <option>Sancor Seguros</option><option>Zurich Argentina</option>
-          <option>Mapfre Argentina</option><option>Federación Patronal</option>
-          <option>La Segunda</option><option>Provincia Seguros</option>
-          <option>San Cristóbal</option><option>Nación Seguros</option><option>Otro</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg2">
-      <div class="frow"><label>Ramo *</label>
-        <select id="fp-ramo">
-          <option value="">Seleccionar...</option>
-          <option>Autos</option><option>Vida</option><option>Hogar</option>
-          <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
-        </select>
-      </div>
-      <div class="frow"><label>Tipo de cobertura</label><input type="text" id="fp-cob" placeholder="Todo riesgo, RC, etc."></div>
-    </div>
-    <div class="fg2">
-      <div class="frow"><label>Fecha inicio *</label><input type="date" id="fp-ini"></div>
-      <div class="frow"><label>Fecha vencimiento *</label><input type="date" id="fp-vto"></div>
-    </div>
-    <div class="fg2">
-      <div class="frow"><label>Premio anual *</label><input type="number" id="fp-prima" placeholder="0"></div>
-      <div class="frow"><label>Forma de pago</label>
-        <select id="fp-pago">
-          <option value="">Seleccionar...</option>
-          <option>Contado</option><option>3 cuotas</option><option>6 cuotas</option>
-          <option>12 cuotas</option><option>Débito automático</option>
-        </select>
-      </div>
-    </div>
-    <div class="frow"><label>Bien asegurado</label><input type="text" id="fp-bien" placeholder="Ford Focus 2019 ABC123 / Hogar Córdoba 1234..."></div>
-    <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL COTIZACIÓN -->
 <div class="modal-ov" id="modal-cotz">
   <div class="modal-box">
     <div class="modal-t">Nueva cotización <button class="modal-x" onclick="cerrarModal('modal-cotz')">✕</button></div>
@@ -2627,6 +2576,7 @@ async function cargarAnalisis() {
 // ---- BOTONES GLOBALES ----
 document.getElementById('btn-nc') && (document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
 document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
+document.getElementById('btn-np2') && (document.getElementById('btn-np2').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
 document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-sin').classList.add('open'); });
