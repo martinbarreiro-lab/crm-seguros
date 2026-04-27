@@ -2584,7 +2584,7 @@ document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').oncl
 document.getElementById('btn-ntar') && (document.getElementById('btn-ntar').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-tar').classList.add('open'); });
 
 // ---- UTILS ----
-function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+function cerrarModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
 
 function mostrarAlerta(msg) {
   const el = document.getElementById('alerta-g');
