@@ -1562,7 +1562,7 @@ async function renderFichaTab(c) {
 async function fichaResumen(c) {
   const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const { data: sins } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).neq('estado', 'cerrado');
-  const { data: tars } = await sb.from('tareas').select('*').eq('cliente_id', c.id).order('created_at',{ascending:false}).limit(5);
+  const { data: tars } = await sb.from('tareas').select('*').eq('cliente_id', c.id).order('created_at',{ascending:false}).limit(8);
   const polsActivas = (pols||[]).filter(function(p){return p.estado==='activa';});
   const premioAnual = polsActivas.reduce(function(s,p){return s+(p.prima_anual||0);},0);
   const hoy = new Date();
@@ -1574,14 +1574,14 @@ async function fichaResumen(c) {
   }).sort(function(a,b){return new Date(a.fecha_vencimiento)-new Date(b.fecha_vencimiento);});
   const html=[];
 
-  // Quick actions - no WhatsApp
+  // Quick actions
   html.push('<div class="ficha-quick-actions">');
   html.push('<button class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">&#10003; Nueva tarea</button>');
   html.push('<button class="fqa-btn fqa-pol" onclick="abrirModalPolizaParaCliente(\''+c.id+'\')">&#128196; Nueva p\u00f3liza</button>');
   html.push('<button class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">&#128172; Registrar interacci\u00f3n</button>');
   html.push('</div>');
 
-  // Metric cards with color bars
+  // Metric cards
   html.push('<div class="ficha-fin-cards">');
   html.push('<div class="ficha-fin-card green"><div class="ficha-fin-label">Premio anual</div><div class="ficha-fin-val">$'+premioAnual.toLocaleString('es-AR')+'</div><div class="ficha-fin-sub">Cartera activa</div></div>');
   html.push('<div class="ficha-fin-card blue"><div class="ficha-fin-label">P\u00f3lizas activas</div><div class="ficha-fin-val">'+polsActivas.length+'</div><div class="ficha-fin-sub">Vigentes</div></div>');
@@ -1589,42 +1589,64 @@ async function fichaResumen(c) {
   html.push('<div class="ficha-fin-card amber"><div class="ficha-fin-label">Tareas</div><div class="ficha-fin-val">'+(tars||[]).filter(function(t){return t.estado!=='cerrada'&&t.estado!=='cancelada';}).length+'</div><div class="ficha-fin-sub">Pendientes</div></div>');
   html.push('</div>');
 
-  const left=[];
-  // Contact card with icons
-  left.push('<div class="ficha-card"><div class="ficha-card-title">Contacto</div>');
-  if(c.telefono_principal){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><span class="ficha-info-label">Tel\u00e9fono</span><span class="ficha-info-val">'+c.telefono_principal+'</span></div>');}
-  if(c.email_principal){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><span class="ficha-info-label">Email</span><span class="ficha-info-val">'+c.email_principal+'</span></div>');}
-  if(c.localidad){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><span class="ficha-info-label">Localidad</span><span class="ficha-info-val">'+c.localidad+'</span></div>');}
-  if(c.direccion){left.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span class="ficha-info-label">Direcci\u00f3n</span><span class="ficha-info-val">'+c.direccion+'</span></div>');}
-  left.push('</div>');
+  // Layout C: narrow right sidebar (contacto) + wide left main (actividad)
+  html.push('<div style="display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start">');
 
+  // LEFT: actividad dinámica
+  html.push('<div style="display:flex;flex-direction:column;gap:12px">');
+
+  // Pólizas vigentes
+  if(polsActivas.length){
+    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div>');
+    polsActivas.forEach(function(p){
+      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+p.fecha_vencimiento+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
+    });
+    html.push('</div>');
+  } else {
+    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button class="fqa-btn fqa-pol" style="margin-top:10px" onclick="abrirModalPolizaParaCliente(\''+c.id+'\')">+ Nueva p\u00f3liza</button></div></div>');
+  }
+
+  // Tareas recientes
+  if(tars&&tars.length){
+    html.push('<div class="ficha-card"><div class="ficha-card-title">Tareas recientes</div>');
+    const eCol={pendiente:'ft-pendiente',encurso:'ft-encurso',esperando:'ft-esperando',cerrada:'ft-cerrada',cancelada:'ft-cancelada'};
+    const eLbl={pendiente:'Pendiente',encurso:'En curso',esperando:'Esp. respuesta',cerrada:'Cerrada',cancelada:'Cancelada'};
+    tars.forEach(function(t){
+      html.push('<div class="ficha-task-item"><div class="ft-estado '+(eCol[t.estado]||'ft-pendiente')+'"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.titulo+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+t.tablero+' \u00b7 '+(eLbl[t.estado]||t.estado)+(t.fecha_limite?' \u00b7 Vence '+t.fecha_limite:'')+'</div></div></div>');
+    });
+    html.push('</div>');
+  }
+
+  // Vencimientos próximos
   if(polsVenc.length){
-    left.push('<div class="ficha-card"><div class="ficha-card-title">Vencimientos pr\u00f3ximos</div>');
+    html.push('<div class="ficha-card"><div class="ficha-card-title">Vencimientos pr\u00f3ximos (60 d\u00edas)</div>');
     polsVenc.forEach(function(p){
       const dias=Math.round((new Date(p.fecha_vencimiento)-new Date())/864e5);
       const cls=dias<=10?'venc-urgente':dias<=30?'venc-pronto':'venc-ok';
-      left.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
+      html.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
     });
-    left.push('</div>');
+    html.push('</div>');
   }
 
-  const right=[];
-  if(tars&&tars.length){
-    right.push('<div class="ficha-card"><div class="ficha-card-title">Tareas recientes</div>');
-    const eCol={pendiente:'ft-pendiente',encurso:'ft-encurso',esperando:'ft-esperando',cerrada:'ft-cerrada',cancelada:'ft-cancelada'};
-    tars.forEach(function(t){
-      right.push('<div class="ficha-task-item"><div class="ft-estado '+(eCol[t.estado]||'ft-pendiente')+'"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.titulo+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+t.tablero+' \u00b7 '+t.estado+'</div></div></div>');
-    });
-    right.push('</div>');
+  html.push('</div>'); // end left col
+
+  // RIGHT: contacto fijo (sidebar)
+  html.push('<div style="position:sticky;top:20px;display:flex;flex-direction:column;gap:12px">');
+  html.push('<div class="ficha-card"><div class="ficha-card-title">Datos de contacto</div>');
+  if(c.telefono_principal){html.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><div><div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Tel\u00e9fono</div><div style="font-size:13px;font-weight:500;color:#111827;margin-top:1px">'+c.telefono_principal+'</div></div></div>');}
+  if(c.email_principal){html.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div><div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Email</div><div style="font-size:13px;font-weight:500;color:#111827;margin-top:1px;word-break:break-all">'+c.email_principal+'</div></div></div>');}
+  if(c.localidad){html.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div><div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Localidad</div><div style="font-size:13px;font-weight:500;color:#111827;margin-top:1px">'+c.localidad+'</div></div></div>');}
+  if(c.direccion){html.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div><div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Direcci\u00f3n</div><div style="font-size:13px;font-weight:500;color:#111827;margin-top:1px">'+c.direccion+'</div></div></div>');}
+  if(c.dni){html.push('<div class="ficha-info-row"><div class="ficha-info-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div><div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em">DNI</div><div style="font-size:13px;font-weight:500;color:#111827;margin-top:1px">'+c.dni+'</div></div></div>');}
+  if(c.estado){
+    const estColor={activo:'#166534',prospecto:'#1E40AF',inactivo:'#6B7280',renovacion:'#92400E',siniestrado:'#991B1B'};
+    const estBg={activo:'#DCFCE7',prospecto:'#DBEAFE',inactivo:'#F3F4F6',renovacion:'#FEF3C7',siniestrado:'#FEE2E2'};
+    html.push('<div style="margin-top:10px"><span style="font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:'+(estBg[c.estado]||'#F3F4F6')+';color:'+(estColor[c.estado]||'#6B7280')+'">'+c.estado.charAt(0).toUpperCase()+c.estado.slice(1)+'</span></div>');
   }
-  if(polsActivas.length){
-    right.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div>');
-    polsActivas.forEach(function(p){
-      right.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+p.fecha_vencimiento+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
-    });
-    right.push('</div>');
-  }
-  html.push('<div class="g2"><div>'+left.join('')+'</div><div>'+right.join('')+'</div></div>');
+  html.push('</div>'); // end contact card
+
+  html.push('</div>'); // end right col
+  html.push('</div>'); // end grid
   return html.join('');
 }
 function fichaDatos(c) {
