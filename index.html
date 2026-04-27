@@ -775,60 +775,6 @@ tr:hover td{background:var(--bg)}
       </select>
     </div>
 
-    <div class="sec-label">VEHÍCULO ASEGURADO (opcional)</div>
-    <div class="fg2">
-      <div class="frow"><label>Marca</label>
-        <select id="f-marca">
-          <option value="">Seleccionar marca...</option>
-          <option>Alfa Romeo</option><option>Audi</option><option>BMW</option>
-          <option>Chevrolet</option><option>Chrysler</option><option>Citroën</option>
-          <option>Dodge</option><option>Fiat</option><option>Ford</option>
-          <option>Honda</option><option>Hyundai</option><option>Jeep</option>
-          <option>Kia</option><option>Land Rover</option><option>Mazda</option>
-          <option>Mercedes-Benz</option><option>Mini</option><option>Mitsubishi</option>
-          <option>Nissan</option><option>Peugeot</option><option>Porsche</option>
-          <option>RAM</option><option>Renault</option><option>Seat</option>
-          <option>Skoda</option><option>Subaru</option><option>Suzuki</option>
-          <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
-          <option>Otro</option>
-        </select>
-      </div>
-      <div class="frow"><label>Modelo</label><input type="text" id="f-modelo" placeholder="Ej: Focus, Corsa, Gol"></div>
-    </div>
-    <div class="fg3">
-      <div class="frow"><label>Año</label><select id="f-anio"><option value="">Año...</option></select></div>
-      <div class="frow"><label>Patente</label><input type="text" id="f-patente" placeholder="AB123CD"></div>
-      <div class="frow"><label>Color</label><input type="text" id="f-color" placeholder="Plata"></div>
-    </div>
-
-    <div class="sec-label">Documentos del cliente</div>
-    <div class="fg2">
-      <div class="frow"><label>DNI — Frente</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:10px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-dni-f').click()">
-          <input type="file" id="up-dni-f" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)" id="lbl-dni-f">📷 Subir DNI frente</div>
-        </div>
-      </div>
-      <div class="frow"><label>DNI — Dorso</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:10px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-dni-d').click()">
-          <input type="file" id="up-dni-d" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)" id="lbl-dni-d">📷 Subir DNI dorso</div>
-        </div>
-      </div>
-      <div class="frow"><label>Carnet de conducir — Frente</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:10px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-cc-f').click()">
-          <input type="file" id="up-cc-f" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)" id="lbl-cc-f">🪪 Subir carnet frente</div>
-        </div>
-      </div>
-      <div class="frow"><label>Carnet de conducir — Dorso</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:10px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-cc-d').click()">
-          <input type="file" id="up-cc-d" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)" id="lbl-cc-d">🪪 Subir carnet dorso</div>
-        </div>
-      </div>
-    </div>
-
     <div class="frow"><label>Notas internas</label>
       <textarea id="f-notas" placeholder="Observaciones sobre el cliente..."></textarea>
     </div>
@@ -1194,7 +1140,27 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     this.classList.add('active');
     const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
-    if (sec === 'clientes') cargarClientes();
+    if (sec === 'clientes') {
+      // Always reset to list view when clicking clientes in sidebar
+      const fichaWrap = document.getElementById('ficha-wrap');
+      const tablaWrap = document.getElementById('cl-tabla-wrap');
+      const toprow = document.getElementById('cl-toprow');
+      const count = document.getElementById('cl-count');
+      const pag = document.getElementById('cl-pagination');
+      if (fichaWrap) fichaWrap.classList.remove('open');
+      if (tablaWrap) tablaWrap.style.display = 'block';
+      if (toprow) toprow.style.display = 'flex';
+      if (count) count.style.display = 'block';
+      if (pag) pag.style.display = '';
+      // Reset section header to default
+      const secTitle = document.querySelector('.cl-section-title');
+      const secSub = document.querySelector('.cl-section-sub');
+      const secIcon = document.querySelector('.cl-section-icon');
+      if (secTitle) secTitle.textContent = 'Clientes / Prospectos';
+      if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
+      if (secIcon) secIcon.style.display = 'flex';
+      cargarClientes();
+    }
     if (sec === 'polizas') cargarPolizas();
     if (sec === 'cotizaciones') cargarCotizaciones();
     if (sec === 'siniestros') cargarSiniestros();
@@ -1449,7 +1415,24 @@ async function verFicha(id) {
   fichaTab = 'resumen';
   document.getElementById('cl-toprow').style.display = 'none';
   document.getElementById('cl-tabla-wrap').style.display = 'none';
+  const countEl = document.getElementById('cl-count');
+  if (countEl) countEl.style.display = 'none';
+  const pagEl = document.getElementById('cl-pagination');
+  if (pagEl) pagEl.style.display = 'none';
   document.getElementById('ficha-wrap').classList.add('open');
+
+  // Get client name to update section header
+  const { data: cl } = await sb.from('clientes').select('nombre,apellido,estado').eq('id', id).single();
+  if (cl) {
+    const secTitle = document.querySelector('.cl-section-title');
+    const secSub = document.querySelector('.cl-section-sub');
+    const secIcon = document.querySelector('.cl-section-icon');
+    if (secTitle) secTitle.textContent = cl.apellido + ', ' + cl.nombre;
+    if (secSub) secSub.textContent = 'Ficha 360\u00b0 del cliente';
+    if (secIcon) {
+      secIcon.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    }
+  }
   await renderFicha();
 }
 
@@ -1458,6 +1441,15 @@ document.getElementById('btn-volver-cl').onclick = function() {
   document.getElementById('ficha-wrap').classList.remove('open');
   document.getElementById('cl-toprow').style.display = 'flex';
   document.getElementById('cl-tabla-wrap').style.display = 'block';
+  const countEl = document.getElementById('cl-count');
+  if (countEl) countEl.style.display = 'block';
+  // Restore section header
+  const secTitle = document.querySelector('.cl-section-title');
+  const secSub = document.querySelector('.cl-section-sub');
+  const secIcon = document.querySelector('.cl-section-icon');
+  if (secTitle) secTitle.textContent = 'Clientes / Prospectos';
+  if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
+  if (secIcon) secIcon.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
 };
 
 async function renderFicha() {
