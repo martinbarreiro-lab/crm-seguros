@@ -2001,7 +2001,6 @@ function abrirIntModal(clienteId) {
   document.getElementById('modal-int').classList.add('open');
 }
 function abrirModalPolizaParaCliente(clienteId) {
-function abrirModalPolizaParaCliente(clienteId) {
   actualizarSelectsClientes();
   poblarAniosPoliza();
   setTimeout(function() { var sel=document.getElementById('fp-cl'); if(sel) sel.value=clienteId; document.getElementById('modal-pol').classList.add('open'); }, 80);
@@ -2787,74 +2786,6 @@ function openWa(el) {
   if (num) window.open('https://wa.me/' + num, '_blank');
 }
 
-init();  const html = [];
-
-  // Single header
-  html.push('<div class="cl-table">');
-  html.push('<div class="cl-table-header">');
-  html.push('<div class="cl-th" style="padding-left:10px">Cliente</div>');
-  html.push('<div class="cl-th">Contacto</div>');
-  html.push('<div class="cl-th">Domicilio</div>');
-  html.push('<div class="cl-th">DNI / CUIT</div>');
-  html.push('<div class="cl-th">Acciones</div>');
-  html.push('</div>');
-
-  var visibleEstados = ['activo', 'prospecto', 'inactivo'];
-  var estClass2 = {activo:'est-activo',renovacion:'est-renovacion',siniestrado:'est-siniestrado',prospecto:'est-prospecto',inactivo:'est-inactivo'};
-  var cardClass2 = {activo:'st-activo',renovacion:'st-renovacion',siniestrado:'st-siniestrado',prospecto:'st-prospecto',inactivo:'st-inactivo'};
-
-  clientes.forEach(function(cl) {
-    var cardC = cardMap[cl.estado] || 'st-inactivo';
-    var estadoVisible = visibleEstados.includes(cl.estado) ? cl.estado : null;
-    var dniCuit = cl.dni ? 'DNI ' + cl.dni : '';
-    var domicilio1 = cl.direccion || '';
-    var domicilio2 = cl.localidad || '';
-    var wappNum = cl.telefono_principal ? cl.telefono_principal.replace(/[^0-9]/g, '') : '';
-    var emailTo = cl.email_principal || '';
-
-    var p = [];
-    p.push('<div class="cl-row ' + cardC + '" onclick="verFicha(\'' + cl.id + '\')">');
-
-    p.push('<div class="cl-col">');
-    p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
-    if (estadoVisible) {
-      p.push('<div class="cl-badges"><span class="cl-estado ' + (estMap[cl.estado] || 'est-inactivo') + '">' + estadoVisible + '</span></div>');
-    }
-    p.push('</div>');
-
-    p.push('<div class="cl-col">');
-    if (emailTo) { p.push('<div class="cl-dline"><span class="di">&#9993;</span>' + emailTo + '</div>'); }
-    if (cl.telefono_principal) { p.push('<div class="cl-dline"><span class="di">&#9990;</span>' + cl.telefono_principal + '</div>'); }
-    p.push('</div>');
-
-    p.push('<div class="cl-col">');
-    if (domicilio1) { p.push('<div class="cl-dline"><span class="di">&#8962;</span>' + domicilio1 + '</div>'); }
-    if (domicilio2) { p.push('<div class="cl-dline-sub">' + domicilio2 + '</div>'); }
-    p.push('</div>');
-
-    p.push('<div class="cl-col">');
-    if (dniCuit) { p.push('<div class="cl-dline"><span class="di">&#9642;</span>' + dniCuit + '</div>'); }
-    p.push('</div>');
-
-    p.push('<div class="cl-actions" onclick="event.stopPropagation()">');
-    if (wappNum) {
-      p.push('<button class="btn-wa" onclick="window.open(\'https://wa.me/' + wappNum + '\',\'_blank\')">WhatsApp</button>');
-    }
-    if (emailTo) {
-      p.push('<div class="mail-wrap">');
-      p.push('<button class="mail-btn" onclick="toggleMailMenu(this)">Mail &#9660;</button>');
-      p.push('<div class="mail-menu">');
-      p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
-      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
-      p.push('</div></div>');
-    }
-    p.push('</div>');
-    p.push('</div>');
-    html.push(p.join(''));
-  });
-
-  html.push('</div>');
-}
 
 async function fichaAbrirTarea(el) {
   const cid = el.getAttribute('data-cid') || fichaId;
