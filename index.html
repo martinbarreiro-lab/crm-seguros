@@ -1269,9 +1269,9 @@ async function mostrarApp() {
   document.getElementById('app').classList.add('show');
   const { data: perfil } = await sb.from('perfiles').select('nombre').eq('id', user.id).single();
   const nombre = perfil ? perfil.nombre : user.email;
-  document.getElementById('sb-nombre').textContent = nombre;
-  document.getElementById('sb-email').textContent = user.email;
-  document.getElementById('sb-email2').textContent = user.email;
+  document.getElementById('sb-nombre') && (document.getElementById('sb-nombre').textContent = nombre);
+  document.getElementById('sb-email') && (document.getElementById('sb-email').textContent = user.email);
+  document.getElementById('sb-email2') && (document.getElementById('sb-email2').textContent = user.email);
   document.getElementById('sb-email') && (document.getElementById('sb-email').textContent = user.email);
   poblarAnios();
   setupCtxHandlers();
