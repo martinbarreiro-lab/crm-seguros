@@ -337,14 +337,14 @@ tr:hover td{background:var(--bg)}
     <input class="fi" type="email" id="l-email" placeholder="tu@email.com" autocomplete="email">
     <label class="fl">Contraseña</label>
     <input class="fi" type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password">
-    <button class="bl" id="btn-ingresar">Ingresar al CRM</button>
+    <button type="button" class="bl" id="btn-ingresar">Ingresar al CRM</button>
     <div style="text-align:center;margin-top:12px">
-      <button style="background:none;border:none;font-size:12px;color:var(--med);cursor:pointer" id="btn-toggle">¿Primera vez? Crear cuenta</button>
+      <button type="button" style="background:none;border:none;font-size:12px;color:var(--med);cursor:pointer" id="btn-toggle">¿Primera vez? Crear cuenta</button>
     </div>
     <div id="reg-form" style="display:none;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
       <label class="fl">Tu nombre completo</label>
       <input class="fi" type="text" id="r-nombre" placeholder="Nombre Apellido">
-      <button class="bl bl-g" id="btn-registrar">Crear cuenta</button>
+      <button type="button" class="bl bl-g" id="btn-registrar">Crear cuenta</button>
     </div>
   </div>
 </div>
@@ -363,43 +363,43 @@ tr:hover td{background:var(--bg)}
     </div>
     <nav class="sb-nav">
       <div class="nav-sec">Principal</div>
-      <button class="nav-btn active" data-sec="dashboard">
+      <button type="button" class="nav-btn active" data-sec="dashboard">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         Dashboard
       </button>
 
       <div class="nav-sec">CRM</div>
-      <button class="nav-btn" data-sec="clientes">
+      <button type="button" class="nav-btn" data-sec="clientes">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Clientes / Prospectos
       </button>
-      <button class="nav-btn" data-sec="tareas">
+      <button type="button" class="nav-btn" data-sec="tareas">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
         Seguimientos / Tareas
       </button>
 
       <div class="nav-sec">Pólizas</div>
-      <button class="nav-btn" data-sec="polizas">
+      <button type="button" class="nav-btn" data-sec="polizas">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         Listado de pólizas
       </button>
-      <button class="nav-btn" data-sec="cotizaciones">
+      <button type="button" class="nav-btn" data-sec="cotizaciones">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
         Cotizaciones
       </button>
 
       <div class="nav-sec">Operaciones</div>
-      <button class="nav-btn" data-sec="siniestros">
+      <button type="button" class="nav-btn" data-sec="siniestros">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Siniestros
       </button>
-      <button class="nav-btn" data-sec="cobranzas">
+      <button type="button" class="nav-btn" data-sec="cobranzas">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9 12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3"/></svg>
         Cobranzas
       </button>
 
       <div class="nav-sec">Análisis</div>
-      <button class="nav-btn" data-sec="analisis">
+      <button type="button" class="nav-btn" data-sec="analisis">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Análisis
       </button>
@@ -407,7 +407,7 @@ tr:hover td{background:var(--bg)}
     <div class="sb-foot">
       <span class="sb-name" id="sb-nombre">—</span>
       <span id="sb-email2" style="font-size:11px;color:var(--lt)"></span>
-      <button class="btn-out" id="btn-logout">Cerrar sesión</button>
+      <button type="button" class="btn-out" id="btn-logout">Cerrar sesión</button>
     </div>
   </div>
 
@@ -508,7 +508,7 @@ tr:hover td{background:var(--bg)}
               <option value="estado">Por estado</option>
             </select>
           </div>
-          <button class="btn-nuevo-cl" id="btn-nc2">
+          <button type="button" class="btn-nuevo-cl" id="btn-nc2">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
             + Nuevo cliente
           </button>
@@ -525,7 +525,7 @@ tr:hover td{background:var(--bg)}
         <!-- FICHA CLIENTE -->
         <div class="ficha-wrap" id="ficha-wrap">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-            <button class="btn-volver" id="btn-volver-cl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Volver al listado</button>
+            <button type="button" class="btn-volver" id="btn-volver-cl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Volver al listado</button>
             <div style="font-size:16px;font-weight:600;color:var(--blue)" id="ficha-titulo"></div>
             <span id="ficha-badge"></span>
           </div>
@@ -543,7 +543,7 @@ tr:hover td{background:var(--bg)}
             <option>Autos</option><option>Vida</option><option>Hogar</option>
             <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
           </select>
-          <button class="btn-nuevo-cl" id="btn-np2">+ Nueva póliza</button>
+          <button type="button" class="btn-nuevo-cl" id="btn-np2">+ Nueva póliza</button>
         </div>
         <div class="tbl">
           <table>
@@ -557,7 +557,7 @@ tr:hover td{background:var(--bg)}
       <div id="sec-cotizaciones" class="sec">
         <div class="toprow">
           <input class="srch" type="text" placeholder="Buscar cotización...">
-          <button class="btn btn-sm btn-p" id="btn-ncotz">+ Nueva cotización</button>
+          <button type="button" class="btn btn-sm btn-p" id="btn-ncotz">+ Nueva cotización</button>
         </div>
         <div class="g3" style="margin-bottom:14px">
           <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="cotz-env">—</div></div>
@@ -576,7 +576,7 @@ tr:hover td{background:var(--bg)}
       <div id="sec-siniestros" class="sec">
         <div class="toprow">
           <input class="srch" type="text" placeholder="Buscar siniestro...">
-          <button class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
+          <button type="button" class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
         </div>
         <div class="tbl">
           <table>
@@ -590,7 +590,7 @@ tr:hover td{background:var(--bg)}
       <div id="sec-cobranzas" class="sec">
         <div class="toprow">
           <div style="font-size:14px;font-weight:600">Gestión de cobranzas</div>
-          <button class="btn btn-sm btn-p" id="btn-ncob">+ Registrar cuota</button>
+          <button type="button" class="btn btn-sm btn-p" id="btn-ncob">+ Registrar cuota</button>
         </div>
         <div class="g3" style="margin-bottom:14px">
           <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="cob-venc" style="color:var(--red)">—</div></div>
@@ -609,15 +609,15 @@ tr:hover td{background:var(--bg)}
       <div id="sec-tareas" class="sec">
         <div class="toprow">
           <div style="display:flex;gap:5px;flex-wrap:wrap" id="tablero-tabs">
-            <button class="btn btn-sm btn-p" onclick="setTablero('hoy',this)">Hoy</button>
-            <button class="btn btn-sm" onclick="setTablero('todas',this)">Todas</button>
-            <button class="btn btn-sm" onclick="setTablero('ventas',this)">Ventas</button>
-            <button class="btn btn-sm" onclick="setTablero('siniestros',this)">Siniestros</button>
-            <button class="btn btn-sm" onclick="setTablero('cobranzas',this)">Cobranzas</button>
-            <button class="btn btn-sm" onclick="setTablero('renovaciones',this)">Renovaciones</button>
-            <button class="btn btn-sm" onclick="setTablero('general',this)">General</button>
+            <button type="button" class="btn btn-sm btn-p" onclick="setTablero('hoy',this)">Hoy</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('todas',this)">Todas</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('ventas',this)">Ventas</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('siniestros',this)">Siniestros</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('cobranzas',this)">Cobranzas</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('renovaciones',this)">Renovaciones</button>
+            <button type="button" class="btn btn-sm" onclick="setTablero('general',this)">General</button>
           </div>
-          <button class="btn btn-sm btn-p" id="btn-ntar">+ Nueva tarea</button>
+          <button type="button" class="btn btn-sm btn-p" id="btn-ntar">+ Nueva tarea</button>
         </div>
         <!-- CONTEXT MENU -->
         <div class="ctx-menu" id="ctx-menu">
@@ -671,7 +671,7 @@ tr:hover td{background:var(--bg)}
 <!-- MODAL NUEVO CLIENTE -->
 <div class="modal-ov" id="modal-cl">
   <div class="modal-box">
-    <div class="modal-t">Nuevo cliente <button class="modal-x" onclick="cerrarModal('modal-cl')">✕</button></div>
+    <div class="modal-t">Nuevo cliente <button type="button" class="modal-x" onclick="cerrarModal('modal-cl')">✕</button></div>
 
     <div class="sec-label">DATOS PERSONALES</div>
     <div class="fg2">
@@ -849,15 +849,15 @@ tr:hover td{background:var(--bg)}
     </div>
 
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-      <button class="btn" onclick="cerrarModal('modal-cl')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-cl">Guardar cliente</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-cl')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-cl">Guardar cliente</button>
     </div>
   </div>
 </div>
 
 <div class="modal-ov" id="modal-cotz">
   <div class="modal-box">
-    <div class="modal-t">Nueva cotización <button class="modal-x" onclick="cerrarModal('modal-cotz')">✕</button></div>
+    <div class="modal-t">Nueva cotización <button type="button" class="modal-x" onclick="cerrarModal('modal-cotz')">✕</button></div>
     <div class="frow"><label>Cliente *</label><select id="fc-cl"><option value="">Seleccionar...</option></select></div>
     <div class="fg2">
       <div class="frow"><label>Ramo *</label>
@@ -881,8 +881,8 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="frow"><label>Notas</label><textarea id="fc-notas" placeholder="Detalle de la cotización..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-cotz')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-cotz">Guardar cotización</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-cotz')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-cotz">Guardar cotización</button>
     </div>
   </div>
 </div>
@@ -890,7 +890,7 @@ tr:hover td{background:var(--bg)}
 <!-- MODAL SINIESTRO -->
 <div class="modal-ov" id="modal-sin">
   <div class="modal-box">
-    <div class="modal-t">Nuevo siniestro <button class="modal-x" onclick="cerrarModal('modal-sin')">✕</button></div>
+    <div class="modal-t">Nuevo siniestro <button type="button" class="modal-x" onclick="cerrarModal('modal-sin')">✕</button></div>
     <div class="frow"><label>Cliente *</label><select id="fs-cl"><option value="">Seleccionar...</option></select></div>
     <div class="fg2">
       <div class="frow"><label>N° expediente</label><input type="text" id="fs-exp" placeholder="SIN-2025-XXX"></div>
@@ -913,8 +913,8 @@ tr:hover td{background:var(--bg)}
       <div class="frow"><label>Fecha de inspección</label><input type="date" id="fs-insp"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-sin')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-sin">Registrar siniestro</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-sin')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-sin">Registrar siniestro</button>
     </div>
   </div>
 </div>
@@ -922,7 +922,7 @@ tr:hover td{background:var(--bg)}
 <!-- MODAL COBRANZA -->
 <div class="modal-ov" id="modal-cob">
   <div class="modal-box">
-    <div class="modal-t">Registrar cuota <button class="modal-x" onclick="cerrarModal('modal-cob')">✕</button></div>
+    <div class="modal-t">Registrar cuota <button type="button" class="modal-x" onclick="cerrarModal('modal-cob')">✕</button></div>
     <div class="frow"><label>Cliente *</label><select id="fcob-cl" id="fcob-cl"><option value="">Seleccionar...</option></select></div>
     <div class="frow"><label>Póliza *</label><select id="fcob-pol"><option value="">Primero seleccioná un cliente</option></select></div>
     <div class="fg3">
@@ -932,8 +932,8 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="frow"><label>Fecha vencimiento *</label><input type="date" id="fcob-vto"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-cob')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-cob">Guardar cuota</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-cob')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-cob">Guardar cuota</button>
     </div>
   </div>
 </div>
@@ -941,7 +941,7 @@ tr:hover td{background:var(--bg)}
 <!-- MODAL TAREA -->
 <div class="modal-ov" id="modal-tar">
   <div class="modal-box">
-    <div class="modal-t">Nueva tarea <button class="modal-x" onclick="cerrarModal('modal-tar')">✕</button></div>
+    <div class="modal-t">Nueva tarea <button type="button" class="modal-x" onclick="cerrarModal('modal-tar')">✕</button></div>
     <div class="frow"><label>Título *</label><input type="text" id="ft-tit" placeholder="Descripción de la tarea..."></div>
     <div class="fg2">
       <div class="frow"><label>Tablero *</label>
@@ -975,8 +975,8 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="frow"><label>Descripción</label><textarea id="ft-desc" placeholder="Detalle..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-tar')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-tar">Crear tarea</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-tar')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-tar">Crear tarea</button>
     </div>
   </div>
 </div>
@@ -984,7 +984,7 @@ tr:hover td{background:var(--bg)}
 <!-- MODAL INTERACCIÓN -->
 <div class="modal-ov" id="modal-int">
   <div class="modal-box">
-    <div class="modal-t">Registrar interacción <button class="modal-x" onclick="cerrarModal('modal-int')">✕</button></div>
+    <div class="modal-t">Registrar interacción <button type="button" class="modal-x" onclick="cerrarModal('modal-int')">✕</button></div>
     <div class="fg2">
       <div class="frow"><label>Tipo</label>
         <select id="fi-tipo">
@@ -998,8 +998,8 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="frow"><label>Resumen *</label><textarea id="fi-res" placeholder="¿De qué se habló? ¿Qué resultado tuvo?"></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-int')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-int">Guardar</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-int')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-int">Guardar</button>
     </div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ tr:hover td{background:var(--bg)}
   <div class="modal-box" style="max-width:720px">
     <div class="modal-t">
       <span id="tar-det-titulo">Detalle de tarea</span>
-      <button class="modal-x" onclick="cerrarModal('modal-tar-det')">&#10005;</button>
+      <button type="button" class="modal-x" onclick="cerrarModal('modal-tar-det')">&#10005;</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 260px;gap:16px">
       <div>
@@ -1067,15 +1067,15 @@ tr:hover td{background:var(--bg)}
         </div>
         <div id="tar-det-info" style="font-size:11px;color:var(--muted);padding:8px;background:var(--bg);border-radius:var(--rsm);margin-top:4px"></div>
         <div style="display:flex;gap:6px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-sm" onclick="cerrarModal('modal-tar-det')">Cancelar</button>
-          <button class="btn btn-sm btn-p" id="btn-tar-guardar">Guardar cambios</button>
+          <button type="button" class="btn btn-sm" onclick="cerrarModal('modal-tar-det')">Cancelar</button>
+          <button type="button" class="btn btn-sm btn-p" id="btn-tar-guardar">Guardar cambios</button>
         </div>
       </div>
       <div style="border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comentarios</div>
         <div id="tar-comentarios" style="flex:1;overflow-y:auto;max-height:320px;margin-bottom:10px"></div>
         <textarea id="nuevo-coment" placeholder="Agregar comentario..." style="padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit;resize:none;min-height:60px;margin-bottom:6px"></textarea>
-        <button class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
+        <button type="button" class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
       </div>
     </div>
   </div>
@@ -1084,7 +1084,7 @@ tr:hover td{background:var(--bg)}
 <!-- Modal Póliza -->
 <div class="modal-ov" id="modal-pol">
   <div class="modal-box" style="max-width:640px">
-    <div class="modal-t">Nueva póliza <button class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
+    <div class="modal-t">Nueva póliza <button type="button" class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
     <div class="fg2">
       <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
       <div class="frow"><label>Aseguradora *</label>
@@ -1202,8 +1202,8 @@ tr:hover td{background:var(--bg)}
 
     <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
+      <button type="button" class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
     </div>
   </div>
 </div>
@@ -1494,14 +1494,14 @@ function renderClientesPage() {
     // Col 5: Actions - icon only buttons
     p.push('<div class="cl-actions" onclick="event.stopPropagation()">');
     if (wappNum) {
-      p.push('<button class="cl-action-btn btn-icon-wa" data-tip="Enviar WhatsApp" data-wa="' + wappNum + '" onclick="event.stopPropagation();openWa(this)">' + SVG_WA_BTN + '</button>');
+      p.push('<button type="button" class="cl-action-btn btn-icon-wa" data-tip="Enviar WhatsApp" data-wa="' + wappNum + '" onclick="event.stopPropagation();openWa(this)">' + SVG_WA_BTN + '</button>');
     }
     if (emailTo) {
       p.push('<div class="mail-wrap">');
-      p.push('<button class="cl-action-btn btn-icon-mail" data-tip="Enviar email" onclick="toggleMailMenu(this)">' + SVG_MAIL_BTN + '</button>');
+      p.push('<button type="button" class="cl-action-btn btn-icon-mail" data-tip="Enviar email" onclick="toggleMailMenu(this)">' + SVG_MAIL_BTN + '</button>');
       p.push('<div class="mail-menu">');
-      p.push('<button class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
-      p.push('<button class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
+      p.push('<button type="button" class="mail-menu-item" onclick="abrirMail(\'' + emailTo + '\',\'\',\'\')">Solo mail</button>');
+      p.push('<button type="button" class="mail-menu-item" onclick="abrirMailConPoliza(\'' + cl.id + '\',\'' + emailTo + '\')">Con p&#243;liza PDF</button>');
       p.push('</div></div>');
     }
     p.push('</div>');
@@ -1519,13 +1519,13 @@ function renderClientesPage() {
     pagEl.style.display = 'flex';
     infoEl.textContent = 'Mostrando ' + (start+1) + ' a ' + end + ' de ' + total + ' clientes';
     var btns = [];
-    btns.push('<button class="cl-pag-btn cl-pag-arrow" onclick="clPagGo(' + (CL_PAGE-1) + ')" ' + (CL_PAGE===1?'disabled':'') + '>&#8249;</button>');
+    btns.push('<button type="button" class="cl-pag-btn cl-pag-arrow" onclick="clPagGo(' + (CL_PAGE-1) + ')" ' + (CL_PAGE===1?'disabled':'') + '>&#8249;</button>');
     var startP = Math.max(1, CL_PAGE-2);
     var endP = Math.min(totalPages, startP+4);
     for (var i = startP; i <= endP; i++) {
-      btns.push('<button class="cl-pag-btn' + (i===CL_PAGE?' active':'') + '" onclick="clPagGo(' + i + ')">' + i + '</button>');
+      btns.push('<button type="button" class="cl-pag-btn' + (i===CL_PAGE?' active':'') + '" onclick="clPagGo(' + i + ')">' + i + '</button>');
     }
-    btns.push('<button class="cl-pag-btn cl-pag-arrow" onclick="clPagGo(' + (CL_PAGE+1) + ')" ' + (CL_PAGE===totalPages?'disabled':'') + '>&#8250;</button>');
+    btns.push('<button type="button" class="cl-pag-btn cl-pag-arrow" onclick="clPagGo(' + (CL_PAGE+1) + ')" ' + (CL_PAGE===totalPages?'disabled':'') + '>&#8250;</button>');
     btnsEl.innerHTML = btns.join('');
   } else {
     pagEl.style.display = 'none';
@@ -1617,7 +1617,7 @@ async function renderFicha() {
     { id: 'datos', label: 'Datos personales' },
   ];
   document.getElementById('ficha-tabs').innerHTML = tabs.map(function(t) {
-    return '<button class="ftab' + (fichaTab === t.id ? ' active' : '') + '" onclick="setFichaTab(\'' + t.id + '\')">' + t.label + '</button>';
+    return '<button type="button" class="ftab' + (fichaTab === t.id ? ' active' : '') + '" onclick="setFichaTab(\'' + t.id + '\')">' + t.label + '</button>';
   }).join('');
 
   await renderFichaTab(c);
@@ -1656,9 +1656,9 @@ async function fichaResumen(c) {
 
   // Quick actions
   html.push('<div class="ficha-quick-actions">');
-  html.push('<button class="fqa-btn fqa-task" data-cid="'+c.id+'" onclick="fichaAbrirTarea(this)">&#10003; Nueva tarea</button>');
-  html.push('<button class="fqa-btn fqa-pol" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">&#128196; Nueva p\u00f3liza</button>');
-  html.push('<button class="fqa-btn fqa-int" data-cid="'+c.id+'" onclick="fichaAbrirInt(this)">&#128172; Registrar interacci\u00f3n</button>');
+  html.push('<button type="button" class="fqa-btn fqa-task" data-cid="'+c.id+'" onclick="fichaAbrirTarea(this)">&#10003; Nueva tarea</button>');
+  html.push('<button type="button" class="fqa-btn fqa-pol" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">&#128196; Nueva p\u00f3liza</button>');
+  html.push('<button type="button" class="fqa-btn fqa-int" data-cid="'+c.id+'" onclick="fichaAbrirInt(this)">&#128172; Registrar interacci\u00f3n</button>');
   html.push('</div>');
 
   // Metric cards
@@ -1683,7 +1683,7 @@ async function fichaResumen(c) {
     });
     html.push('</div>');
   } else {
-    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva p\u00f3liza</button></div></div>');
+    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button type="button" class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva p\u00f3liza</button></div></div>');
   }
 
   // Tareas recientes
@@ -1734,7 +1734,7 @@ function fichaDatos(c) {
   html.push('<div class="card">');
   html.push('<div id="datos-view-' + c.id + '">');
   html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px">');
-  html.push('<button class="btn btn-sm btn-p" onclick="mostrarFormEditCliente(\'' + c.id + '\')">Editar datos</button>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="mostrarFormEditCliente(\'' + c.id + '\')">Editar datos</button>');
   html.push('</div>');
 
   html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Datos personales</div>');
@@ -1830,8 +1830,8 @@ function mostrarFormEditCliente(id) {
   html.push('<div class="frow" style="margin-top:8px"><label>Notas internas</label><textarea id="ed-notas" style="min-height:60px">' + (cl.notas||'') + '</textarea></div>');
 
   html.push('<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">');
-  html.push('<button class="btn btn-sm" onclick="setFichaTab(\'datos\')">Cancelar</button>');
-  html.push('<button class="btn btn-sm btn-p" onclick="guardarEdicionCliente(\'' + id + '\')">Guardar cambios</button>');
+  html.push('<button type="button" class="btn btn-sm" onclick="setFichaTab(\'datos\')">Cancelar</button>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="guardarEdicionCliente(\'' + id + '\')">Guardar cambios</button>');
   html.push('</div>');
   html.push('</div>');
   cont.innerHTML = html.join('');
@@ -1878,7 +1878,7 @@ async function fichaPolizas(c) {
   const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const eb = { activa: 'bv', renovacion: 'ba', vencida: 'br', cancelada: 'bgr' };
   return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
-    + '<button class="btn btn-sm btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button></div>'
+    + '<button type="button" class="btn btn-sm btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button></div>'
     + ((!data || !data.length) ? '<div class="empty">Sin pólizas registradas.</div>'
     : data.map(function(p) {
       return '<div class="card">'
@@ -1901,7 +1901,7 @@ async function fichaSiniestros(c) {
   const { data } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
   const eb = { abierto: 'br', proceso: 'ba', documentacion: 'ba', taller: 'bb', liquidado: 'bb', cerrado: 'bv' };
   return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
-    + '<button class="btn btn-sm btn-p" onclick="abrirModalSiniestroParaCliente(\'' + c.id + '\')">+ Nuevo siniestro</button></div>'
+    + '<button type="button" class="btn btn-sm btn-p" onclick="abrirModalSiniestroParaCliente(\'' + c.id + '\')">+ Nuevo siniestro</button></div>'
     + ((!data || !data.length) ? '<div class="empty">Sin siniestros registrados.</div>'
     : data.map(function(s) {
       const dias = Math.round((new Date() - new Date(s.created_at)) / 864e5);
@@ -1920,7 +1920,7 @@ async function fichaCotizaciones(c) {
   const { data } = await sb.from('cotizaciones').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
   const eb = { enviada: 'bb', aceptada: 'bv', rechazada: 'br', vencida: 'bgr' };
   return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
-    + '<button class="btn btn-sm btn-p" onclick="abrirModalCotzParaCliente(\'' + c.id + '\')">+ Nueva cotización</button></div>'
+    + '<button type="button" class="btn btn-sm btn-p" onclick="abrirModalCotzParaCliente(\'' + c.id + '\')">+ Nueva cotización</button></div>'
     + ((!data || !data.length) ? '<div class="empty">Sin cotizaciones.</div>'
     : data.map(function(ct) {
       return '<div class="card">'
@@ -1928,7 +1928,7 @@ async function fichaCotizaciones(c) {
         + '<div><div style="font-weight:600">' + ct.ramo + ' · ' + ct.aseguradora + '</div><div style="font-size:11px;color:var(--muted)">Enviada: ' + (ct.fecha_envio || '—') + ' · Válida: ' + (ct.fecha_validez || '—') + '</div></div>'
         + '<div style="text-align:right"><span class="badge ' + (eb[ct.estado] || 'bgr') + '">' + ct.estado + '</span><div style="font-size:13px;font-weight:600;color:var(--green);margin-top:3px">$' + (ct.prima_cotizada || 0).toLocaleString('es-AR') + '</div></div>'
         + '</div>'
-        + (ct.estado === 'enviada' ? '<button class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + ct.id + '\',\'aceptada\')">Marcar aceptada</button>' : '')
+        + (ct.estado === 'enviada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + ct.id + '\',\'aceptada\')">Marcar aceptada</button>' : '')
         + '</div>';
     }).join(''));
 }
@@ -1939,7 +1939,7 @@ async function fichaTareas(c) {
   const eLbl={pendiente:'Pendiente',encurso:'En curso',esperando:'Esp. respuesta',cerrada:'Cerrada',cancelada:'Cancelada'};
   const prioC={urgente:'#991B1B',alta:'#92400E',media:'#1E40AF',baja:'#6B7280'};
   const html=[];
-  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">+ Nueva tarea</button></div>');
+  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button type="button" class="fqa-btn fqa-task" onclick="abrirModalTareaParaCliente(\''+c.id+'\')">+ Nueva tarea</button></div>');
   if(!data||!data.length){
     html.push('<div class="empty-state"><div class="empty-icon">&#10003;</div><div class="empty-title">Sin tareas</div></div>');
     return html.join('');
@@ -1978,7 +1978,7 @@ async function fichaHistorial(c) {
   const dotCls={blue:'tl-dot-blue',green:'tl-dot-green',red:'tl-dot-red',amber:'tl-dot-amber'};
   const iconChar={interaccion:'&#128172;',poliza:'&#128196;',siniestro:'&#9888;',cotizacion:'&#128203;'};
   const html=[];
-  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">+ Registrar interacci\u00f3n</button></div>');
+  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button type="button" class="fqa-btn fqa-int" onclick="abrirIntModal(\''+c.id+'\')">+ Registrar interacci\u00f3n</button></div>');
   if(!eventos.length){
     html.push('<div class="empty-state"><div class="empty-icon">&#128336;</div><div class="empty-title">Sin historial</div></div>');
   } else {
@@ -2330,7 +2330,7 @@ async function cargarCotizaciones() {
       + '<td>$' + (c.prima_cotizada || 0).toLocaleString('es-AR') + '</td>'
       + '<td>' + (c.fecha_validez || '—') + '</td>'
       + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
-      + '<td>' + (c.estado === 'enviada' ? '<button class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + c.id + '\',\'aceptada\')">Aceptar</button>' : '—') + '</td></tr>';
+      + '<td>' + (c.estado === 'enviada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + c.id + '\',\'aceptada\')">Aceptar</button>' : '—') + '</td></tr>';
   }).join('');
 }
 
@@ -2373,7 +2373,7 @@ async function cargarCobranzas() {
       + '<td style="font-weight:500">$' + (c.monto || 0).toLocaleString('es-AR') + '</td>'
       + '<td>' + c.fecha_vencimiento + '</td>'
       + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
-      + '<td>' + (c.estado !== 'pagada' ? '<button class="btn btn-sm btn-ok" onclick="marcarPagada(\'' + c.id + '\')">Registrar pago</button>' : '✓') + '</td></tr>';
+      + '<td>' + (c.estado !== 'pagada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="marcarPagada(\'' + c.id + '\')">Registrar pago</button>' : '✓') + '</td></tr>';
   }).join('');
 }
 
@@ -2446,9 +2446,9 @@ async function cargarTareas() {
       parts.push('</div>');
       parts.push('<div class="task-card-footer">');
       parts.push('<div class="task-actions-row">');
-      parts.push('<button class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
-      if (t.cliente_id) { parts.push('<button class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
-      if (sig[t.estado]) { parts.push('<button class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
+      parts.push('<button type="button" class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
+      if (t.cliente_id) { parts.push('<button type="button" class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
+      if (sig[t.estado]) { parts.push('<button type="button" class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
       parts.push('</div>');
       if (fechaStr) {
         let chipClass = 'date-chip';
@@ -2822,6 +2822,45 @@ function fichaAbrirInt(el) {
 
 try { setupUploads(); } catch(e) { console.warn('setupUploads:', e); }
 try { setupCtxHandlers(); } catch(e) { console.warn('setupCtxHandlers:', e); }
+function toggleMailMenu(btn) {
+  var allMenus = document.querySelectorAll('.mail-menu.open');
+  var thisMenu = btn.parentElement.querySelector('.mail-menu');
+  allMenus.forEach(function(m) { if (m !== thisMenu) m.classList.remove('open'); });
+  if (thisMenu) thisMenu.classList.toggle('open');
+}
+
+function abrirMail(email, asunto, cuerpo) {
+  var url = 'mailto:' + email;
+  var params = [];
+  if (asunto) params.push('subject=' + encodeURIComponent(asunto));
+  if (cuerpo) params.push('body=' + encodeURIComponent(cuerpo));
+  if (params.length) url += '?' + params.join('&');
+  window.open(url, '_blank');
+}
+
+async function abrirMailConPoliza(clienteId, email) {
+  // Find policies for client
+  const { data: pols } = await sb.from('polizas').select('numero,ramo,aseguradora,fecha_vencimiento').eq('cliente_id', clienteId).eq('estado', 'activa');
+  var asunto = 'Información sobre tu póliza';
+  var cuerpo = 'Hola,\n\nTe envio informacion sobre tu(s) poliza(s):\n\n';
+  if (pols && pols.length) {
+    pols.forEach(function(p) {
+      cuerpo += '- Poliza ' + p.numero + ' (' + p.ramo + ' - ' + p.aseguradora + ')';
+      if (p.fecha_vencimiento) cuerpo += ' - Vence: ' + p.fecha_vencimiento;
+      cuerpo += '\n';
+    });
+  }
+  cuerpo += '\nSaludos,\nMartín Barreiro';
+  abrirMail(email, asunto, cuerpo);
+}
+
+// Click outside mail menu closes it
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mail-wrap') && !e.target.closest('.mail-btn')) {
+    document.querySelectorAll('.mail-menu.open').forEach(function(m) { m.classList.remove('open'); });
+  }
+});
+
 init();
 </script>
 </body>
