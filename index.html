@@ -1081,6 +1081,135 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
+<!-- Modal Póliza -->
+<div class="modal-ov" id="modal-pol">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-t">Nueva póliza <button class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
+    <div class="fg2">
+      <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
+      <div class="frow"><label>Aseguradora *</label>
+        <select id="fp-aseg">
+          <option value="">Seleccionar...</option>
+          <option>Sancor Seguros</option><option>Zurich Argentina</option><option>Mapfre Argentina</option>
+          <option>Federación Patronal</option><option>La Segunda</option><option>Provincia Seguros</option>
+          <option>San Cristóbal</option><option>Nación Seguros</option><option>Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg3">
+      <div class="frow"><label>N° póliza interno</label><input type="text" id="fp-num" placeholder="AUTO-2025-XXX"></div>
+      <div class="frow"><label>N° póliza aseguradora</label><input type="text" id="fp-num-aseg" placeholder="N° de la compañía"></div>
+      <div class="frow"><label>Ramo *</label>
+        <select id="fp-ramo" onchange="onRamoChange()">
+          <option value="">Seleccionar...</option>
+          <option>Automotor</option><option>Vida</option><option>Hogar</option>
+          <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow"><label>Tipo de cobertura</label><input type="text" id="fp-cob" placeholder="Todo riesgo, RC, Terceros completo..."></div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Premio</div>
+    <div class="fg3">
+        <div class="frow"><label>Periodicidad *</label>
+          <select id="fp-period" onchange="calcPremio()">
+            <option value="">Seleccionar...</option>
+            <option value="mensual">Mensual (póliza anual)</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual / Contado</option>
+          </select>
+        </div>
+        <div class="frow"><label>Premio base *</label><input type="number" id="fp-premio-base" placeholder="0" oninput="calcPremio()"></div>
+        <div class="frow"><label>Premio anual</label><input type="text" id="fp-premio-anual" placeholder="Automático" readonly style="background:#f8f9fa"></div>
+      </div>
+      <div id="fp-desglose" style="background:var(--bg);border-radius:var(--rsm);padding:9px 12px;font-size:12px;color:var(--muted);display:none;margin-bottom:10px"></div>
+    </div>
+
+    <div class="fg2">
+      <div class="frow"><label>Fecha de inicio *</label><input type="date" id="fp-ini" onchange="calcVto()"></div>
+      <div class="frow"><label>Fecha de vencimiento</label><input type="date" id="fp-vto"></div>
+    </div>
+
+    <div class="fg3">
+      <div class="frow"><label>Suma asegurada ($)</label><input type="number" id="fp-suma" placeholder="Valor del bien" oninput="calcFranquicia()"></div>
+      <div class="frow"><label>Tipo de franquicia</label>
+        <select id="fp-franq-tipo" onchange="calcFranquicia()">
+          <option value="">Sin franquicia</option>
+          <option value="fija">Fija ($)</option>
+          <option value="pct">Porcentual (%)</option>
+        </select>
+      </div>
+      <div class="frow"><label id="fp-franq-lbl">Valor franquicia</label>
+        <input type="number" id="fp-franq-val" placeholder="0" oninput="calcFranquicia()">
+      </div>
+    </div>
+    <div id="fp-franq-res" style="background:var(--bg);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:none;margin-bottom:10px"></div>
+
+    <!-- BIEN ASEGURADO AUTOMOTOR -->
+    <div id="sec-bien-auto" style="display:none;background:var(--bg);border-radius:var(--rsm);padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vehículo asegurado</div>
+      <div class="fg3">
+        <div class="frow"><label>Marca</label>
+          <select id="fp-marca">
+            <option value="">Seleccionar...</option>
+            <option>Alfa Romeo</option><option>Audi</option><option>BMW</option><option>Chevrolet</option>
+            <option>Citroën</option><option>Dodge</option><option>Fiat</option><option>Ford</option>
+            <option>Honda</option><option>Hyundai</option><option>Jeep</option><option>Kia</option>
+            <option>Mazda</option><option>Mercedes-Benz</option><option>Mitsubishi</option><option>Nissan</option>
+            <option>Peugeot</option><option>RAM</option><option>Renault</option><option>Seat</option>
+            <option>Suzuki</option><option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
+            <option value="__otro__">Otra (agregar)</option>
+          </select>
+        </div>
+        <div class="frow"><label>Modelo</label><input type="text" id="fp-modelo" placeholder="Focus, Gol, Corsa..."></div>
+        <div class="frow"><label>Año</label><select id="fp-anio-auto"><option value="">Año...</option></select></div>
+      </div>
+      <div class="fg3">
+        <div class="frow"><label>Patente</label><input type="text" id="fp-patente" placeholder="AB123CD"></div>
+        <div class="frow"><label>Color</label><input type="text" id="fp-color" placeholder="Plata"></div>
+        <div class="frow"><label>Uso</label>
+          <select id="fp-uso">
+            <option>Particular</option><option>Comercial</option><option>Remis</option><option>Taxi</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg2">
+        <div class="frow"><label>VIN / N° de chasis</label><input type="text" id="fp-vin" placeholder="VIN o número de chasis"></div>
+        <div class="frow"><label>N° de motor</label><input type="text" id="fp-motor" placeholder="Número de motor"></div>
+      </div>
+    </div>
+
+    <!-- BIEN ASEGURADO OTROS -->
+    <div id="sec-bien-otro" style="display:none">
+      <div class="frow"><label>Bien asegurado</label><input type="text" id="fp-bien" placeholder="Ej: Hogar Córdoba 1234, Local comercial..."></div>
+    </div>
+
+    <div class="fg2">
+      <div class="frow"><label>Póliza PDF</label>
+        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-poliza').click()">
+          <input type="file" id="up-poliza" accept=".pdf" style="display:none">
+          <div style="font-size:12px;color:var(--muted)">📄 Subir póliza PDF</div>
+        </div>
+      </div>
+      <div class="frow"><label>Cédula verde</label>
+        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-cedula').click()">
+          <input type="file" id="up-cedula" accept="image/*,.pdf" style="display:none">
+          <div style="font-size:12px;color:var(--muted)">📋 Subir cédula verde</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
+      <button class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
+    </div>
+  </div>
+</div>
+
+
+
 <script>
 const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
 const SKEY = 'sb_publishable_rHZYJJpNN9YdUdwWLsNwrQ_Dw_J45zX';
@@ -2763,133 +2892,5 @@ try { setupUploads(); } catch(e) { console.warn('setupUploads:', e); }
 try { setupCtxHandlers(); } catch(e) { console.warn('setupCtxHandlers:', e); }
 init();
 </script>
-
-<!-- Modal Póliza -->
-<div class="modal-ov" id="modal-pol">
-  <div class="modal-box" style="max-width:640px">
-    <div class="modal-t">Nueva póliza <button class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
-    <div class="fg2">
-      <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
-      <div class="frow"><label>Aseguradora *</label>
-        <select id="fp-aseg">
-          <option value="">Seleccionar...</option>
-          <option>Sancor Seguros</option><option>Zurich Argentina</option><option>Mapfre Argentina</option>
-          <option>Federación Patronal</option><option>La Segunda</option><option>Provincia Seguros</option>
-          <option>San Cristóbal</option><option>Nación Seguros</option><option>Otro</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg3">
-      <div class="frow"><label>N° póliza interno</label><input type="text" id="fp-num" placeholder="AUTO-2025-XXX"></div>
-      <div class="frow"><label>N° póliza aseguradora</label><input type="text" id="fp-num-aseg" placeholder="N° de la compañía"></div>
-      <div class="frow"><label>Ramo *</label>
-        <select id="fp-ramo" onchange="onRamoChange()">
-          <option value="">Seleccionar...</option>
-          <option>Automotor</option><option>Vida</option><option>Hogar</option>
-          <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
-        </select>
-      </div>
-    </div>
-    <div class="frow"><label>Tipo de cobertura</label><input type="text" id="fp-cob" placeholder="Todo riesgo, RC, Terceros completo..."></div>
-
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Premio</div>
-    <div class="fg3">
-        <div class="frow"><label>Periodicidad *</label>
-          <select id="fp-period" onchange="calcPremio()">
-            <option value="">Seleccionar...</option>
-            <option value="mensual">Mensual (póliza anual)</option>
-            <option value="trimestral">Trimestral</option>
-            <option value="semestral">Semestral</option>
-            <option value="anual">Anual / Contado</option>
-          </select>
-        </div>
-        <div class="frow"><label>Premio base *</label><input type="number" id="fp-premio-base" placeholder="0" oninput="calcPremio()"></div>
-        <div class="frow"><label>Premio anual</label><input type="text" id="fp-premio-anual" placeholder="Automático" readonly style="background:#f8f9fa"></div>
-      </div>
-      <div id="fp-desglose" style="background:var(--bg);border-radius:var(--rsm);padding:9px 12px;font-size:12px;color:var(--muted);display:none;margin-bottom:10px"></div>
-    </div>
-
-    <div class="fg2">
-      <div class="frow"><label>Fecha de inicio *</label><input type="date" id="fp-ini" onchange="calcVto()"></div>
-      <div class="frow"><label>Fecha de vencimiento</label><input type="date" id="fp-vto"></div>
-    </div>
-
-    <div class="fg3">
-      <div class="frow"><label>Suma asegurada ($)</label><input type="number" id="fp-suma" placeholder="Valor del bien" oninput="calcFranquicia()"></div>
-      <div class="frow"><label>Tipo de franquicia</label>
-        <select id="fp-franq-tipo" onchange="calcFranquicia()">
-          <option value="">Sin franquicia</option>
-          <option value="fija">Fija ($)</option>
-          <option value="pct">Porcentual (%)</option>
-        </select>
-      </div>
-      <div class="frow"><label id="fp-franq-lbl">Valor franquicia</label>
-        <input type="number" id="fp-franq-val" placeholder="0" oninput="calcFranquicia()">
-      </div>
-    </div>
-    <div id="fp-franq-res" style="background:var(--bg);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:none;margin-bottom:10px"></div>
-
-    <!-- BIEN ASEGURADO AUTOMOTOR -->
-    <div id="sec-bien-auto" style="display:none;background:var(--bg);border-radius:var(--rsm);padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vehículo asegurado</div>
-      <div class="fg3">
-        <div class="frow"><label>Marca</label>
-          <select id="fp-marca">
-            <option value="">Seleccionar...</option>
-            <option>Alfa Romeo</option><option>Audi</option><option>BMW</option><option>Chevrolet</option>
-            <option>Citroën</option><option>Dodge</option><option>Fiat</option><option>Ford</option>
-            <option>Honda</option><option>Hyundai</option><option>Jeep</option><option>Kia</option>
-            <option>Mazda</option><option>Mercedes-Benz</option><option>Mitsubishi</option><option>Nissan</option>
-            <option>Peugeot</option><option>RAM</option><option>Renault</option><option>Seat</option>
-            <option>Suzuki</option><option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
-            <option value="__otro__">Otra (agregar)</option>
-          </select>
-        </div>
-        <div class="frow"><label>Modelo</label><input type="text" id="fp-modelo" placeholder="Focus, Gol, Corsa..."></div>
-        <div class="frow"><label>Año</label><select id="fp-anio-auto"><option value="">Año...</option></select></div>
-      </div>
-      <div class="fg3">
-        <div class="frow"><label>Patente</label><input type="text" id="fp-patente" placeholder="AB123CD"></div>
-        <div class="frow"><label>Color</label><input type="text" id="fp-color" placeholder="Plata"></div>
-        <div class="frow"><label>Uso</label>
-          <select id="fp-uso">
-            <option>Particular</option><option>Comercial</option><option>Remis</option><option>Taxi</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg2">
-        <div class="frow"><label>VIN / N° de chasis</label><input type="text" id="fp-vin" placeholder="VIN o número de chasis"></div>
-        <div class="frow"><label>N° de motor</label><input type="text" id="fp-motor" placeholder="Número de motor"></div>
-      </div>
-    </div>
-
-    <!-- BIEN ASEGURADO OTROS -->
-    <div id="sec-bien-otro" style="display:none">
-      <div class="frow"><label>Bien asegurado</label><input type="text" id="fp-bien" placeholder="Ej: Hogar Córdoba 1234, Local comercial..."></div>
-    </div>
-
-    <div class="fg2">
-      <div class="frow"><label>Póliza PDF</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-poliza').click()">
-          <input type="file" id="up-poliza" accept=".pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)">📄 Subir póliza PDF</div>
-        </div>
-      </div>
-      <div class="frow"><label>Cédula verde</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-cedula').click()">
-          <input type="file" id="up-cedula" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)">📋 Subir cédula verde</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
-      <button class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
