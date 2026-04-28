@@ -543,6 +543,7 @@ tr:hover td{background:var(--bg)}
             <option>Autos</option><option>Vida</option><option>Hogar</option>
             <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
           </select>
+          <button class="btn-nuevo-cl" id="btn-np2">+ Nueva póliza</button>
         </div>
         <div class="tbl">
           <table>
@@ -2632,7 +2633,7 @@ function setupUploads() {
   });
 }
 
-setupUploads();
+
 function normalizarTelefono(tel) {
   if (!tel) return '';
   var t = tel.replace(/[\s\-().+]/g, '');
@@ -2758,8 +2759,8 @@ function fichaAbrirInt(el) {
   document.getElementById('modal-int').classList.add('open');
 }
 
-setupUploads();
-setupCtxHandlers();
+try { setupUploads(); } catch(e) { console.warn('setupUploads:', e); }
+try { setupCtxHandlers(); } catch(e) { console.warn('setupCtxHandlers:', e); }
 init();
 </script>
 
