@@ -323,6 +323,27 @@ tr:hover td{background:var(--bg)}
 .ft-esperando{background:#F59E0B}
 .ft-cerrada{background:#22C55E}
 .ft-cancelada{background:#EF4444}
+
+
+/* ===== MODAL POLIZA WIDTH FIX ===== */
+.modal-box input, .modal-box select, .modal-box textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.modal-box .fg2, .modal-box .fg3 {
+  width: 100%;
+}
+.modal-box .frow input,
+.modal-box .frow select,
+.modal-box .frow textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.modal-box .upload-box {
+  width: 100%;
+  box-sizing: border-box;
+}
 </style>
 </head>
 <body>
@@ -1083,7 +1104,7 @@ tr:hover td{background:var(--bg)}
 
 <!-- Modal Póliza -->
 <div class="modal-ov" id="modal-pol">
-  <div class="modal-box" style="max-width:640px">
+  <div class="modal-box" style="max-width:920px">
     <div class="modal-t">Nueva póliza <button type="button" class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
     <div class="fg2">
       <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
