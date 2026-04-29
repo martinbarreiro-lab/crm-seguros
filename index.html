@@ -1104,125 +1104,185 @@ tr:hover td{background:var(--bg)}
 
 <!-- Modal Póliza -->
 <div class="modal-ov" id="modal-pol">
-  <div class="modal-box" style="max-width:920px">
+  <div class="modal-box" style="max-width:960px">
     <div class="modal-t">Nueva póliza <button type="button" class="modal-x" onclick="cerrarModal('modal-pol')">✕</button></div>
-    <div class="fg2">
-      <div class="frow"><label>Cliente *</label><select id="fp-cl"><option value="">Seleccionar...</option></select></div>
-      <div class="frow"><label>Aseguradora *</label>
-        <select id="fp-aseg">
-          <option value="">Seleccionar...</option>
-          <option>Sancor Seguros</option><option>Zurich Argentina</option><option>Mapfre Argentina</option>
-          <option>Federación Patronal</option><option>La Segunda</option><option>Provincia Seguros</option>
-          <option>San Cristóbal</option><option>Nación Seguros</option><option>Otro</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg3">
-      <div class="frow"><label>N° póliza interno</label><input type="text" id="fp-num" placeholder="AUTO-2025-XXX"></div>
-      <div class="frow"><label>N° póliza aseguradora</label><input type="text" id="fp-num-aseg" placeholder="N° de la compañía"></div>
-      <div class="frow"><label>Ramo *</label>
-        <select id="fp-ramo" onchange="onRamoChange()">
-          <option value="">Seleccionar...</option>
-          <option>Automotor</option><option>Vida</option><option>Hogar</option>
-          <option>Salud</option><option>ART</option><option>Combinado</option><option>Empresas</option>
-        </select>
-      </div>
-    </div>
-    <div class="frow"><label>Tipo de cobertura</label><input type="text" id="fp-cob" placeholder="Todo riesgo, RC, Terceros completo..."></div>
 
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Premio</div>
-    <div class="fg3">
-        <div class="frow"><label>Periodicidad *</label>
-          <select id="fp-period" onchange="calcPremio()">
-            <option value="">Seleccionar...</option>
-            <option value="mensual">Mensual (póliza anual)</option>
-            <option value="trimestral">Trimestral</option>
-            <option value="semestral">Semestral</option>
-            <option value="anual">Anual / Contado</option>
+    <!-- ===== SECCIÓN CLIENTE ===== -->
+    <div class="sec-label">Cliente</div>
+    <div class="fg2">
+      <div class="frow">
+        <label>Cliente *</label>
+        <select id="fp-cl" onchange="onClienteChange()">
+          <option value="">Seleccionar cliente existente...</option>
+        </select>
+      </div>
+      <div class="frow">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-sm" style="width:100%" onclick="abrirNuevoClienteDesdePol()">+ Crear cliente nuevo</button>
+      </div>
+    </div>
+
+    <!-- Datos básicos del cliente (auto-completados, editables) -->
+    <div id="fp-cliente-data" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px 14px;margin-bottom:12px;display:none">
+      <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Datos del cliente <span id="fp-cl-id" style="color:#4A90D9"></span></div>
+      <div class="fg2">
+        <div class="frow"><label>Tipo *</label>
+          <select id="fp-cl-tipo">
+            <option value="persona">Persona física</option>
+            <option value="empresa">Empresa / Razón social</option>
           </select>
         </div>
-        <div class="frow"><label>Premio base *</label><input type="number" id="fp-premio-base" placeholder="0" oninput="calcPremio()"></div>
-        <div class="frow"><label>Premio anual</label><input type="text" id="fp-premio-anual" placeholder="Automático" readonly style="background:#f8f9fa"></div>
+        <div class="frow"><label>Nombre / Razón social *</label><input type="text" id="fp-cl-nombre"></div>
       </div>
-      <div id="fp-desglose" style="background:var(--bg);border-radius:var(--rsm);padding:9px 12px;font-size:12px;color:var(--muted);display:none;margin-bottom:10px"></div>
-    </div>
-
-    <div class="fg2">
-      <div class="frow"><label>Fecha de inicio *</label><input type="date" id="fp-ini" onchange="calcVto()"></div>
-      <div class="frow"><label>Fecha de vencimiento</label><input type="date" id="fp-vto"></div>
-    </div>
-
-    <div class="fg3">
-      <div class="frow"><label>Suma asegurada ($)</label><input type="number" id="fp-suma" placeholder="Valor del bien" oninput="calcFranquicia()"></div>
-      <div class="frow"><label>Tipo de franquicia</label>
-        <select id="fp-franq-tipo" onchange="calcFranquicia()">
-          <option value="">Sin franquicia</option>
-          <option value="fija">Fija ($)</option>
-          <option value="pct">Porcentual (%)</option>
-        </select>
-      </div>
-      <div class="frow"><label id="fp-franq-lbl">Valor franquicia</label>
-        <input type="number" id="fp-franq-val" placeholder="0" oninput="calcFranquicia()">
-      </div>
-    </div>
-    <div id="fp-franq-res" style="background:var(--bg);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:none;margin-bottom:10px"></div>
-
-    <!-- BIEN ASEGURADO AUTOMOTOR -->
-    <div id="sec-bien-auto" style="display:none;background:var(--bg);border-radius:var(--rsm);padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vehículo asegurado</div>
-      <div class="fg3">
-        <div class="frow"><label>Marca</label>
-          <select id="fp-marca">
+      <div class="fg2">
+        <div class="frow"><label>DNI / CUIT *</label><input type="text" id="fp-cl-doc"></div>
+        <div class="frow"><label>Condición fiscal *</label>
+          <select id="fp-cl-cond">
             <option value="">Seleccionar...</option>
-            <option>Alfa Romeo</option><option>Audi</option><option>BMW</option><option>Chevrolet</option>
-            <option>Citroën</option><option>Dodge</option><option>Fiat</option><option>Ford</option>
-            <option>Honda</option><option>Hyundai</option><option>Jeep</option><option>Kia</option>
-            <option>Mazda</option><option>Mercedes-Benz</option><option>Mitsubishi</option><option>Nissan</option>
-            <option>Peugeot</option><option>RAM</option><option>Renault</option><option>Seat</option>
-            <option>Suzuki</option><option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
-            <option value="__otro__">Otra (agregar)</option>
-          </select>
-        </div>
-        <div class="frow"><label>Modelo</label><input type="text" id="fp-modelo" placeholder="Focus, Gol, Corsa..."></div>
-        <div class="frow"><label>Año</label><select id="fp-anio-auto"><option value="">Año...</option></select></div>
-      </div>
-      <div class="fg3">
-        <div class="frow"><label>Patente</label><input type="text" id="fp-patente" placeholder="AB123CD"></div>
-        <div class="frow"><label>Color</label><input type="text" id="fp-color" placeholder="Plata"></div>
-        <div class="frow"><label>Uso</label>
-          <select id="fp-uso">
-            <option>Particular</option><option>Comercial</option><option>Remis</option><option>Taxi</option>
+            <option value="consumidor_final">Consumidor final</option>
+            <option value="monotributista">Monotributista</option>
+            <option value="responsable_inscripto">Responsable inscripto</option>
+            <option value="exento">Exento</option>
+            <option value="no_categorizado">No categorizado</option>
+            <option value="sujeto_no_alcanzado">Sujeto no alcanzado</option>
           </select>
         </div>
       </div>
       <div class="fg2">
-        <div class="frow"><label>VIN / N° de chasis</label><input type="text" id="fp-vin" placeholder="VIN o número de chasis"></div>
-        <div class="frow"><label>N° de motor</label><input type="text" id="fp-motor" placeholder="Número de motor"></div>
+        <div class="frow"><label>Teléfono *</label><input type="text" id="fp-cl-tel"></div>
+        <div class="frow"><label>Email *</label><input type="email" id="fp-cl-email"></div>
       </div>
     </div>
 
-    <!-- BIEN ASEGURADO OTROS -->
-    <div id="sec-bien-otro" style="display:none">
-      <div class="frow"><label>Bien asegurado</label><input type="text" id="fp-bien" placeholder="Ej: Hogar Córdoba 1234, Local comercial..."></div>
+    <!-- ===== SECCIÓN PÓLIZA ===== -->
+    <div class="sec-label" style="margin-top:14px">Datos de la póliza</div>
+    <div class="fg3">
+      <div class="frow"><label>Aseguradora *</label>
+        <select id="fp-aseg">
+          <option value="">Seleccionar...</option>
+          <option>Sancor Seguros</option>
+          <option>Zurich Argentina</option>
+          <option>Mapfre Argentina</option>
+          <option>Federación Patronal</option>
+          <option>La Segunda</option>
+          <option>Provincia Seguros</option>
+          <option>San Cristóbal</option>
+          <option>Nación Seguros</option>
+          <option>RUS</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="frow"><label>N° de póliza *</label><input type="text" id="fp-num-aseg" placeholder="N° de la compañía"></div>
+      <div class="frow"><label>Ramo *</label>
+        <select id="fp-ramo" onchange="onRamoChange()">
+          <option value="">Seleccionar...</option>
+          <option value="Automotor">Automotor</option>
+          <option value="Vida Individual">Vida Individual</option>
+          <option value="Vida Colectiva">Vida Colectiva</option>
+          <option value="Hogar">Hogar</option>
+          <option value="ART">ART</option>
+          <option value="Combinado">Combinado</option>
+          <option value="Empresas">Empresas</option>
+          <option value="Comercio">Comercio</option>
+          <option value="Accidentes Personales">Accidentes Personales</option>
+          <option value="Responsabilidad Civil">Responsabilidad Civil</option>
+          <option value="Otros">Otros</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="frow">
+      <label>Tipo de cobertura</label>
+      <input type="text" id="fp-cobertura" placeholder="Todo riesgo, RC, Terceros completo...">
+    </div>
+
+    <div class="fg3">
+      <div class="frow"><label>Fecha de emisión *</label><input type="date" id="fp-emision"></div>
+      <div class="frow"><label>Inicio de vigencia *</label><input type="date" id="fp-inicio" onchange="calcVto()"></div>
+      <div class="frow"><label>Período *</label>
+        <select id="fp-periodo" onchange="calcVto()">
+          <option value="">Seleccionar...</option>
+          <option value="1">1 mes</option>
+          <option value="2">2 meses</option>
+          <option value="3">3 meses</option>
+          <option value="4">4 meses</option>
+          <option value="5">5 meses</option>
+          <option value="6">6 meses</option>
+          <option value="7">7 meses</option>
+          <option value="8">8 meses</option>
+          <option value="9">9 meses</option>
+          <option value="10">10 meses</option>
+          <option value="11">11 meses</option>
+          <option value="12" selected>12 meses (anual)</option>
+          <option value="18">18 meses</option>
+          <option value="24">24 meses</option>
+          <option value="36">36 meses</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fg3">
+      <div class="frow"><label>Fin de vigencia</label><input type="date" id="fp-vto" readonly style="background:#F9FAFB"></div>
+      <div class="frow"><label>Premio total *</label><input type="number" id="fp-premio" placeholder="0" oninput="calcCuota()"></div>
+      <div class="frow"><label>Forma de pago *</label>
+        <select id="fp-pago" onchange="calcCuota()">
+          <option value="">Seleccionar...</option>
+          <option value="Mensual">Mensual</option>
+          <option value="Trimestral">Trimestral</option>
+          <option value="Semestral">Semestral</option>
+          <option value="Anual">Anual</option>
+          <option value="Anual ref. mensual">Anual con refacturación mensual</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fg3">
+      <div class="frow"><label>Cantidad de cuotas</label><input type="number" id="fp-cuotas" placeholder="Ej: 12" oninput="calcCuota()"></div>
+      <div class="frow"><label>Valor de cuota</label><input type="number" id="fp-valor-cuota" placeholder="Automático"></div>
+      <div class="frow"><label>Medio de pago</label>
+        <select id="fp-medio">
+          <option value="">Seleccionar...</option>
+          <option>CBU / Débito automático</option>
+          <option>Tarjeta de crédito</option>
+          <option>Tarjeta de débito</option>
+          <option>Efectivo</option>
+          <option>Cupón de pago</option>
+          <option>Transferencia</option>
+        </select>
+      </div>
     </div>
 
     <div class="fg2">
-      <div class="frow"><label>Póliza PDF</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-poliza').click()">
-          <input type="file" id="up-poliza" accept=".pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)">📄 Subir póliza PDF</div>
-        </div>
+      <div class="frow"><label>Día de débito</label><input type="number" id="fp-dia-debito" min="1" max="31" placeholder="Ej: 10"></div>
+      <div class="frow"></div>
+    </div>
+
+    <!-- ===== SECCIÓN DINÁMICA POR RAMO ===== -->
+    <div id="fp-ramo-fields"></div>
+
+    <!-- ===== ARCHIVO PDF (OBLIGATORIO) ===== -->
+    <div class="sec-label" style="margin-top:14px">Archivos</div>
+    <div class="fg2">
+      <div class="frow">
+        <label>PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span></label>
+        <input type="file" id="fp-pdf" accept="application/pdf">
+        <div id="fp-pdf-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
       </div>
-      <div class="frow"><label>Cédula verde</label>
-        <div style="border:2px dashed var(--border);border-radius:var(--rsm);padding:12px;text-align:center;cursor:pointer;background:var(--bg)" onclick="document.getElementById('up-cedula').click()">
-          <input type="file" id="up-cedula" accept="image/*,.pdf" style="display:none">
-          <div style="font-size:12px;color:var(--muted)">📋 Subir cédula verde</div>
-        </div>
+      <div class="frow">
+        <label>Cédula verde (si aplica)</label>
+        <input type="file" id="fp-cv" accept="application/pdf,image/*">
+        <div id="fp-cv-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
       </div>
     </div>
 
-    <div class="frow"><label>Notas</label><textarea id="fp-notas" placeholder="Notas sobre la póliza..."></textarea></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
+    <!-- Notas -->
+    <div class="frow">
+      <label>Notas internas de emisión</label>
+      <textarea id="fp-notas" placeholder="Notas sobre la emisión..." style="min-height:60px"></textarea>
+    </div>
+
+    <!-- Botones -->
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #F3F4F6">
       <button type="button" class="btn" onclick="cerrarModal('modal-pol')">Cancelar</button>
       <button type="button" class="btn btn-p" id="btn-guardar-pol">Guardar póliza</button>
     </div>
@@ -2162,46 +2222,132 @@ function poblarAniosPoliza() {
   for (let y = 2026; y >= 1960; y--) { const o = document.createElement('option'); o.value = y; o.textContent = y; sel.appendChild(o); }
 }
 
-document.getElementById('btn-guardar-pol').onclick = async function() {
-  const base = parseFloat(document.getElementById('fp-premio-base').value) || 0;
-  const period = document.getElementById('fp-period').value;
-  let anual = 0;
-  if (period === 'mensual') anual = base * 12;
-  else if (period === 'trimestral') anual = base * 4;
-  else if (period === 'semestral') anual = base * 2;
-  else anual = base;
+document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guardar-pol').onclick = async function() {
+  const cid = document.getElementById('fp-cl').value;
+  const aseg = document.getElementById('fp-aseg').value;
+  const numAseg = document.getElementById('fp-num-aseg').value.trim();
   const ramo = document.getElementById('fp-ramo').value;
-  let bien = '';
-  if (ramo === 'Automotor') {
-    const parts = [document.getElementById('fp-marca').value, document.getElementById('fp-modelo').value, document.getElementById('fp-anio-auto').value, document.getElementById('fp-patente').value];
-    bien = parts.filter(Boolean).join(' ');
-  } else {
-    const bienEl = document.getElementById('fp-bien');
-    bien = bienEl ? bienEl.value.trim() : '';
-  }
-  const datos = {
-    productor_id: user.id,
-    cliente_id: document.getElementById('fp-cl').value || null,
-    numero: document.getElementById('fp-num').value.trim(),
-    aseguradora: document.getElementById('fp-aseg').value,
-    ramo: ramo,
-    tipo_cobertura: document.getElementById('fp-cob').value.trim(),
-    fecha_inicio: document.getElementById('fp-ini').value,
-    fecha_vencimiento: document.getElementById('fp-vto').value,
-    prima_anual: anual,
-    forma_pago: period,
-    bien_asegurado: bien,
-    notas: document.getElementById('fp-notas').value.trim(),
-  };
-  if (!datos.numero || !datos.ramo || !datos.aseguradora || !datos.fecha_inicio || !datos.fecha_vencimiento) { alert('Completá los campos obligatorios (*)'); return; }
-  const { error } = await sb.from('polizas').insert(datos);
-  if (error) { alert('Error: ' + error.message); return; }
-  cerrarModal('modal-pol');
-  mostrarAlerta('Póliza guardada');
-  if (fichaId) renderFicha();
-  cargarDashboard();
-};
+  const inicio = document.getElementById('fp-inicio').value;
+  const periodo = document.getElementById('fp-periodo').value;
+  const vto = document.getElementById('fp-vto').value;
+  const premio = parseFloat(document.getElementById('fp-premio').value) || 0;
+  const pago = document.getElementById('fp-pago').value;
+  const pdfFile = document.getElementById('fp-pdf').files[0];
 
+  // Validaciones obligatorias
+  if (!cid) { alert('Debe seleccionar un cliente'); return; }
+  if (!aseg) { alert('Debe seleccionar la aseguradora'); return; }
+  if (!numAseg) { alert('Debe ingresar el N° de póliza'); return; }
+  if (!ramo) { alert('Debe seleccionar el ramo'); return; }
+  if (!inicio) { alert('Debe ingresar fecha de inicio'); return; }
+  if (!periodo) { alert('Debe seleccionar el período'); return; }
+  if (!premio || premio <= 0) { alert('Debe ingresar el premio total'); return; }
+  if (!pago) { alert('Debe seleccionar la forma de pago'); return; }
+  if (!pdfFile) { alert('Debe adjuntar el PDF de la póliza (obligatorio)'); return; }
+
+  // Validar datos del cliente
+  const nombreCl = document.getElementById('fp-cl-nombre').value.trim();
+  const docCl = document.getElementById('fp-cl-doc').value.trim();
+  const condCl = document.getElementById('fp-cl-cond').value;
+  const telCl = document.getElementById('fp-cl-tel').value.trim();
+  const emailCl = document.getElementById('fp-cl-email').value.trim();
+  if (!nombreCl || !docCl || !condCl || !telCl || !emailCl) {
+    alert('Faltan datos básicos del cliente: nombre, DNI/CUIT, condición fiscal, teléfono y email son obligatorios');
+    return;
+  }
+
+  // Actualizar datos del cliente si cambiaron
+  const tipoCl = document.getElementById('fp-cl-tipo').value;
+  await sb.from('clientes').update({
+    dni: docCl,
+    telefono_principal: normalizarTelefono(telCl),
+    email_principal: normalizarEmail(emailCl),
+    condicion_fiscal: condCl,
+    tipo_cliente: tipoCl
+  }).eq('id', cid);
+
+  // Subir PDF a Storage
+  let pdfUrl = '';
+  try {
+    const path = 'polizas/' + cid + '/' + Date.now() + '_' + pdfFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const { data: upData, error: upErr } = await sb.storage.from('archivos').upload(path, pdfFile);
+    if (upErr) throw upErr;
+    const { data: urlData } = sb.storage.from('archivos').getPublicUrl(path);
+    pdfUrl = urlData.publicUrl;
+  } catch (err) {
+    console.warn('Error subiendo PDF:', err);
+    alert('No se pudo subir el PDF: ' + (err.message || err));
+    return;
+  }
+
+  // Subir cédula verde (opcional)
+  let cvUrl = '';
+  const cvFile = document.getElementById('fp-cv').files[0];
+  if (cvFile) {
+    try {
+      const path = 'cedulas/' + cid + '/' + Date.now() + '_' + cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      await sb.storage.from('archivos').upload(path, cvFile);
+      const { data: urlData } = sb.storage.from('archivos').getPublicUrl(path);
+      cvUrl = urlData.publicUrl;
+    } catch (err) { console.warn('CV upload error:', err); }
+  }
+
+  // Recolectar datos específicos del ramo
+  const datosRamo = recolectarDatosRamo(ramo);
+
+  // Construir payload póliza
+  const poliza = {
+    cliente_id: cid,
+    productor_id: user.id,
+    aseguradora: aseg,
+    numero: numAseg,
+    ramo: ramo,
+    cobertura: document.getElementById('fp-cobertura').value.trim(),
+    fecha_emision: document.getElementById('fp-emision').value || null,
+    fecha_inicio: inicio,
+    periodo_meses: parseInt(periodo, 10),
+    fecha_vencimiento: vto || null,
+    prima_anual: premio,
+    forma_pago: pago,
+    cantidad_cuotas: parseInt(document.getElementById('fp-cuotas').value, 10) || null,
+    valor_cuota: parseFloat(document.getElementById('fp-valor-cuota').value) || null,
+    medio_pago: document.getElementById('fp-medio').value || null,
+    dia_debito: parseInt(document.getElementById('fp-dia-debito').value, 10) || null,
+    pdf_url: pdfUrl,
+    cedula_verde_url: cvUrl || null,
+    notas: document.getElementById('fp-notas').value.trim(),
+    datos_ramo: datosRamo,
+    estado: 'activa'
+  };
+
+  // Para automotor mantener compatibilidad con campos viejos
+  if (ramo === 'Automotor' && datosRamo.patente) {
+    poliza.patente = datosRamo.patente;
+  }
+
+  const { error } = await sb.from('polizas').insert(poliza);
+  if (error) { alert('Error guardando póliza: ' + error.message); return; }
+
+  // Chequear datos faltantes del cliente
+  const { data: clActual } = await sb.from('clientes').select('*').eq('id', cid).single();
+  const faltantes = chequearDatosFaltantesCliente(clActual || {});
+
+  cerrarModal('modal-pol');
+  document.getElementById('btn-guardar-pol').disabled = false;
+
+  if (faltantes.length) {
+    if (confirm('✅ Póliza guardada correctamente.\n\n⚠ Faltan estos datos del cliente:\n• ' + faltantes.join('\n• ') + '\n\n¿Quieres completarlos ahora?')) {
+      verFicha(cid);
+      setTimeout(function() { setFichaTab('datos'); mostrarFormEditCliente(cid); }, 300);
+    }
+  } else {
+    mostrarAlerta('✅ Póliza guardada correctamente');
+  }
+
+  // Reload current section
+  if (typeof cargarPolizas === 'function') cargarPolizas();
+  if (fichaId === cid && typeof renderFicha === 'function') renderFicha();
+});
 // ---- GUARDAR COTIZACIÓN ----
 document.getElementById('btn-guardar-cotz').onclick = async function() {
   const datos = {
@@ -2881,6 +3027,441 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('.mail-menu.open').forEach(function(m) { m.classList.remove('open'); });
   }
 });
+
+// ===== NUEVA POLIZA - LOGICA =====
+
+function onClienteChange() {
+  const sel = document.getElementById('fp-cl');
+  const dataDiv = document.getElementById('fp-cliente-data');
+  if (!sel || !dataDiv) return;
+  const cid = sel.value;
+  if (!cid) {
+    dataDiv.style.display = 'none';
+    return;
+  }
+  const cl = allCl.find(function(c) { return c.id === cid; });
+  if (!cl) return;
+
+  dataDiv.style.display = 'block';
+  document.getElementById('fp-cl-id').textContent = '· CLI-' + String(cl.id).slice(-6);
+  // Auto-detect tipo: if has CUIT >= 11 digits with empresa pattern, else persona
+  var doc = cl.dni || '';
+  var isEmpresa = doc.length === 11 && (doc.startsWith('30') || doc.startsWith('33') || doc.startsWith('34'));
+  document.getElementById('fp-cl-tipo').value = isEmpresa ? 'empresa' : 'persona';
+  document.getElementById('fp-cl-nombre').value = (cl.apellido || '') + (cl.apellido && cl.nombre ? ', ' : '') + (cl.nombre || '');
+  document.getElementById('fp-cl-doc').value = doc;
+  document.getElementById('fp-cl-cond').value = cl.condicion_fiscal || '';
+  document.getElementById('fp-cl-tel').value = cl.telefono_principal || '';
+  document.getElementById('fp-cl-email').value = cl.email_principal || '';
+}
+
+function abrirNuevoClienteDesdePol() {
+  cerrarModal('modal-pol');
+  setTimeout(function() {
+    document.getElementById('modal-cl').classList.add('open');
+  }, 100);
+}
+
+function calcVto() {
+  const inicio = document.getElementById('fp-inicio');
+  const periodo = document.getElementById('fp-periodo');
+  const vto = document.getElementById('fp-vto');
+  if (!inicio || !periodo || !vto) return;
+  if (!inicio.value || !periodo.value) { vto.value = ''; return; }
+  const meses = parseInt(periodo.value, 10);
+  const d = new Date(inicio.value);
+  d.setMonth(d.getMonth() + meses);
+  d.setDate(d.getDate() - 1);
+  vto.value = d.toISOString().slice(0, 10);
+}
+
+function calcCuota() {
+  const premio = parseFloat(document.getElementById('fp-premio').value) || 0;
+  const cuotas = parseInt(document.getElementById('fp-cuotas').value, 10) || 0;
+  const pago = document.getElementById('fp-pago').value;
+  const valorCuota = document.getElementById('fp-valor-cuota');
+  if (!valorCuota) return;
+  if (pago === 'Anual ref. mensual') {
+    valorCuota.readOnly = false;
+    valorCuota.style.background = '';
+    return;
+  }
+  valorCuota.readOnly = true;
+  valorCuota.style.background = '#F9FAFB';
+  if (premio && cuotas) {
+    valorCuota.value = (premio / cuotas).toFixed(2);
+  } else {
+    valorCuota.value = '';
+  }
+}
+
+function onRamoChange() {
+  const ramo = document.getElementById('fp-ramo').value;
+  const cont = document.getElementById('fp-ramo-fields');
+  if (!cont) return;
+  cont.innerHTML = renderRamoFields(ramo);
+  // Re-bind GNC toggle if automotor
+  const gnc = document.getElementById('fp-auto-gnc');
+  if (gnc) gnc.addEventListener('change', toggleGncFields);
+  // Re-bind franquicia toggle
+  const fran = document.getElementById('fp-auto-fran-tipo');
+  if (fran) fran.addEventListener('change', toggleFranquicia);
+}
+
+function renderRamoFields(ramo) {
+  if (!ramo) return '';
+  if (ramo === 'Automotor') return ramoAutomotor();
+  if (ramo === 'Hogar') return ramoHogar();
+  if (ramo === 'Comercio') return ramoComercio();
+  if (ramo === 'Accidentes Personales') return ramoAP();
+  if (ramo === 'Responsabilidad Civil') return ramoRC();
+  if (ramo === 'Vida Individual') return ramoVidaInd();
+  if (ramo === 'Vida Colectiva') return ramoVidaCol();
+  if (ramo === 'ART') return ramoART();
+  if (ramo === 'Combinado') return ramoCombinado();
+  if (ramo === 'Empresas') return ramoEmpresas();
+  if (ramo === 'Otros') return ramoOtros();
+  return '';
+}
+
+function ramoAutomotor() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos del vehículo</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Marca *</label><input type="text" id="fp-auto-marca" placeholder="Ej: Ford"></div>',
+    '<div class="frow"><label>Modelo *</label><input type="text" id="fp-auto-modelo" placeholder="Ej: Focus"></div>',
+    '<div class="frow"><label>Año *</label><input type="number" id="fp-auto-anio" min="1960" max="2027"></div>',
+    '</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Dominio (patente) *</label><input type="text" id="fp-auto-patente" placeholder="AB123CD"></div>',
+    '<div class="frow"><label>N° de chasis *</label><input type="text" id="fp-auto-chasis"></div>',
+    '<div class="frow"><label>N° de motor *</label><input type="text" id="fp-auto-motor"></div>',
+    '</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Color</label><input type="text" id="fp-auto-color"></div>',
+    '<div class="frow"><label>Uso *</label>',
+    '<select id="fp-auto-uso">',
+    '<option value="">Seleccionar...</option>',
+    '<option>Particular</option><option>Comercial</option><option>Taxi</option>',
+    '<option>Remis</option><option>Uber/Cabify</option>',
+    '</select></div>',
+    '<div class="frow"><label>Condición</label>',
+    '<select id="fp-auto-cond"><option>Usado</option><option>0 km</option></select></div>',
+    '</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>¿Tiene GNC?</label>',
+    '<select id="fp-auto-gnc"><option value="no">No</option><option value="si">Sí</option></select></div>',
+    '<div class="frow"><label>Acreedor prendario (si tiene)</label><input type="text" id="fp-auto-prenda" placeholder="Ej: Banco Santander"></div>',
+    '</div>',
+    '<div id="fp-gnc-fields" style="display:none">',
+    '<div class="fg3">',
+    '<div class="frow"><label>RUTA</label><input type="text" id="fp-gnc-ruta"></div>',
+    '<div class="frow"><label>Vencimiento oblea</label><input type="date" id="fp-gnc-vto-oblea"></div>',
+    '<div class="frow"><label>N° válvulas</label><input type="number" id="fp-gnc-valvulas"></div>',
+    '</div>',
+    '</div>',
+    '<div class="sec-label" style="margin-top:10px">Datos económicos</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-auto-suma" placeholder="0"></div>',
+    '<div class="frow"><label>Tipo de franquicia</label>',
+    '<select id="fp-auto-fran-tipo">',
+    '<option value="sin">Sin franquicia</option>',
+    '<option value="porcentaje">Porcentaje</option>',
+    '<option value="valor">Valor fijo</option>',
+    '</select></div>',
+    '</div>',
+    '<div id="fp-fran-fields" style="display:none">',
+    '<div class="fg2">',
+    '<div class="frow"><label>Valor / porcentaje franquicia</label><input type="number" id="fp-auto-fran-val" oninput="calcFranquicia()"></div>',
+    '<div class="frow"><label>Monto franquicia (calculado)</label><input type="number" id="fp-auto-fran-monto" readonly style="background:#F9FAFB"></div>',
+    '</div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoHogar() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos del riesgo</div>',
+    '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-hog-dir"></div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Tipo de vivienda *</label>',
+    '<select id="fp-hog-tipo"><option value="">Seleccionar...</option><option>Casa</option><option>Departamento</option></select></div>',
+    '<div class="frow"><label>Uso *</label>',
+    '<select id="fp-hog-uso"><option value="">Seleccionar...</option><option>Permanente</option><option>Alquiler</option><option>Temporario</option></select></div>',
+    '<div class="frow"><label>Año de construcción</label><input type="number" id="fp-hog-anio" min="1900" max="2027"></div>',
+    '</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Superficie total (m²)</label><input type="number" id="fp-hog-m2-total"></div>',
+    '<div class="frow"><label>Superficie construida (m²)</label><input type="number" id="fp-hog-m2-cub"></div>',
+    '<div class="frow"><label>Sistema de seguridad</label>',
+    '<select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Vigilancia 24hs</option><option>Alarma + rejas</option><option>Country/Barrio cerrado</option></select></div>',
+    '</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Suma asegurada edificio *</label><input type="number" id="fp-hog-suma-edif"></div>',
+    '<div class="frow"><label>Suma asegurada contenido</label><input type="number" id="fp-hog-suma-cont"></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoComercio() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos del comercio</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Nombre del comercio *</label><input type="text" id="fp-com-nombre"></div>',
+    '<div class="frow"><label>CUIT del comercio</label><input type="text" id="fp-com-cuit"></div>',
+    '</div>',
+    '<div class="frow"><label>Actividad *</label><input type="text" id="fp-com-actividad" placeholder="Ej: Almacén, Kiosco, Local de ropa"></div>',
+    '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-com-dir"></div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Superficie (m²)</label><input type="number" id="fp-com-m2"></div>',
+    '<div class="frow"><label>Cantidad empleados</label><input type="number" id="fp-com-emp"></div>',
+    '<div class="frow"><label>Horario</label><input type="text" id="fp-com-horario" placeholder="Ej: Lun-Vie 9-18"></div>',
+    '</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Suma asegurada contenido *</label><input type="number" id="fp-com-suma-cont"></div>',
+    '<div class="frow"><label>Suma asegurada edificio</label><input type="number" id="fp-com-suma-edif"></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoAP() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de Accidentes Personales</div>',
+    '<div class="frow"><label>Actividad laboral *</label><input type="text" id="fp-ap-actividad"></div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Cobertura por muerte</label><input type="number" id="fp-ap-muerte"></div>',
+    '<div class="frow"><label>Cobertura por invalidez</label><input type="number" id="fp-ap-invalidez"></div>',
+    '<div class="frow"><label>Altura máxima trabajo (m)</label><input type="number" id="fp-ap-altura"></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoRC() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de Responsabilidad Civil</div>',
+    '<div class="frow"><label>Actividad asegurada *</label><input type="text" id="fp-rc-actividad"></div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-rc-suma"></div>',
+    '<div class="frow"><label>Ámbito de cobertura</label>',
+    '<select id="fp-rc-ambito"><option>Argentina</option><option>Mercosur</option><option>Mundial</option></select></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoVidaInd() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de Vida Individual</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Capital asegurado *</label><input type="number" id="fp-vi-capital"></div>',
+    '<div class="frow"><label>Tipo de plan *</label>',
+    '<select id="fp-vi-plan"><option>Vida Temporario</option><option>Vida Entera</option><option>Vida con Ahorro</option><option>Vida Universal</option></select></div>',
+    '<div class="frow"><label>¿Examen médico?</label>',
+    '<select id="fp-vi-examen"><option>No</option><option>Sí</option></select></div>',
+    '</div>',
+    '<div class="frow"><label>Beneficiarios (nombre, DNI, % por línea) *</label>',
+    '<textarea id="fp-vi-benef" placeholder="Juan Pérez, DNI 12345678, 50%&#10;María Pérez, DNI 23456789, 50%" style="min-height:70px"></textarea></div>'
+  ].join('');
+}
+
+function ramoVidaCol() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de Vida Colectiva</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Razón social del tomador *</label><input type="text" id="fp-vc-razon"></div>',
+    '<div class="frow"><label>Cantidad de asegurados *</label><input type="number" id="fp-vc-cant"></div>',
+    '</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Capital por asegurado</label><input type="number" id="fp-vc-capital"></div>',
+    '<div class="frow"><label>Tipo de plan</label>',
+    '<select id="fp-vc-plan"><option>Obligatorio Ley 17418</option><option>Convenio</option><option>Voluntario</option></select></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoART() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de ART</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Razón social *</label><input type="text" id="fp-art-razon"></div>',
+    '<div class="frow"><label>CUIT *</label><input type="text" id="fp-art-cuit"></div>',
+    '</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Actividad principal *</label><input type="text" id="fp-art-actividad"></div>',
+    '<div class="frow"><label>Cantidad empleados *</label><input type="number" id="fp-art-emp"></div>',
+    '<div class="frow"><label>Masa salarial mensual *</label><input type="number" id="fp-art-masa"></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoCombinado() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos del Combinado Familiar</div>',
+    '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-cf-dir"></div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Tipo de vivienda</label>',
+    '<select id="fp-cf-tipo"><option>Casa</option><option>Departamento</option></select></div>',
+    '<div class="frow"><label>Suma edificio</label><input type="number" id="fp-cf-suma-edif"></div>',
+    '<div class="frow"><label>Suma contenido</label><input type="number" id="fp-cf-suma-cont"></div>',
+    '</div>',
+    '<div class="frow"><label>Adicionales (RC, robo en tránsito, etc.)</label><textarea id="fp-cf-adic" style="min-height:50px"></textarea></div>'
+  ].join('');
+}
+
+function ramoEmpresas() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos de Empresa</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Razón social *</label><input type="text" id="fp-emp-razon"></div>',
+    '<div class="frow"><label>CUIT *</label><input type="text" id="fp-emp-cuit"></div>',
+    '</div>',
+    '<div class="frow"><label>Actividad *</label><input type="text" id="fp-emp-actividad"></div>',
+    '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-emp-dir"></div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Cantidad empleados</label><input type="number" id="fp-emp-emp"></div>',
+    '<div class="frow"><label>Facturación anual</label><input type="number" id="fp-emp-fact"></div>',
+    '<div class="frow"><label>Suma asegurada</label><input type="number" id="fp-emp-suma"></div>',
+    '</div>'
+  ].join('');
+}
+
+function ramoOtros() {
+  return [
+    '<div class="sec-label" style="margin-top:14px">Datos del riesgo</div>',
+    '<div class="frow"><label>Descripción del bien o riesgo *</label><textarea id="fp-otros-desc" style="min-height:60px"></textarea></div>',
+    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-otros-suma"></div>'
+  ].join('');
+}
+
+function toggleGncFields() {
+  const gnc = document.getElementById('fp-auto-gnc');
+  const fields = document.getElementById('fp-gnc-fields');
+  if (gnc && fields) fields.style.display = gnc.value === 'si' ? 'block' : 'none';
+}
+
+function toggleFranquicia() {
+  const tipo = document.getElementById('fp-auto-fran-tipo');
+  const fields = document.getElementById('fp-fran-fields');
+  if (tipo && fields) fields.style.display = tipo.value === 'sin' ? 'none' : 'block';
+}
+
+function calcFranquicia() {
+  const tipo = document.getElementById('fp-auto-fran-tipo');
+  const val = parseFloat(document.getElementById('fp-auto-fran-val').value) || 0;
+  const suma = parseFloat(document.getElementById('fp-auto-suma').value) || 0;
+  const monto = document.getElementById('fp-auto-fran-monto');
+  if (!tipo || !monto) return;
+  if (tipo.value === 'porcentaje') {
+    monto.value = (suma * val / 100).toFixed(2);
+  } else if (tipo.value === 'valor') {
+    monto.value = val.toFixed(2);
+  } else {
+    monto.value = '';
+  }
+}
+
+function recolectarDatosRamo(ramo) {
+  const datos = {};
+  function v(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+  if (ramo === 'Automotor') {
+    datos.marca = v('fp-auto-marca');
+    datos.modelo = v('fp-auto-modelo');
+    datos.anio = v('fp-auto-anio');
+    datos.patente = v('fp-auto-patente').toUpperCase();
+    datos.chasis = v('fp-auto-chasis');
+    datos.motor = v('fp-auto-motor');
+    datos.color = v('fp-auto-color');
+    datos.uso = v('fp-auto-uso');
+    datos.condicion = v('fp-auto-cond');
+    datos.gnc = v('fp-auto-gnc');
+    datos.acreedor_prendario = v('fp-auto-prenda');
+    if (datos.gnc === 'si') {
+      datos.gnc_ruta = v('fp-gnc-ruta');
+      datos.gnc_vto_oblea = v('fp-gnc-vto-oblea');
+      datos.gnc_valvulas = v('fp-gnc-valvulas');
+    }
+    datos.suma_asegurada = parseFloat(v('fp-auto-suma')) || 0;
+    datos.franquicia_tipo = v('fp-auto-fran-tipo');
+    datos.franquicia_valor = parseFloat(v('fp-auto-fran-val')) || 0;
+    datos.franquicia_monto = parseFloat(v('fp-auto-fran-monto')) || 0;
+  } else if (ramo === 'Hogar') {
+    datos.direccion = v('fp-hog-dir');
+    datos.tipo_vivienda = v('fp-hog-tipo');
+    datos.uso = v('fp-hog-uso');
+    datos.anio_construccion = v('fp-hog-anio');
+    datos.m2_total = v('fp-hog-m2-total');
+    datos.m2_cubierta = v('fp-hog-m2-cub');
+    datos.seguridad = v('fp-hog-seg');
+    datos.suma_edificio = parseFloat(v('fp-hog-suma-edif')) || 0;
+    datos.suma_contenido = parseFloat(v('fp-hog-suma-cont')) || 0;
+  } else if (ramo === 'Comercio') {
+    datos.nombre = v('fp-com-nombre');
+    datos.cuit = v('fp-com-cuit');
+    datos.actividad = v('fp-com-actividad');
+    datos.direccion = v('fp-com-dir');
+    datos.m2 = v('fp-com-m2');
+    datos.empleados = v('fp-com-emp');
+    datos.horario = v('fp-com-horario');
+    datos.suma_contenido = parseFloat(v('fp-com-suma-cont')) || 0;
+    datos.suma_edificio = parseFloat(v('fp-com-suma-edif')) || 0;
+  } else if (ramo === 'Accidentes Personales') {
+    datos.actividad = v('fp-ap-actividad');
+    datos.cobertura_muerte = parseFloat(v('fp-ap-muerte')) || 0;
+    datos.cobertura_invalidez = parseFloat(v('fp-ap-invalidez')) || 0;
+    datos.altura_max = v('fp-ap-altura');
+  } else if (ramo === 'Responsabilidad Civil') {
+    datos.actividad = v('fp-rc-actividad');
+    datos.suma = parseFloat(v('fp-rc-suma')) || 0;
+    datos.ambito = v('fp-rc-ambito');
+  } else if (ramo === 'Vida Individual') {
+    datos.capital = parseFloat(v('fp-vi-capital')) || 0;
+    datos.plan = v('fp-vi-plan');
+    datos.examen = v('fp-vi-examen');
+    datos.beneficiarios = v('fp-vi-benef');
+  } else if (ramo === 'Vida Colectiva') {
+    datos.razon_social = v('fp-vc-razon');
+    datos.cantidad = v('fp-vc-cant');
+    datos.capital = parseFloat(v('fp-vc-capital')) || 0;
+    datos.plan = v('fp-vc-plan');
+  } else if (ramo === 'ART') {
+    datos.razon_social = v('fp-art-razon');
+    datos.cuit = v('fp-art-cuit');
+    datos.actividad = v('fp-art-actividad');
+    datos.empleados = v('fp-art-emp');
+    datos.masa_salarial = parseFloat(v('fp-art-masa')) || 0;
+  } else if (ramo === 'Combinado') {
+    datos.direccion = v('fp-cf-dir');
+    datos.tipo_vivienda = v('fp-cf-tipo');
+    datos.suma_edificio = parseFloat(v('fp-cf-suma-edif')) || 0;
+    datos.suma_contenido = parseFloat(v('fp-cf-suma-cont')) || 0;
+    datos.adicionales = v('fp-cf-adic');
+  } else if (ramo === 'Empresas') {
+    datos.razon_social = v('fp-emp-razon');
+    datos.cuit = v('fp-emp-cuit');
+    datos.actividad = v('fp-emp-actividad');
+    datos.direccion = v('fp-emp-dir');
+    datos.empleados = v('fp-emp-emp');
+    datos.facturacion = parseFloat(v('fp-emp-fact')) || 0;
+    datos.suma = parseFloat(v('fp-emp-suma')) || 0;
+  } else if (ramo === 'Otros') {
+    datos.descripcion = v('fp-otros-desc');
+    datos.suma = parseFloat(v('fp-otros-suma')) || 0;
+  }
+  return datos;
+}
+
+function chequearDatosFaltantesCliente(cl) {
+  const faltantes = [];
+  if (!cl.fecha_nacimiento) faltantes.push('Fecha de nacimiento');
+  if (!cl.direccion) faltantes.push('Dirección');
+  if (!cl.localidad) faltantes.push('Localidad');
+  if (!cl.zona_geografica) faltantes.push('Código postal');
+  if (!cl.condicion_fiscal) faltantes.push('Condición fiscal');
+  return faltantes;
+}
+
 
 init();
 </script>
