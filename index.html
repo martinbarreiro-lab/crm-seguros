@@ -386,6 +386,48 @@ tr:hover td{background:var(--bg)}
 
 /* Custom column widths for AP fields */
 .fg-23 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+
+/* ===== METRIC CARDS Y CARD RESUMEN (ficha) ===== */
+.metric-card {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-left: 4px solid #9CA3AF;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.metric-label {
+  font-size: 10px;
+  color: #9CA3AF;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 5px;
+}
+.metric-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+.metric-sub {
+  font-size: 11px;
+  color: #6B7280;
+  margin-top: 3px;
+}
+.card-resumen {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.card-resumen-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 12px;
+}
 </style>
 </head>
 <body>
@@ -2015,25 +2057,187 @@ function ir(label, val) {
 
 async function fichaPolizas(c) {
   const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
-  const eb = { activa: 'bv', renovacion: 'ba', vencida: 'br', cancelada: 'bgr' };
-  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
-    + '<button type="button" class="btn btn-sm btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button></div>'
-    + ((!data || !data.length) ? '<div class="empty">Sin pólizas registradas.</div>'
-    : data.map(function(p) {
-      return '<div class="card">'
-        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-        + '<div><div style="font-weight:600;font-size:14px">' + p.numero + '</div><div style="font-size:12px;color:var(--muted)">' + p.ramo + ' · ' + p.aseguradora + '</div></div>'
-        + '<span class="badge ' + (eb[p.estado] || 'bgr') + '">' + p.estado + '</span>'
-        + '</div>'
-        + '<div class="g2">'
-        + ir('Premio anual', '$' + (p.prima_anual || 0).toLocaleString('es-AR'))
-        + ir('Vencimiento', p.fecha_vencimiento)
-        + ir('Forma de pago', p.forma_pago)
-        + ir('Cobertura', p.tipo_cobertura)
-        + ir('Bien asegurado', p.bien_asegurado)
-        + '</div>'
-        + '</div>';
-    }).join(''));
+  const polizas = data || [];
+
+  // Calcular métricas
+  const today = new Date();
+  let vigentes = 0;
+  let premioTotal = 0;
+  let porVencer = 0;
+  let vencidas = 0;
+  const polActivas = [];
+  const polInactivas = [];
+  const proximosVtos = [];
+
+  polizas.forEach(function(p) {
+    const isVigente = p.estado === 'activa' || p.estado === 'renovacion';
+    if (isVigente) {
+      vigentes++;
+      premioTotal += parseFloat(p.prima_anual) || 0;
+      polActivas.push(p);
+      if (p.fecha_vencimiento) {
+        const vto = new Date(p.fecha_vencimiento);
+        const diff = Math.ceil((vto - today) / (1000 * 60 * 60 * 24));
+        if (diff >= 0 && diff <= 60) porVencer++;
+        if (diff >= 0) proximosVtos.push({ p: p, dias: diff });
+      }
+    } else {
+      polInactivas.push(p);
+      if (p.estado === 'vencida') vencidas++;
+    }
+  });
+
+  // Ordenar próximos vencimientos por días asc
+  proximosVtos.sort(function(a, b) { return a.dias - b.dias; });
+  const top5Vtos = proximosVtos.slice(0, 5);
+
+  function fmtMoney(n) { return '$' + (n || 0).toLocaleString('es-AR'); }
+  function dataVehiculoOrInfo(p) {
+    if (p.datos_ramo) {
+      const dr = p.datos_ramo;
+      if (p.ramo === 'Automotor') {
+        const partes = [];
+        if (dr.marca) partes.push(dr.marca);
+        if (dr.modelo) partes.push(dr.modelo);
+        if (dr.patente) partes.push(dr.patente);
+        return partes.join(' · ');
+      }
+      if (p.ramo === 'Hogar' && dr.direccion) return dr.direccion;
+      if (p.ramo === 'Vida Individual' && dr.capital) return 'Capital ' + fmtMoney(dr.capital);
+      if (p.ramo === 'Comercio' && dr.nombre) return dr.nombre;
+    }
+    return p.bien_asegurado || '';
+  }
+  function semaforoColor(d) {
+    if (d < 30) return { bg: '#FEF2F2', border: '#EF4444', text: '#991B1B' };
+    if (d < 60) return { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E' };
+    return { bg: '#F0FDF4', border: '#16A34A', text: '#15803D' };
+  }
+
+  // Construir HTML
+  let html = '';
+
+  // Botón nueva póliza
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:14px">'
+       +  '<button type="button" class="btn btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button>'
+       +  '</div>';
+
+  // Cards de métricas
+  html += '<div class="metric-cards-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">'
+       +  '<div class="metric-card" style="border-left-color:#16A34A">'
+       +    '<div class="metric-label">Vigentes</div>'
+       +    '<div class="metric-num">' + vigentes + '</div>'
+       +    '<div class="metric-sub">Activas</div>'
+       +  '</div>'
+       +  '<div class="metric-card" style="border-left-color:#4A90D9">'
+       +    '<div class="metric-label">Premio anual</div>'
+       +    '<div class="metric-num">' + fmtMoney(premioTotal) + '</div>'
+       +    '<div class="metric-sub">Cartera total</div>'
+       +  '</div>'
+       +  '<div class="metric-card" style="border-left-color:#F59E0B">'
+       +    '<div class="metric-label">Por vencer</div>'
+       +    '<div class="metric-num">' + porVencer + '</div>'
+       +    '<div class="metric-sub">Próx. 60 días</div>'
+       +  '</div>'
+       +  '<div class="metric-card" style="border-left-color:#9CA3AF">'
+       +    '<div class="metric-label">Vencidas</div>'
+       +    '<div class="metric-num">' + vencidas + '</div>'
+       +    '<div class="metric-sub">Sin renovar</div>'
+       +  '</div>'
+       +  '</div>';
+
+  // Layout 2 columnas: contenido + sidebar
+  html += '<div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start">';
+
+  // === COLUMNA IZQUIERDA ===
+  html += '<div style="display:flex;flex-direction:column;gap:14px">';
+
+  if (polActivas.length === 0 && polInactivas.length === 0) {
+    html += '<div class="empty">Sin pólizas registradas.</div>';
+  }
+
+  // Card pólizas vigentes
+  if (polActivas.length > 0) {
+    html += '<div class="card-resumen">'
+         +  '<div class="card-resumen-titulo">Pólizas vigentes</div>';
+    polActivas.forEach(function(p, idx) {
+      const esUltimo = idx === polActivas.length - 1;
+      const info = dataVehiculoOrInfo(p);
+      html += '<div class="poliza-row" style="' + (esUltimo ? '' : 'border-bottom:1px solid #F3F4F6;') + 'padding:10px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+           +    '<div style="flex:1;min-width:0">'
+           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
+           +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
+           +      (info || p.fecha_vencimiento ? '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">' + (info ? info + ' · ' : '') + (p.fecha_vencimiento ? 'Vto. ' + p.fecha_vencimiento : '') + '</div>' : '')
+           +    '</div>'
+           +    '<div style="text-align:right;flex-shrink:0">'
+           +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
+           +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
+           +    '</div>'
+           +  '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Card pólizas inactivas
+  if (polInactivas.length > 0) {
+    html += '<div class="card-resumen">'
+         +  '<div class="card-resumen-titulo">Pólizas inactivas</div>';
+    polInactivas.forEach(function(p) {
+      html += '<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">'
+           +    '<div>'
+           +      '<div style="font-size:13px;color:#6B7280;text-decoration:line-through">' + (p.numero || '—') + '</div>'
+           +      '<div style="font-size:11px;color:#9CA3AF">' + p.ramo + ' · ' + (p.aseguradora || '—') + (p.fecha_vencimiento ? ' · Venció ' + p.fecha_vencimiento : '') + '</div>'
+           +    '</div>'
+           +    '<span style="font-size:10px;color:#6B7280;background:#F3F4F6;padding:3px 8px;border-radius:4px;font-weight:600;text-transform:uppercase">' + p.estado + '</span>'
+           +  '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>'; // fin columna izq
+
+  // === SIDEBAR DERECHO: PRÓXIMOS VENCIMIENTOS ===
+  html += '<div class="card-resumen">'
+       +  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+       +    '<div class="card-resumen-titulo" style="margin-bottom:0">Próximos vencimientos</div>'
+       +    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+       +  '</div>';
+
+  if (top5Vtos.length === 0) {
+    html += '<div style="font-size:12px;color:#9CA3AF;padding:8px 0">Sin vencimientos próximos.</div>';
+  } else {
+    top5Vtos.forEach(function(item) {
+      const p = item.p;
+      const d = item.dias;
+      const sc = semaforoColor(d);
+      const info = dataVehiculoOrInfo(p);
+      html += '<div style="border-left:3px solid ' + sc.border + ';padding:8px 0 8px 10px;margin-bottom:10px;background:' + sc.bg + ';border-radius:0 6px 6px 0">'
+           +    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
+           +      '<span style="width:7px;height:7px;background:' + sc.border + ';border-radius:50%"></span>'
+           +      '<span style="font-size:10px;color:' + sc.text + ';font-weight:700;text-transform:uppercase">' + d + ' ' + (d === 1 ? 'día' : 'días') + '</span>'
+           +    '</div>'
+           +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero || '—') + '</div>'
+           +    '<div style="font-size:11px;color:#6B7280">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
+           +    (p.fecha_vencimiento ? '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Vence ' + p.fecha_vencimiento + '</div>' : '')
+           +  '</div>';
+    });
+  }
+
+  // Leyenda
+  html += '<div style="margin-top:14px;padding-top:10px;border-top:1px solid #F3F4F6">'
+       +    '<div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;font-weight:600;margin-bottom:6px">Semáforo</div>'
+       +    '<div style="font-size:10px;color:#6B7280;display:flex;flex-direction:column;gap:3px">'
+       +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#EF4444;border-radius:50%"></span> &lt; 30 días</div>'
+       +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#F59E0B;border-radius:50%"></span> 30 - 60 días</div>'
+       +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#16A34A;border-radius:50%"></span> &gt; 60 días</div>'
+       +    '</div>'
+       +  '</div>';
+
+  html += '</div>'; // fin sidebar
+
+  html += '</div>'; // fin grid
+
+  return html;
 }
 
 async function fichaSiniestros(c) {
