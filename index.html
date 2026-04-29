@@ -869,7 +869,34 @@ tr:hover td{background:var(--bg)}
       <textarea id="f-notas" placeholder="Observaciones sobre el cliente..."></textarea>
     </div>
 
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+    <!-- DOCUMENTOS DEL CLIENTE -->
+    <div class="sec-label" style="margin-top:14px">Documentos del cliente</div>
+    <div class="fg2">
+      <div class="frow">
+        <label>DNI frente</label>
+        <input type="file" id="f-dni-frente" accept="application/pdf,image/*">
+        <div id="lbl-f-dni-frente" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+      </div>
+      <div class="frow">
+        <label>DNI dorso</label>
+        <input type="file" id="f-dni-dorso" accept="application/pdf,image/*">
+        <div id="lbl-f-dni-dorso" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="fg2">
+      <div class="frow">
+        <label>Carnet de conducir - frente</label>
+        <input type="file" id="f-carnet-frente" accept="application/pdf,image/*">
+        <div id="lbl-f-carnet-frente" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+      </div>
+      <div class="frow">
+        <label>Carnet de conducir - dorso</label>
+        <input type="file" id="f-carnet-dorso" accept="application/pdf,image/*">
+        <div id="lbl-f-carnet-dorso" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6">
       <button type="button" class="btn" onclick="cerrarModal('modal-cl')">Cancelar</button>
       <button type="button" class="btn btn-p" id="btn-guardar-cl">Guardar cliente</button>
     </div>
@@ -1260,18 +1287,27 @@ tr:hover td{background:var(--bg)}
     <!-- ===== SECCIÓN DINÁMICA POR RAMO ===== -->
     <div id="fp-ramo-fields"></div>
 
-    <!-- ===== ARCHIVO PDF (OBLIGATORIO) ===== -->
+    <!-- ===== ARCHIVOS ===== -->
     <div class="sec-label" style="margin-top:14px">Archivos</div>
-    <div class="fg2">
-      <div class="frow">
-        <label>PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span></label>
-        <input type="file" id="fp-pdf" accept="application/pdf">
-        <div id="fp-pdf-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
-      </div>
-      <div class="frow">
-        <label>Cédula verde (si aplica)</label>
-        <input type="file" id="fp-cv" accept="application/pdf,image/*">
-        <div id="fp-cv-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+    <div class="frow">
+      <label>PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span></label>
+      <input type="file" id="fp-pdf" accept="application/pdf">
+      <div id="fp-pdf-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+    </div>
+
+    <!-- Cédula verde solo si ramo=Automotor -->
+    <div id="fp-cv-section" style="display:none">
+      <div class="fg2">
+        <div class="frow">
+          <label>Cédula verde - frente</label>
+          <input type="file" id="fp-cv-frente" accept="application/pdf,image/*">
+          <div id="fp-cv-frente-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+        </div>
+        <div class="frow">
+          <label>Cédula verde - dorso</label>
+          <input type="file" id="fp-cv-dorso" accept="application/pdf,image/*">
+          <div id="fp-cv-dorso-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+        </div>
       </div>
     </div>
 
@@ -2102,55 +2138,88 @@ function abrirModalCotzParaCliente(clienteId) {
 }
 
 // ---- GUARDAR CLIENTE ----
-document.getElementById('btn-guardar-cl').onclick = async function() {
+document.getElementById('btn-guardar-cl') && (document.getElementById('btn-guardar-cl').onclick = async function() {
+  function v(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  function vn(id) {
+    const el = document.getElementById(id);
+    return el && el.value ? el.value : null;
+  }
+
   const loc = document.getElementById('f-loc');
-  const locVal = loc.value;
-  const locNombre = locVal ? loc.options[loc.selectedIndex].text : '';
-  const cp = document.getElementById('f-cp').value;
+  const locVal = loc ? loc.value : '';
+  const locNombre = (loc && locVal) ? loc.options[loc.selectedIndex].text : '';
+
+  // Build dirección from parts
+  const calle = v('f-calle');
+  const num = v('f-num');
+  const piso = v('f-piso');
+  const dpto = v('f-dpto');
+  let dir = [calle, num].filter(Boolean).join(' ');
+  if (piso) dir += ', Piso ' + piso;
+  if (dpto) dir += ', Dpto ' + dpto;
+
   const datos = {
     productor_id: user.id,
-    nombre: document.getElementById('f-nombre').value.trim(),
-    apellido: document.getElementById('f-apellido').value.trim(),
-    dni: document.getElementById('f-dni').value.trim(),
-    fecha_nacimiento: document.getElementById('f-nac').value || null,
-    direccion: (function() {
-      const calle = document.getElementById('f-calle') ? document.getElementById('f-calle').value.trim() : '';
-      const num = document.getElementById('f-num') ? document.getElementById('f-num').value.trim() : '';
-      const piso = document.getElementById('f-piso') ? document.getElementById('f-piso').value.trim() : '';
-      const dpto = document.getElementById('f-dpto') ? document.getElementById('f-dpto').value.trim() : '';
-      let dir = [calle, num].filter(Boolean).join(' ');
-      if (piso) dir += ', Piso ' + piso;
-      if (dpto) dir += ', Dpto ' + dpto;
-      return dir;
-    })(),
+    nombre: v('f-nombre'),
+    apellido: v('f-apellido'),
+    dni: v('f-dni'),
+    fecha_nacimiento: vn('f-nac'),
+    direccion: dir,
     localidad: locNombre,
-    zona_geografica: cp,
-    telefono_principal: document.getElementById('f-tel1').value.trim(),
-    telefono_secundario: document.getElementById('f-tel2').value.trim(),
-    email_principal: document.getElementById('f-email1').value.trim(),
-    email_secundario: document.getElementById('f-email2').value.trim(),
-    estado: document.getElementById('f-estado').value,
-    canal_origen: document.getElementById('f-canal').value,
-    marca_vehiculo: document.getElementById('f-marca').value,
-    modelo_vehiculo: document.getElementById('f-modelo').value.trim(),
-    anio_vehiculo: document.getElementById('f-anio').value || null,
-    patente: document.getElementById('f-patente').value.trim(),
-    color_vehiculo: document.getElementById('f-color').value.trim(),
-    notas: document.getElementById('f-notas').value.trim(),
+    zona_geografica: v('f-cp'),
+    telefono_principal: normalizarTelefono(v('f-tel1')),
+    telefono_secundario: normalizarTelefono(v('f-tel2')),
+    email_principal: normalizarEmail(v('f-email1')),
+    email_secundario: normalizarEmail(v('f-email2')),
+    estado: v('f-estado') || 'prospecto',
+    canal_origen: v('f-canal'),
+    notas: v('f-notas')
   };
-  // Normalize phones and emails
-  datos.telefono_principal = normalizarTelefono(datos.telefono_principal);
-  datos.telefono_secundario = normalizarTelefono(datos.telefono_secundario);
-  datos.email_principal = normalizarEmail(datos.email_principal);
-  datos.email_secundario = normalizarEmail(datos.email_secundario);
-  if (!datos.nombre || !datos.apellido) { alert('Nombre y apellido son obligatorios'); return; }
-  const { error } = await sb.from('clientes').insert(datos);
-  if (error) { alert('Error: ' + error.message); return; }
+
+  if (!datos.nombre || !datos.apellido) {
+    alert('Nombre y apellido son obligatorios');
+    return;
+  }
+
+  // Insert client first to get its ID
+  const { data: insertData, error } = await sb.from('clientes').insert(datos).select().single();
+  if (error) { alert('Error guardando cliente: ' + error.message); return; }
+
+  const clienteId = insertData ? insertData.id : null;
+
+  // Upload documents if provided
+  if (clienteId) {
+    const docs = [
+      {input: 'f-dni-frente', col: 'dni_frente_url', folder: 'dni'},
+      {input: 'f-dni-dorso', col: 'dni_dorso_url', folder: 'dni'},
+      {input: 'f-carnet-frente', col: 'carnet_frente_url', folder: 'carnet'},
+      {input: 'f-carnet-dorso', col: 'carnet_dorso_url', folder: 'carnet'}
+    ];
+    const updates = {};
+    for (const d of docs) {
+      const el = document.getElementById(d.input);
+      const file = el && el.files[0];
+      if (file) {
+        try {
+          const path = d.folder + '/' + clienteId + '/' + Date.now() + '_' + d.input + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          await sb.storage.from('archivos').upload(path, file);
+          const { data: u } = sb.storage.from('archivos').getPublicUrl(path);
+          updates[d.col] = u.publicUrl;
+        } catch (err) { console.warn('Doc upload error:', d.input, err); }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await sb.from('clientes').update(updates).eq('id', clienteId);
+    }
+  }
+
   cerrarModal('modal-cl');
   mostrarAlerta('Cliente guardado correctamente');
-  cargarClientes();
-  cargarDashboard();
-};
+  if (typeof cargarClientes === 'function') cargarClientes();
+});
 
 // Localidad → CP automático
 document.getElementById('f-loc').addEventListener('change', function() {
@@ -2280,16 +2349,30 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     return;
   }
 
-  // Subir cédula verde (opcional)
-  let cvUrl = '';
-  const cvFile = document.getElementById('fp-cv').files[0];
-  if (cvFile) {
-    try {
-      const path = 'cedulas/' + cid + '/' + Date.now() + '_' + cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      await sb.storage.from('archivos').upload(path, cvFile);
-      const { data: urlData } = sb.storage.from('archivos').getPublicUrl(path);
-      cvUrl = urlData.publicUrl;
-    } catch (err) { console.warn('CV upload error:', err); }
+  // Subir cédula verde frente y dorso (solo automotor)
+  let cvFrenteUrl = '';
+  let cvDorsoUrl = '';
+  if (ramo === 'Automotor') {
+    const cvFrenteEl = document.getElementById('fp-cv-frente');
+    const cvDorsoEl = document.getElementById('fp-cv-dorso');
+    const cvF = cvFrenteEl && cvFrenteEl.files[0];
+    const cvD = cvDorsoEl && cvDorsoEl.files[0];
+    if (cvF) {
+      try {
+        const path = 'cedulas/' + cid + '/' + Date.now() + '_frente_' + cvF.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        await sb.storage.from('archivos').upload(path, cvF);
+        const { data: u } = sb.storage.from('archivos').getPublicUrl(path);
+        cvFrenteUrl = u.publicUrl;
+      } catch (err) { console.warn('CV frente error:', err); }
+    }
+    if (cvD) {
+      try {
+        const path = 'cedulas/' + cid + '/' + Date.now() + '_dorso_' + cvD.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        await sb.storage.from('archivos').upload(path, cvD);
+        const { data: u } = sb.storage.from('archivos').getPublicUrl(path);
+        cvDorsoUrl = u.publicUrl;
+      } catch (err) { console.warn('CV dorso error:', err); }
+    }
   }
 
   // Recolectar datos específicos del ramo
@@ -2314,7 +2397,8 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     medio_pago: document.getElementById('fp-medio').value || null,
     dia_debito: parseInt(document.getElementById('fp-dia-debito').value, 10) || null,
     pdf_url: pdfUrl,
-    cedula_verde_url: cvUrl || null,
+    cedula_verde_frente_url: cvFrenteUrl || null,
+    cedula_verde_dorso_url: cvDorsoUrl || null,
     notas: document.getElementById('fp-notas').value.trim(),
     datos_ramo: datosRamo,
     estado: 'activa'
@@ -2908,6 +2992,13 @@ document.addEventListener('keydown', function(e) {
 // Upload file feedback
 function setupUploads() {
   const uploads = [
+    {input:'f-dni-frente', label:'lbl-f-dni-frente', text:'✅ DNI frente cargado'},
+    {input:'f-dni-dorso', label:'lbl-f-dni-dorso', text:'✅ DNI dorso cargado'},
+    {input:'f-carnet-frente', label:'lbl-f-carnet-frente', text:'✅ Carnet frente cargado'},
+    {input:'f-carnet-dorso', label:'lbl-f-carnet-dorso', text:'✅ Carnet dorso cargado'},
+    {input:'fp-pdf', label:'fp-pdf-status', text:'✅ Póliza PDF cargada'},
+    {input:'fp-cv-frente', label:'fp-cv-frente-status', text:'✅ Cédula frente cargada'},
+    {input:'fp-cv-dorso', label:'fp-cv-dorso-status', text:'✅ Cédula dorso cargada'},
     {input:'up-dni-f', label:'lbl-dni-f', text:'✅ DNI frente cargado'},
     {input:'up-dni-d', label:'lbl-dni-d', text:'✅ DNI dorso cargado'},
     {input:'up-cc-f', label:'lbl-cc-f', text:'✅ Carnet frente cargado'},
@@ -3106,6 +3197,9 @@ function onRamoChange() {
   // Re-bind franquicia toggle
   const fran = document.getElementById('fp-auto-fran-tipo');
   if (fran) fran.addEventListener('change', toggleFranquicia);
+  // Show/hide cedula verde section based on ramo
+  const cvSection = document.getElementById('fp-cv-section');
+  if (cvSection) cvSection.style.display = (ramo === 'Automotor') ? 'block' : 'none';
 }
 
 function renderRamoFields(ramo) {
