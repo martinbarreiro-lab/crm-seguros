@@ -1149,35 +1149,15 @@ tr:hover td{background:var(--bg)}
       </div>
     </div>
 
-    <!-- Datos básicos del cliente (auto-completados, editables) -->
-    <div id="fp-cliente-data" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px 14px;margin-bottom:12px;display:none">
-      <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Datos del cliente <span id="fp-cl-id" style="color:#4A90D9"></span></div>
-      <div class="fg2">
-        <div class="frow"><label>Tipo *</label>
-          <select id="fp-cl-tipo">
-            <option value="persona">Persona física</option>
-            <option value="empresa">Empresa / Razón social</option>
-          </select>
+    <!-- Confirmación cliente seleccionado -->
+    <div id="fp-cliente-data" style="background:#F0F9FF;border:1px solid #BAE0FD;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:11px;color:#0369A1;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Cliente seleccionado <span id="fp-cl-id" style="color:#0369A1;opacity:.7"></span></div>
+          <div style="font-size:14px;font-weight:600;color:#0C4A6E" id="fp-cl-nombre-display">—</div>
+          <div style="font-size:12px;color:#0369A1" id="fp-cl-doc-display">—</div>
         </div>
-        <div class="frow"><label>Nombre / Razón social *</label><input type="text" id="fp-cl-nombre"></div>
-      </div>
-      <div class="fg2">
-        <div class="frow"><label>DNI / CUIT *</label><input type="text" id="fp-cl-doc"></div>
-        <div class="frow"><label>Condición fiscal *</label>
-          <select id="fp-cl-cond">
-            <option value="">Seleccionar...</option>
-            <option value="consumidor_final">Consumidor final</option>
-            <option value="monotributista">Monotributista</option>
-            <option value="responsable_inscripto">Responsable inscripto</option>
-            <option value="exento">Exento</option>
-            <option value="no_categorizado">No categorizado</option>
-            <option value="sujeto_no_alcanzado">Sujeto no alcanzado</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg2">
-        <div class="frow"><label>Teléfono *</label><input type="text" id="fp-cl-tel"></div>
-        <div class="frow"><label>Email *</label><input type="email" id="fp-cl-email"></div>
+        <div id="fp-cl-warn" style="font-size:11px;color:#B45309;background:#FEF3C7;padding:6px 10px;border-radius:6px;display:none;max-width:340px"></div>
       </div>
     </div>
 
@@ -2118,9 +2098,13 @@ function abrirIntModal(clienteId) {
   document.getElementById('modal-int').classList.add('open');
 }
 function abrirModalPolizaParaCliente(clienteId) {
+  resetModalPoliza();
   actualizarSelectsClientes();
-  poblarAniosPoliza();
-  setTimeout(function() { var sel=document.getElementById('fp-cl'); if(sel) sel.value=clienteId; document.getElementById('modal-pol').classList.add('open'); }, 80);
+  setTimeout(function() {
+    var sel = document.getElementById('fp-cl');
+    if (sel) { sel.value = clienteId; onClienteChange(); }
+    document.getElementById('modal-pol').classList.add('open');
+  }, 80);
 }
 function abrirModalTareaParaCliente(clienteId) {
   actualizarSelectsClientes();
@@ -2314,26 +2298,16 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
   if (!pago) { alert('Debe seleccionar la forma de pago'); return; }
   if (!pdfFile) { alert('Debe adjuntar el PDF de la póliza (obligatorio)'); return; }
 
-  // Validar datos del cliente
-  const nombreCl = document.getElementById('fp-cl-nombre').value.trim();
-  const docCl = document.getElementById('fp-cl-doc').value.trim();
-  const condCl = document.getElementById('fp-cl-cond').value;
-  const telCl = document.getElementById('fp-cl-tel').value.trim();
-  const emailCl = document.getElementById('fp-cl-email').value.trim();
-  if (!nombreCl || !docCl || !condCl || !telCl || !emailCl) {
-    alert('Faltan datos básicos del cliente: nombre, DNI/CUIT, condición fiscal, teléfono y email son obligatorios');
+  // Validar datos básicos del cliente desde su ficha
+  const cl = allCl.find(function(c) { return c.id === cid; });
+  if (!cl) { alert('Cliente no encontrado'); return; }
+  const datosBasicosFaltantes = [];
+  if (!cl.nombre && !cl.apellido) datosBasicosFaltantes.push('Nombre');
+  if (!cl.dni) datosBasicosFaltantes.push('DNI/CUIT');
+  if (datosBasicosFaltantes.length) {
+    alert('El cliente no tiene cargados estos datos obligatorios: ' + datosBasicosFaltantes.join(', ') + '. Completalos en su ficha antes de cargar la póliza.');
     return;
   }
-
-  // Actualizar datos del cliente si cambiaron
-  const tipoCl = document.getElementById('fp-cl-tipo').value;
-  await sb.from('clientes').update({
-    dni: docCl,
-    telefono_principal: normalizarTelefono(telCl),
-    email_principal: normalizarEmail(emailCl),
-    condicion_fiscal: condCl,
-    tipo_cliente: tipoCl
-  }).eq('id', cid);
 
   // Subir PDF a Storage
   let pdfUrl = '';
@@ -2957,7 +2931,7 @@ async function cargarAnalisis() {
 // ---- BOTONES GLOBALES ----
 document.getElementById('btn-nc') && (document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
 document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
-document.getElementById('btn-np2') && (document.getElementById('btn-np2').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
+document.getElementById('btn-np2') && (document.getElementById('btn-np2').onclick = function() { resetModalPoliza(); actualizarSelectsClientes(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
 document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-sin').classList.add('open'); });
@@ -3057,6 +3031,7 @@ async function fichaAbrirTarea(el) {
 }
 
 async function fichaAbrirPoliza(el) {
+  resetModalPoliza();
   const cid = el.getAttribute('data-cid') || fichaId;
   if (!allCl.length) await cargarClientes();
   actualizarSelectsClientes();
@@ -3134,16 +3109,25 @@ function onClienteChange() {
   if (!cl) return;
 
   dataDiv.style.display = 'block';
-  document.getElementById('fp-cl-id').textContent = '· CLI-' + String(cl.id).slice(-6);
-  // Auto-detect tipo: if has CUIT >= 11 digits with empresa pattern, else persona
-  var doc = cl.dni || '';
-  var isEmpresa = doc.length === 11 && (doc.startsWith('30') || doc.startsWith('33') || doc.startsWith('34'));
-  document.getElementById('fp-cl-tipo').value = isEmpresa ? 'empresa' : 'persona';
-  document.getElementById('fp-cl-nombre').value = (cl.apellido || '') + (cl.apellido && cl.nombre ? ', ' : '') + (cl.nombre || '');
-  document.getElementById('fp-cl-doc').value = doc;
-  document.getElementById('fp-cl-cond').value = cl.condicion_fiscal || '';
-  document.getElementById('fp-cl-tel').value = cl.telefono_principal || '';
-  document.getElementById('fp-cl-email').value = cl.email_principal || '';
+  const nombreCompleto = ((cl.apellido || '') + (cl.apellido && cl.nombre ? ', ' : '') + (cl.nombre || '')).trim() || '(sin nombre)';
+  const idDisplay = document.getElementById('fp-cl-id');
+  if (idDisplay) idDisplay.textContent = '· CLI-' + String(cl.id).slice(-6);
+  document.getElementById('fp-cl-nombre-display').textContent = nombreCompleto;
+  document.getElementById('fp-cl-doc-display').textContent = cl.dni ? 'DNI/CUIT: ' + cl.dni : '⚠ Sin DNI cargado';
+
+  // Check faltantes y mostrar warning
+  const faltantes = chequearDatosFaltantesCliente(cl);
+  // Add core required fields too
+  if (!cl.dni) faltantes.unshift('DNI/CUIT');
+  if (!cl.telefono_principal) faltantes.push('Teléfono');
+  if (!cl.email_principal) faltantes.push('Email');
+  const warnDiv = document.getElementById('fp-cl-warn');
+  if (faltantes.length && warnDiv) {
+    warnDiv.style.display = 'block';
+    warnDiv.innerHTML = '⚠ Faltan en la ficha: <strong>' + faltantes.join(', ') + '</strong>';
+  } else if (warnDiv) {
+    warnDiv.style.display = 'none';
+  }
 }
 
 function abrirNuevoClienteDesdePol() {
@@ -3219,15 +3203,33 @@ function renderRamoFields(ramo) {
 }
 
 function ramoAutomotor() {
+  const marcas = ['Alfa Romeo','Audi','BAIC','BMW','BYD','Chery','Chevrolet','Citroën','Dodge','DS','Fiat','Ford','Geely','Great Wall (GWM)','Haval','Honda','Hyundai','JAC','Jeep','Kia','Land Rover','Lexus','Mazda','Mercedes-Benz','MG','Mini','Mitsubishi','Nissan','Peugeot','RAM','Renault','Seat','Smart','Subaru','Suzuki','Toyota','Volkswagen','Volvo'];
+  const opcionesMarca = marcas.map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('') + '<option value="__otra__">Otra...</option>';
+
   return [
     '<div class="sec-label" style="margin-top:14px">Datos del vehículo</div>',
     '<div class="fg3">',
-    '<div class="frow"><label>Marca *</label><input type="text" id="fp-auto-marca" placeholder="Ej: Ford"></div>',
-    '<div class="frow"><label>Modelo *</label><input type="text" id="fp-auto-modelo" placeholder="Ej: Focus"></div>',
-    '<div class="frow"><label>Año *</label><input type="number" id="fp-auto-anio" min="1960" max="2027"></div>',
+    '<div class="frow"><label>Marca *</label>',
+    '<select id="fp-auto-marca" onchange="onMarcaChange()">',
+    '<option value="">Seleccionar...</option>',
+    opcionesMarca,
+    '</select>',
+    '<input type="text" id="fp-auto-marca-otra" placeholder="Escribir marca" style="display:none;margin-top:4px">',
+    '</div>',
+    '<div class="frow"><label>Modelo *</label>',
+    '<select id="fp-auto-modelo" onchange="onModeloChange()" disabled>',
+    '<option value="">Seleccionar marca primero</option>',
+    '</select>',
+    '<input type="text" id="fp-auto-modelo-otro" placeholder="Escribir modelo" style="display:none;margin-top:4px">',
+    '</div>',
+    '<div class="frow"><label>Año *</label>',
+    '<select id="fp-auto-anio">',
+    '<option value="">Seleccionar...</option>',
+    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html; })(),
+    '</select></div>',
     '</div>',
     '<div class="fg3">',
-    '<div class="frow"><label>Dominio (patente) *</label><input type="text" id="fp-auto-patente" placeholder="AB123CD"></div>',
+    '<div class="frow"><label>Dominio (patente) *</label><input type="text" id="fp-auto-patente" placeholder="AB123CD" style="text-transform:uppercase"></div>',
     '<div class="frow"><label>N° de chasis *</label><input type="text" id="fp-auto-chasis"></div>',
     '<div class="frow"><label>N° de motor *</label><input type="text" id="fp-auto-motor"></div>',
     '</div>',
@@ -3248,15 +3250,14 @@ function ramoAutomotor() {
     '<div class="frow"><label>Acreedor prendario (si tiene)</label><input type="text" id="fp-auto-prenda" placeholder="Ej: Banco Santander"></div>',
     '</div>',
     '<div id="fp-gnc-fields" style="display:none">',
-    '<div class="fg3">',
-    '<div class="frow"><label>RUTA</label><input type="text" id="fp-gnc-ruta"></div>',
-    '<div class="frow"><label>Vencimiento oblea</label><input type="date" id="fp-gnc-vto-oblea"></div>',
-    '<div class="frow"><label>N° válvulas</label><input type="number" id="fp-gnc-valvulas"></div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Vencimiento de oblea</label><input type="date" id="fp-gnc-vto-oblea"></div>',
+    '<div class="frow"></div>',
     '</div>',
     '</div>',
     '<div class="sec-label" style="margin-top:10px">Datos económicos</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-auto-suma" placeholder="0"></div>',
+    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-auto-suma" placeholder="0" oninput="calcFranquicia()"></div>',
     '<div class="frow"><label>Tipo de franquicia</label>',
     '<select id="fp-auto-fran-tipo">',
     '<option value="sin">Sin franquicia</option>',
@@ -3266,7 +3267,21 @@ function ramoAutomotor() {
     '</div>',
     '<div id="fp-fran-fields" style="display:none">',
     '<div class="fg2">',
-    '<div class="frow"><label>Valor / porcentaje franquicia</label><input type="number" id="fp-auto-fran-val" oninput="calcFranquicia()"></div>',
+    '<div id="fp-fran-pct-wrap" class="frow" style="display:none"><label>Porcentaje de franquicia</label>',
+    '<select id="fp-auto-fran-pct" onchange="calcFranquicia()">',
+    '<option value="">Seleccionar...</option>',
+    '<option value="1">1%</option><option value="1.5">1,5%</option>',
+    '<option value="2">2%</option><option value="2.5">2,5%</option>',
+    '<option value="3">3%</option><option value="3.5">3,5%</option>',
+    '<option value="4">4%</option><option value="4.5">4,5%</option>',
+    '<option value="5">5%</option><option value="5.5">5,5%</option>',
+    '<option value="6">6%</option><option value="6.5">6,5%</option>',
+    '<option value="7">7%</option><option value="7.5">7,5%</option>',
+    '<option value="8">8%</option><option value="8.5">8,5%</option>',
+    '<option value="9">9%</option><option value="9.5">9,5%</option>',
+    '<option value="10">10%</option>',
+    '</select></div>',
+    '<div id="fp-fran-val-wrap" class="frow" style="display:none"><label>Valor fijo de franquicia</label><input type="number" id="fp-auto-fran-val" oninput="calcFranquicia()"></div>',
     '<div class="frow"><label>Monto franquicia (calculado)</label><input type="number" id="fp-auto-fran-monto" readonly style="background:#F9FAFB"></div>',
     '</div>',
     '</div>'
@@ -3435,21 +3450,35 @@ function toggleGncFields() {
 function toggleFranquicia() {
   const tipo = document.getElementById('fp-auto-fran-tipo');
   const fields = document.getElementById('fp-fran-fields');
-  if (tipo && fields) fields.style.display = tipo.value === 'sin' ? 'none' : 'block';
+  const pctWrap = document.getElementById('fp-fran-pct-wrap');
+  const valWrap = document.getElementById('fp-fran-val-wrap');
+  if (!tipo || !fields) return;
+  if (tipo.value === 'sin') {
+    fields.style.display = 'none';
+  } else {
+    fields.style.display = 'block';
+    if (pctWrap) pctWrap.style.display = tipo.value === 'porcentaje' ? 'block' : 'none';
+    if (valWrap) valWrap.style.display = tipo.value === 'valor' ? 'block' : 'none';
+  }
+  calcFranquicia();
 }
 
 function calcFranquicia() {
-  const tipo = document.getElementById('fp-auto-fran-tipo');
-  const val = parseFloat(document.getElementById('fp-auto-fran-val').value) || 0;
-  const suma = parseFloat(document.getElementById('fp-auto-suma').value) || 0;
-  const monto = document.getElementById('fp-auto-fran-monto');
-  if (!tipo || !monto) return;
-  if (tipo.value === 'porcentaje') {
-    monto.value = (suma * val / 100).toFixed(2);
-  } else if (tipo.value === 'valor') {
-    monto.value = val.toFixed(2);
+  const tipoEl = document.getElementById('fp-auto-fran-tipo');
+  const sumaEl = document.getElementById('fp-auto-suma');
+  const montoEl = document.getElementById('fp-auto-fran-monto');
+  if (!tipoEl || !montoEl) return;
+  const suma = sumaEl ? (parseFloat(sumaEl.value) || 0) : 0;
+  if (tipoEl.value === 'porcentaje') {
+    const pctEl = document.getElementById('fp-auto-fran-pct');
+    const pct = pctEl ? (parseFloat(pctEl.value) || 0) : 0;
+    montoEl.value = pct ? (suma * pct / 100).toFixed(2) : '';
+  } else if (tipoEl.value === 'valor') {
+    const valEl = document.getElementById('fp-auto-fran-val');
+    const val = valEl ? (parseFloat(valEl.value) || 0) : 0;
+    montoEl.value = val ? val.toFixed(2) : '';
   } else {
-    monto.value = '';
+    montoEl.value = '';
   }
 }
 
@@ -3460,8 +3489,12 @@ function recolectarDatosRamo(ramo) {
     return el ? el.value : '';
   }
   if (ramo === 'Automotor') {
-    datos.marca = v('fp-auto-marca');
-    datos.modelo = v('fp-auto-modelo');
+    var marcaSel = v('fp-auto-marca');
+    var marcaOtra = v('fp-auto-marca-otra');
+    datos.marca = marcaSel === '__otra__' ? marcaOtra : marcaSel;
+    var modeloSel = v('fp-auto-modelo');
+    var modeloOtro = v('fp-auto-modelo-otro');
+    datos.modelo = modeloSel === '__otro__' ? modeloOtro : modeloSel;
     datos.anio = v('fp-auto-anio');
     datos.patente = v('fp-auto-patente').toUpperCase();
     datos.chasis = v('fp-auto-chasis');
@@ -3472,13 +3505,16 @@ function recolectarDatosRamo(ramo) {
     datos.gnc = v('fp-auto-gnc');
     datos.acreedor_prendario = v('fp-auto-prenda');
     if (datos.gnc === 'si') {
-      datos.gnc_ruta = v('fp-gnc-ruta');
       datos.gnc_vto_oblea = v('fp-gnc-vto-oblea');
-      datos.gnc_valvulas = v('fp-gnc-valvulas');
     }
     datos.suma_asegurada = parseFloat(v('fp-auto-suma')) || 0;
-    datos.franquicia_tipo = v('fp-auto-fran-tipo');
-    datos.franquicia_valor = parseFloat(v('fp-auto-fran-val')) || 0;
+    var franTipo = v('fp-auto-fran-tipo');
+    datos.franquicia_tipo = franTipo;
+    if (franTipo === 'porcentaje') {
+      datos.franquicia_porcentaje = parseFloat(v('fp-auto-fran-pct')) || 0;
+    } else if (franTipo === 'valor') {
+      datos.franquicia_valor = parseFloat(v('fp-auto-fran-val')) || 0;
+    }
     datos.franquicia_monto = parseFloat(v('fp-auto-fran-monto')) || 0;
   } else if (ramo === 'Hogar') {
     datos.direccion = v('fp-hog-dir');
@@ -3556,6 +3592,131 @@ function chequearDatosFaltantesCliente(cl) {
   return faltantes;
 }
 
+
+
+// ===== MODELOS POR MARCA (los más comunes en AR) =====
+var MODELOS_POR_MARCA = {
+  'Alfa Romeo': ['Giulia','Stelvio','Giulietta','MiTo','Tonale'],
+  'Audi': ['A1','A3','A4','A5','A6','A7','A8','Q2','Q3','Q5','Q7','Q8','RS3','RS6','TT'],
+  'BAIC': ['Beijing X35','Beijing X55','Beijing X7','D20','BJ40'],
+  'BMW': ['Serie 1','Serie 2','Serie 3','Serie 4','Serie 5','Serie 7','X1','X2','X3','X4','X5','X6','X7','M3','M5','Z4'],
+  'BYD': ['Dolphin','Yuan Plus','Atto 3','Han','Tang','Song','Seal','Seagull'],
+  'Chery': ['Tiggo 2','Tiggo 3','Tiggo 4','Tiggo 5','Tiggo 7','Tiggo 8','Arrizo 5','Arrizo 6','QQ'],
+  'Chevrolet': ['Onix','Onix Plus','Cruze','Tracker','Spin','S10','Captiva','Equinox','Trailblazer','Corsa','Aveo','Prisma','Cobalt'],
+  'Citroën': ['C3','C4','C4 Cactus','C4 Lounge','C5 Aircross','Berlingo','Jumpy','Jumper'],
+  'Dodge': ['Journey','RAM 1500','RAM 2500','Charger','Challenger'],
+  'DS': ['DS 3','DS 4','DS 5','DS 7','DS 9'],
+  'Fiat': ['Cronos','Argo','Mobi','Toro','Strada','Fiorino','Ducato','500','Pulse','Fastback','Uno','Palio','Siena','Punto','Idea'],
+  'Ford': ['Ka','Fiesta','Focus','EcoSport','Kuga','Edge','Ranger','Territory','Bronco','Mustang','F-150','Maverick','Transit','Explorer'],
+  'Geely': ['Coolray','Emgrand','Tugella','Atlas','Boyue'],
+  'Great Wall (GWM)': ['Wingle 7','Poer','Haval H6','Tank 300','Cannon'],
+  'Haval': ['H6','H2','H9','Jolion','Dargo'],
+  'Honda': ['Civic','City','Fit','HR-V','CR-V','WR-V','Accord','Pilot'],
+  'Hyundai': ['HB20','i10','i20','Accent','Elantra','Sonata','Tucson','Santa Fe','Creta','Kona','Palisade','Veloster'],
+  'JAC': ['S2','S3','S4','S7','T8','iEV7S'],
+  'Jeep': ['Renegade','Compass','Cherokee','Grand Cherokee','Wrangler','Gladiator','Commander'],
+  'Kia': ['Picanto','Rio','Cerato','Soul','Stonic','Seltos','Sportage','Sorento','Carnival','Niro','EV6'],
+  'Land Rover': ['Defender','Discovery','Discovery Sport','Range Rover','Range Rover Sport','Range Rover Evoque','Range Rover Velar','Freelander'],
+  'Lexus': ['IS','ES','LS','RX','NX','UX','GX','LX'],
+  'Mazda': ['Mazda 2','Mazda 3','Mazda 6','CX-3','CX-30','CX-5','CX-9','BT-50','MX-5'],
+  'Mercedes-Benz': ['Clase A','Clase B','Clase C','Clase E','Clase S','GLA','GLB','GLC','GLE','GLS','Sprinter','Vito'],
+  'MG': ['MG3','MG5','MG6','ZS','HS','RX5','One'],
+  'Mini': ['Cooper','Cooper S','Countryman','Clubman','Paceman'],
+  'Mitsubishi': ['Lancer','ASX','Outlander','Eclipse Cross','L200','Triton','Montero','Pajero'],
+  'Nissan': ['March','Versa','Sentra','Note','Kicks','X-Trail','Murano','Frontier','Navara','Patrol','Leaf'],
+  'Peugeot': ['208','2008','3008','5008','308','408','508','Partner','Expert','Boxer'],
+  'RAM': ['1500','2500','3500','Rampage'],
+  'Renault': ['Kwid','Logan','Sandero','Stepway','Captur','Duster','Oroch','Alaskan','Kangoo','Master','Megane','Fluence'],
+  'Seat': ['Ibiza','León','Toledo','Ateca','Tarraco','Arona'],
+  'Smart': ['ForTwo','ForFour'],
+  'Subaru': ['Impreza','Legacy','Forester','Outback','XV','WRX','BRZ'],
+  'Suzuki': ['Swift','Baleno','Vitara','S-Cross','Jimny','Grand Vitara','Ertiga'],
+  'Toyota': ['Etios','Yaris','Corolla','Corolla Cross','Camry','RAV4','SW4','Hilux','Land Cruiser','Prius','C-HR','Highlander','Hiace'],
+  'Volkswagen': ['up!','Polo','Virtus','Vento','Voyage','Gol','Saveiro','Amarok','T-Cross','Taos','Tiguan','Passat','Touareg','Nivus','Suran','Fox','Bora','Golf'],
+  'Volvo': ['XC40','XC60','XC90','S60','S90','V40','V60','V90']
+};
+
+function onMarcaChange() {
+  const sel = document.getElementById('fp-auto-marca');
+  const otraInput = document.getElementById('fp-auto-marca-otra');
+  const modeloSel = document.getElementById('fp-auto-modelo');
+  const modeloOtro = document.getElementById('fp-auto-modelo-otro');
+  if (!sel || !modeloSel) return;
+
+  const marca = sel.value;
+
+  // Manejar opción "Otra"
+  if (marca === '__otra__') {
+    if (otraInput) otraInput.style.display = 'block';
+    modeloSel.disabled = false;
+    modeloSel.innerHTML = '<option value="__otro__">Otro...</option>';
+    if (modeloOtro) modeloOtro.style.display = 'block';
+    return;
+  } else {
+    if (otraInput) { otraInput.style.display = 'none'; otraInput.value = ''; }
+  }
+
+  // Cargar modelos
+  if (modeloOtro) { modeloOtro.style.display = 'none'; modeloOtro.value = ''; }
+
+  if (!marca) {
+    modeloSel.innerHTML = '<option value="">Seleccionar marca primero</option>';
+    modeloSel.disabled = true;
+    return;
+  }
+
+  const modelos = MODELOS_POR_MARCA[marca] || [];
+  let html = '<option value="">Seleccionar modelo...</option>';
+  modelos.forEach(function(m) { html += '<option value="' + m + '">' + m + '</option>'; });
+  html += '<option value="__otro__">Otro...</option>';
+  modeloSel.innerHTML = html;
+  modeloSel.disabled = false;
+}
+
+function onModeloChange() {
+  const sel = document.getElementById('fp-auto-modelo');
+  const otroInput = document.getElementById('fp-auto-modelo-otro');
+  if (!sel || !otroInput) return;
+  if (sel.value === '__otro__') {
+    otroInput.style.display = 'block';
+  } else {
+    otroInput.style.display = 'none';
+    otroInput.value = '';
+  }
+}
+
+// ===== RESET MODAL POLIZA =====
+function resetModalPoliza() {
+  // Reset all inputs and selects in modal-pol
+  const modal = document.getElementById('modal-pol');
+  if (!modal) return;
+  modal.querySelectorAll('input').forEach(function(i) {
+    if (i.type === 'file') i.value = '';
+    else if (i.type === 'date' || i.type === 'number' || i.type === 'text' || i.type === 'email') i.value = '';
+    else if (i.type === 'checkbox' || i.type === 'radio') i.checked = false;
+  });
+  modal.querySelectorAll('select').forEach(function(s) {
+    if (s.options.length > 0) s.selectedIndex = 0;
+  });
+  modal.querySelectorAll('textarea').forEach(function(t) { t.value = ''; });
+  // Hide cliente data card
+  const clData = document.getElementById('fp-cliente-data');
+  if (clData) clData.style.display = 'none';
+  // Reset ramo dynamic content
+  const ramoFields = document.getElementById('fp-ramo-fields');
+  if (ramoFields) ramoFields.innerHTML = '';
+  // Hide cedula verde section
+  const cvSection = document.getElementById('fp-cv-section');
+  if (cvSection) cvSection.style.display = 'none';
+  // Reset upload status labels
+  ['fp-pdf-status','fp-cv-frente-status','fp-cv-dorso-status'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+  // Default valor cuota
+  const vc = document.getElementById('fp-valor-cuota');
+  if (vc) { vc.readOnly = true; vc.style.background = '#F9FAFB'; }
+}
 
 init();
 </script>
