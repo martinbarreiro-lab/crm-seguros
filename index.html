@@ -344,6 +344,48 @@ tr:hover td{background:var(--bg)}
   width: 100%;
   box-sizing: border-box;
 }
+
+/* ===== INPUT MONEY (símbolo $ fijo a la izquierda) ===== */
+.money-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+}
+.money-wrap:focus-within {
+  border-color: #4A90D9;
+  box-shadow: 0 0 0 2px rgba(74,144,217,0.15);
+}
+.money-wrap .money-prefix {
+  background: #F3F4F6;
+  color: #6B7280;
+  font-weight: 600;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  border-right: 1px solid #E5E7EB;
+}
+.money-wrap input {
+  border: none !important;
+  outline: none !important;
+  flex: 1;
+  padding: 8px 10px !important;
+  font-size: 13px;
+  width: 100%;
+  background: transparent !important;
+}
+.money-wrap input:focus {
+  box-shadow: none !important;
+}
+/* Para inputs readonly de cálculo automático */
+.money-wrap.readonly { background: #F9FAFB; }
+.money-wrap.readonly input { background: transparent !important; color: #6B7280; }
+
+/* Custom column widths for AP fields */
+.fg-23 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
 </style>
 </head>
 <body>
@@ -1230,7 +1272,7 @@ tr:hover td{background:var(--bg)}
 
     <div class="fg3">
       <div class="frow"><label>Fin de vigencia</label><input type="date" id="fp-vto" readonly style="background:#F9FAFB"></div>
-      <div class="frow"><label>Premio total *</label><input type="number" id="fp-premio" placeholder="0" oninput="calcCuota()"></div>
+      <div class="frow"><label>Premio total *</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fp-premio" placeholder="0" oninput="calcCuota()"></div></div>
       <div class="frow"><label>Forma de pago *</label>
         <select id="fp-pago" onchange="calcCuota()">
           <option value="">Seleccionar...</option>
@@ -1245,7 +1287,7 @@ tr:hover td{background:var(--bg)}
 
     <div class="fg3">
       <div class="frow"><label>Cantidad de cuotas</label><input type="number" id="fp-cuotas" placeholder="Ej: 12" oninput="calcCuota()"></div>
-      <div class="frow"><label>Valor de cuota</label><input type="number" id="fp-valor-cuota" placeholder="Automático"></div>
+      <div class="frow"><label>Valor de cuota</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fp-valor-cuota" placeholder="Automático"></div></div>
       <div class="frow"><label>Medio de pago</label>
         <select id="fp-medio">
           <option value="">Seleccionar...</option>
@@ -3156,13 +3198,14 @@ function calcCuota() {
   const pago = document.getElementById('fp-pago').value;
   const valorCuota = document.getElementById('fp-valor-cuota');
   if (!valorCuota) return;
+  const wrap = valorCuota.closest('.money-wrap');
   if (pago === 'Anual ref. mensual') {
     valorCuota.readOnly = false;
-    valorCuota.style.background = '';
+    if (wrap) wrap.classList.remove('readonly');
     return;
   }
   valorCuota.readOnly = true;
-  valorCuota.style.background = '#F9FAFB';
+  if (wrap) wrap.classList.add('readonly');
   if (premio && cuotas) {
     valorCuota.value = (premio / cuotas).toFixed(2);
   } else {
@@ -3257,7 +3300,7 @@ function ramoAutomotor() {
     '</div>',
     '<div class="sec-label" style="margin-top:10px">Datos económicos</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-auto-suma" placeholder="0" oninput="calcFranquicia()"></div>',
+    '<div class="frow"><label>Suma asegurada *</label>' + moneyInput('fp-auto-suma', '0', {oninput:'calcFranquicia()'}) + '</div>',
     '<div class="frow"><label>Tipo de franquicia</label>',
     '<select id="fp-auto-fran-tipo">',
     '<option value="sin">Sin franquicia</option>',
@@ -3281,8 +3324,8 @@ function ramoAutomotor() {
     '<option value="9">9%</option><option value="9.5">9,5%</option>',
     '<option value="10">10%</option>',
     '</select></div>',
-    '<div id="fp-fran-val-wrap" class="frow" style="display:none"><label>Valor fijo de franquicia</label><input type="number" id="fp-auto-fran-val" oninput="calcFranquicia()"></div>',
-    '<div class="frow"><label>Monto franquicia (calculado)</label><input type="number" id="fp-auto-fran-monto" readonly style="background:#F9FAFB"></div>',
+    '<div id="fp-fran-val-wrap" class="frow" style="display:none"><label>Valor fijo de franquicia</label>' + moneyInput('fp-auto-fran-val', '0', {oninput:'calcFranquicia()'}) + '</div>',
+    '<div class="frow"><label>Monto franquicia (calculado)</label>' + moneyInput('fp-auto-fran-monto', '0', {readonly:true}) + '</div>',
     '</div>',
     '</div>'
   ].join('');
@@ -3306,8 +3349,8 @@ function ramoHogar() {
     '<select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Vigilancia 24hs</option><option>Alarma + rejas</option><option>Country/Barrio cerrado</option></select></div>',
     '</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada edificio *</label><input type="number" id="fp-hog-suma-edif"></div>',
-    '<div class="frow"><label>Suma asegurada contenido</label><input type="number" id="fp-hog-suma-cont"></div>',
+    '<div class="frow"><label>Suma asegurada edificio *</label>' + moneyInput('fp-hog-suma-edif') + '</div>',
+    '<div class="frow"><label>Suma asegurada contenido</label>' + moneyInput('fp-hog-suma-cont') + '</div>',
     '</div>'
   ].join('');
 }
@@ -3327,8 +3370,8 @@ function ramoComercio() {
     '<div class="frow"><label>Horario</label><input type="text" id="fp-com-horario" placeholder="Ej: Lun-Vie 9-18"></div>',
     '</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada contenido *</label><input type="number" id="fp-com-suma-cont"></div>',
-    '<div class="frow"><label>Suma asegurada edificio</label><input type="number" id="fp-com-suma-edif"></div>',
+    '<div class="frow"><label>Suma asegurada contenido *</label>' + moneyInput('fp-com-suma-cont') + '</div>',
+    '<div class="frow"><label>Suma asegurada edificio</label>' + moneyInput('fp-com-suma-edif') + '</div>',
     '</div>'
   ].join('');
 }
@@ -3336,13 +3379,13 @@ function ramoComercio() {
 function ramoAP() {
   return [
     '<div class="sec-label" style="margin-top:14px">Datos de Accidentes Personales</div>',
-    '<div class="fg2">',
+    '<div class="fg-23">',
     '<div class="frow"><label>Actividad laboral *</label><input type="text" id="fp-ap-actividad"></div>',
     '<div class="frow"><label>Cantidad de personas *</label><input type="number" id="fp-ap-cant" min="1" placeholder="Ej: 1"></div>',
     '</div>',
     '<div class="fg3">',
-    '<div class="frow"><label>Cobertura por muerte</label><input type="number" id="fp-ap-muerte"></div>',
-    '<div class="frow"><label>Cobertura por invalidez</label><input type="number" id="fp-ap-invalidez"></div>',
+    '<div class="frow"><label>Cobertura por muerte</label>' + moneyInput('fp-ap-muerte') + '</div>',
+    '<div class="frow"><label>Cobertura por invalidez</label>' + moneyInput('fp-ap-invalidez') + '</div>',
     '<div class="frow"><label>Altura máxima trabajo (m)</label><input type="number" id="fp-ap-altura"></div>',
     '</div>',
     '<div class="fg2">',
@@ -3350,11 +3393,10 @@ function ramoAP() {
     '<select id="fp-ap-asist">',
     '<option value="">Seleccionar...</option>',
     '<option value="no">No incluye</option>',
-    '<option value="basica">Básica</option>',
-    '<option value="completa">Completa</option>',
-    '<option value="premium">Premium</option>',
+    '<option value="prestacional">Prestacional</option>',
+    '<option value="reintegro">Reintegro</option>',
     '</select></div>',
-    '<div class="frow"><label>Monto asistencia médica</label><input type="number" id="fp-ap-asist-monto" placeholder="0"></div>',
+    '<div class="frow"><label>Monto asistencia médica</label>' + moneyInput('fp-ap-asist-monto') + '</div>',
     '</div>'
   ].join('');
 }
@@ -3364,7 +3406,7 @@ function ramoRC() {
     '<div class="sec-label" style="margin-top:14px">Datos de Responsabilidad Civil</div>',
     '<div class="frow"><label>Actividad asegurada *</label><input type="text" id="fp-rc-actividad"></div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-rc-suma"></div>',
+    '<div class="frow"><label>Suma asegurada *</label>' + moneyInput('fp-rc-suma') + '</div>',
     '<div class="frow"><label>Ámbito de cobertura</label>',
     '<select id="fp-rc-ambito"><option>Argentina</option><option>Mercosur</option><option>Mundial</option></select></div>',
     '</div>'
@@ -3375,7 +3417,7 @@ function ramoVidaInd() {
   return [
     '<div class="sec-label" style="margin-top:14px">Datos de Vida Individual</div>',
     '<div class="fg3">',
-    '<div class="frow"><label>Capital asegurado *</label><input type="number" id="fp-vi-capital"></div>',
+    '<div class="frow"><label>Capital asegurado *</label>' + moneyInput('fp-vi-capital') + '</div>',
     '<div class="frow"><label>Tipo de plan *</label>',
     '<select id="fp-vi-plan"><option>Vida Temporario</option><option>Vida Entera</option><option>Vida con Ahorro</option><option>Vida Universal</option></select></div>',
     '<div class="frow"><label>¿Examen médico?</label>',
@@ -3394,7 +3436,7 @@ function ramoVidaCol() {
     '<div class="frow"><label>Cantidad de asegurados *</label><input type="number" id="fp-vc-cant"></div>',
     '</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Capital por asegurado</label><input type="number" id="fp-vc-capital"></div>',
+    '<div class="frow"><label>Capital por asegurado</label>' + moneyInput('fp-vc-capital') + '</div>',
     '<div class="frow"><label>Tipo de plan</label>',
     '<select id="fp-vc-plan"><option>Obligatorio Ley 17418</option><option>Convenio</option><option>Voluntario</option></select></div>',
     '</div>'
@@ -3411,7 +3453,7 @@ function ramoART() {
     '<div class="fg3">',
     '<div class="frow"><label>Actividad principal *</label><input type="text" id="fp-art-actividad"></div>',
     '<div class="frow"><label>Cantidad empleados *</label><input type="number" id="fp-art-emp"></div>',
-    '<div class="frow"><label>Masa salarial mensual *</label><input type="number" id="fp-art-masa"></div>',
+    '<div class="frow"><label>Masa salarial mensual *</label>' + moneyInput('fp-art-masa') + '</div>',
     '</div>'
   ].join('');
 }
@@ -3423,8 +3465,8 @@ function ramoCombinado() {
     '<div class="fg3">',
     '<div class="frow"><label>Tipo de vivienda</label>',
     '<select id="fp-cf-tipo"><option>Casa</option><option>Departamento</option></select></div>',
-    '<div class="frow"><label>Suma edificio</label><input type="number" id="fp-cf-suma-edif"></div>',
-    '<div class="frow"><label>Suma contenido</label><input type="number" id="fp-cf-suma-cont"></div>',
+    '<div class="frow"><label>Suma edificio</label>' + moneyInput('fp-cf-suma-edif') + '</div>',
+    '<div class="frow"><label>Suma contenido</label>' + moneyInput('fp-cf-suma-cont') + '</div>',
     '</div>',
     '<div class="frow"><label>Adicionales (RC, robo en tránsito, etc.)</label><textarea id="fp-cf-adic" style="min-height:50px"></textarea></div>'
   ].join('');
@@ -3441,8 +3483,8 @@ function ramoEmpresas() {
     '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-emp-dir"></div>',
     '<div class="fg3">',
     '<div class="frow"><label>Cantidad empleados</label><input type="number" id="fp-emp-emp"></div>',
-    '<div class="frow"><label>Facturación anual</label><input type="number" id="fp-emp-fact"></div>',
-    '<div class="frow"><label>Suma asegurada</label><input type="number" id="fp-emp-suma"></div>',
+    '<div class="frow"><label>Facturación anual</label>' + moneyInput('fp-emp-fact') + '</div>',
+    '<div class="frow"><label>Suma asegurada</label>' + moneyInput('fp-emp-suma') + '</div>',
     '</div>'
   ].join('');
 }
@@ -3451,7 +3493,7 @@ function ramoOtros() {
   return [
     '<div class="sec-label" style="margin-top:14px">Datos del riesgo</div>',
     '<div class="frow"><label>Descripción del bien o riesgo *</label><textarea id="fp-otros-desc" style="min-height:60px"></textarea></div>',
-    '<div class="frow"><label>Suma asegurada *</label><input type="number" id="fp-otros-suma"></div>'
+    '<div class="frow"><label>Suma asegurada *</label>' + moneyInput('fp-otros-suma') + '</div>'
   ].join('');
 }
 
@@ -3733,6 +3775,18 @@ function resetModalPoliza() {
   // Default valor cuota
   const vc = document.getElementById('fp-valor-cuota');
   if (vc) { vc.readOnly = true; vc.style.background = '#F9FAFB'; }
+}
+
+
+// ===== MONEY INPUT HELPER (genera input con $ a la izquierda) =====
+function moneyInput(id, placeholder, opts) {
+  opts = opts || {};
+  var oninput = opts.oninput ? ' oninput="' + opts.oninput + '"' : '';
+  var readonly = opts.readonly ? ' readonly' : '';
+  var cls = opts.readonly ? 'money-wrap readonly' : 'money-wrap';
+  var min = opts.min !== undefined ? ' min="' + opts.min + '"' : '';
+  var ph = placeholder || '0';
+  return '<div class="' + cls + '"><span class="money-prefix">$</span><input type="number"' + min + ' id="' + id + '" placeholder="' + ph + '"' + oninput + readonly + '></div>';
 }
 
 init();
