@@ -3336,11 +3336,25 @@ function ramoComercio() {
 function ramoAP() {
   return [
     '<div class="sec-label" style="margin-top:14px">Datos de Accidentes Personales</div>',
+    '<div class="fg2">',
     '<div class="frow"><label>Actividad laboral *</label><input type="text" id="fp-ap-actividad"></div>',
+    '<div class="frow"><label>Cantidad de personas *</label><input type="number" id="fp-ap-cant" min="1" placeholder="Ej: 1"></div>',
+    '</div>',
     '<div class="fg3">',
     '<div class="frow"><label>Cobertura por muerte</label><input type="number" id="fp-ap-muerte"></div>',
     '<div class="frow"><label>Cobertura por invalidez</label><input type="number" id="fp-ap-invalidez"></div>',
     '<div class="frow"><label>Altura máxima trabajo (m)</label><input type="number" id="fp-ap-altura"></div>',
+    '</div>',
+    '<div class="fg2">',
+    '<div class="frow"><label>Asistencia médica</label>',
+    '<select id="fp-ap-asist">',
+    '<option value="">Seleccionar...</option>',
+    '<option value="no">No incluye</option>',
+    '<option value="basica">Básica</option>',
+    '<option value="completa">Completa</option>',
+    '<option value="premium">Premium</option>',
+    '</select></div>',
+    '<div class="frow"><label>Monto asistencia médica</label><input type="number" id="fp-ap-asist-monto" placeholder="0"></div>',
     '</div>'
   ].join('');
 }
@@ -3538,9 +3552,12 @@ function recolectarDatosRamo(ramo) {
     datos.suma_edificio = parseFloat(v('fp-com-suma-edif')) || 0;
   } else if (ramo === 'Accidentes Personales') {
     datos.actividad = v('fp-ap-actividad');
+    datos.cantidad_personas = parseInt(v('fp-ap-cant'), 10) || 1;
     datos.cobertura_muerte = parseFloat(v('fp-ap-muerte')) || 0;
     datos.cobertura_invalidez = parseFloat(v('fp-ap-invalidez')) || 0;
     datos.altura_max = v('fp-ap-altura');
+    datos.asistencia_medica = v('fp-ap-asist');
+    datos.asistencia_medica_monto = parseFloat(v('fp-ap-asist-monto')) || 0;
   } else if (ramo === 'Responsabilidad Civil') {
     datos.actividad = v('fp-rc-actividad');
     datos.suma = parseFloat(v('fp-rc-suma')) || 0;
