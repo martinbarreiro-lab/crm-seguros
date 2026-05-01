@@ -1923,7 +1923,18 @@ async function renderFichaTab(c) {
   const cont = document.getElementById('ficha-content');
   if (fichaTab === 'resumen') { cont.innerHTML = await fichaResumen(c); }
   else if (fichaTab === 'datos') { cont.innerHTML = fichaDatos(c); }
-  else if (fichaTab === 'polizas') { cont.innerHTML = await fichaPolizas(c); }
+  else if (fichaTab === 'polizas') {
+    cont.innerHTML = await fichaPolizas(c);
+    // Force grid layout after render
+    const grid = cont.querySelector('[style*="grid-template-columns:repeat(4"]');
+    if (grid) {
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(4,1fr)';
+      grid.style.columnGap = '12px';
+      grid.style.rowGap = '12px';
+      grid.style.width = '100%';
+    }
+  }
   else if (fichaTab === 'siniestros') { cont.innerHTML = await fichaSiniestros(c); }
   else if (fichaTab === 'cotizaciones') { cont.innerHTML = await fichaCotizaciones(c); }
   else if (fichaTab === 'tareas') { cont.innerHTML = await fichaTareas(c); }
