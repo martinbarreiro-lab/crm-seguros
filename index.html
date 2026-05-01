@@ -2242,7 +2242,7 @@ async function fichaPolizas(c) {
   html += '<div style="display:grid;grid-template-columns:3fr 1fr;gap:12px;align-items:start">';
 
   // === COLUMNA IZQUIERDA ===
-  html += '<div style="display:flex;flex-direction:column;gap:14px">';
+  html += '<div style="display:flex;flex-direction:column;gap:14px;min-width:0">';
 
   if (polActivas.length === 0 && polInactivas.length === 0) {
     html += '<div class="empty">Sin pólizas registradas.</div>';
@@ -2293,7 +2293,7 @@ async function fichaPolizas(c) {
   html += '</div>'; // fin columna izq
 
   // === SIDEBAR DERECHO: PRÓXIMOS VENCIMIENTOS ===
-  html += '<div class="card-resumen">'
+  html += '<div class="card-resumen" style="position:sticky;top:20px">'
        +  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
        +    '<div class="card-resumen-titulo" style="margin-bottom:0">Próximos vencimientos</div>'
        +    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
