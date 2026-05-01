@@ -428,6 +428,15 @@ tr:hover td{background:var(--bg)}
   letter-spacing: .06em;
   margin-bottom: 12px;
 }
+
+/* Ficha polizas layout */
+#ficha-content .polizas-grid {
+  display: grid !important;
+  grid-template-columns: 3fr 1fr !important;
+  gap: 12px !important;
+  align-items: start !important;
+  width: 100% !important;
+}
 </style>
 </head>
 <body>
@@ -2239,7 +2248,7 @@ async function fichaPolizas(c) {
        +  '</div>';
 
   // Layout 2 columnas: contenido + sidebar
-  html += '<div style="display:grid;grid-template-columns:calc(75% - 6px) calc(25% - 6px);gap:12px;align-items:start;width:100%">';
+  html += '<div class="polizas-grid">';
 
   // === COLUMNA IZQUIERDA ===
   html += '<div style="display:flex;flex-direction:column;gap:14px;min-width:0;overflow:hidden">';
