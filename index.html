@@ -430,12 +430,21 @@ tr:hover td{background:var(--bg)}
 }
 
 /* Ficha polizas layout */
+#ficha-content {
+  display: block;
+  width: 100%;
+}
 #ficha-content .polizas-grid {
   display: grid !important;
   grid-template-columns: 3fr 1fr !important;
   gap: 12px !important;
   align-items: start !important;
   width: 100% !important;
+  box-sizing: border-box;
+}
+#ficha-content .polizas-grid > div {
+  min-width: 0;
+  width: 100%;
 }
 </style>
 </head>
