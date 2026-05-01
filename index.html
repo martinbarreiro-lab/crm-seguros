@@ -1014,6 +1014,26 @@ tr:hover td{background:var(--bg)}
       </select>
     </div>
 
+    <div class="fg2">
+      <div class="frow"><label>Condición fiscal *</label>
+        <select id="f-cond">
+          <option value="">Seleccionar...</option>
+          <option value="consumidor_final">Consumidor final</option>
+          <option value="monotributista">Monotributista</option>
+          <option value="responsable_inscripto">Responsable inscripto</option>
+          <option value="exento">Exento</option>
+          <option value="no_categorizado">No categorizado</option>
+          <option value="sujeto_no_alcanzado">Sujeto no alcanzado</option>
+        </select>
+      </div>
+      <div class="frow"><label>Tipo de cliente</label>
+        <select id="f-tipo-cl">
+          <option value="persona">Persona física</option>
+          <option value="empresa">Empresa / Razón social</option>
+        </select>
+      </div>
+    </div>
+
     <div class="frow"><label>Notas internas</label>
       <textarea id="f-notas" placeholder="Observaciones sobre el cliente..."></textarea>
     </div>
@@ -2219,7 +2239,7 @@ async function fichaPolizas(c) {
        +  '</div>';
 
   // Layout 2 columnas: contenido + sidebar
-  html += '<div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:stretch">';
+  html += '<div style="display:grid;grid-template-columns:3fr 1fr;gap:12px;align-items:start">';
 
   // === COLUMNA IZQUIERDA ===
   html += '<div style="display:flex;flex-direction:column;gap:14px">';
@@ -2482,6 +2502,8 @@ document.getElementById('btn-guardar-cl') && (document.getElementById('btn-guard
     email_secundario: normalizarEmail(v('f-email2')),
     estado: v('f-estado') || 'prospecto',
     canal_origen: v('f-canal'),
+    condicion_fiscal: v('f-cond') || null,
+    tipo_cliente: v('f-tipo-cl') || 'persona',
     notas: v('f-notas')
   };
 
