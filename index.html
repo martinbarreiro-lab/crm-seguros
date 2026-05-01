@@ -1807,6 +1807,13 @@ function actualizarSelectsClientes() {
 async function verFicha(id) {
   fichaId = id;
   fichaTab = 'resumen';
+  // Switch to clientes section first if not already there
+  document.querySelectorAll('.sec').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  const secCl = document.getElementById('sec-clientes');
+  if (secCl) secCl.classList.add('active');
+  const navCl = document.querySelector('.nav-btn[data-sec="clientes"]');
+  if (navCl) navCl.classList.add('active');
   document.getElementById('cl-toprow').style.display = 'none';
   document.getElementById('cl-tabla-wrap').style.display = 'none';
   const countEl = document.getElementById('cl-count');
@@ -2232,7 +2239,7 @@ async function fichaPolizas(c) {
            +    '<div style="flex:1;min-width:0">'
            +      '<div style="display:flex;align-items:center;gap:8px">'
            +        '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
-           +        (p.pdf_url ? '<a href="' + p.pdf_url + '" target="_blank" title="Descargar p\u00f3liza" style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:#EFF6FF;border-radius:5px;text-decoration:none;border:1px solid #BFDBFE"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg><span style="font-size:11px;color:#1E40AF;font-weight:600">Descargar p\u00f3liza</span></a>' : '<span title="Sin PDF" style="display:inline-flex;align-items:center;gap:4px;padding:3px 7px;background:#FEF2F2;border-radius:5px;border:1px solid #FECACA"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span style="font-size:11px;color:#991B1B">Sin PDF</span></span>')
+           +        (p.pdf_url ? '<a href=\"' + p.pdf_url + '\" target=\"_blank\" style=\"margin-top:6px;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#fff;border:1px solid #E5E7EB;border-radius:6px;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,.06)\"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#374151\" stroke-width=\"2\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/><line x1=\"12\" y1=\"18\" x2=\"12\" y2=\"12\"/><polyline points=\"9 15 12 18 15 15\"/></svg><span style=\"font-size:10px;color:#374151;font-weight:500\">P\u00f3liza PDF</span></a>' : '')
            +      '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
            +      (info || p.fecha_vencimiento ? '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">' + (info ? info + ' · ' : '') + (p.fecha_vencimiento ? 'Vto. ' + p.fecha_vencimiento : '') + '</div>' : '')
