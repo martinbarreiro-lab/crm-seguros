@@ -2228,15 +2228,15 @@ async function fichaPolizas(c) {
   }
 
   // Construir HTML
-  let html = '';
+  const html = [];
 
   // Botón nueva póliza
-  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:14px">'
+  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:14px">'
        +  '<button type="button" class="btn btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button>'
-       +  '</div>';
+       +  '</div>');
 
   // Cards de métricas
-  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:12px;row-gap:12px">'
+  html.push('<div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:12px;row-gap:12px">'
        +  '<div class="metric-card" style="border-left-color:#16A34A">'
        +    '<div class="metric-label">Vigentes</div>'
        +    '<div class="metric-num">' + vigentes + '</div>'
@@ -2257,25 +2257,25 @@ async function fichaPolizas(c) {
        +    '<div class="metric-num">' + vencidas + '</div>'
        +    '<div class="metric-sub">Sin renovar</div>'
        +  '</div>'
-       +  '</div>';
-  html += '<div style="display:flex;gap:12px;align-items:flex-start">'; // row 2
+       +  '</div>');
+  html.push('<div style="display:flex;gap:12px;align-items:flex-start">'); // row 2
 
   // Layout: polizas vigentes spans 3 cols, proximos vencimientos spans 1 col
   // Left column (spans 3)
-  html += '<div style="flex:3;min-width:0;display:flex;flex-direction:column;gap:14px">';
+  html.push('<div style="flex:3;min-width:0;display:flex;flex-direction:column;gap:14px">');
 
   if (polActivas.length === 0 && polInactivas.length === 0) {
-    html += '<div class="empty">Sin pólizas registradas.</div>';
+    html.push('<div class="empty">Sin pólizas registradas.</div>');
   }
 
   // Card pólizas vigentes
   if (polActivas.length > 0) {
-    html += '<div class="card-resumen">'
-         +  '<div class="card-resumen-titulo">Pólizas vigentes</div>';
+    html.push('<div class="card-resumen">'
+         +  '<div class="card-resumen-titulo">Pólizas vigentes</div>');
     polActivas.forEach(function(p, idx) {
       const esUltimo = idx === polActivas.length - 1;
       const info = dataVehiculoOrInfo(p);
-      html += '<div class="poliza-row" style="' + (esUltimo ? '' : 'border-bottom:1px solid #F3F4F6;') + 'padding:10px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+      html.push('<div class="poliza-row" style="' + (esUltimo ? '' : 'border-bottom:1px solid #F3F4F6;') + 'padding:10px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
            +    '<div style="flex:1;min-width:0">'
            +      '<div style="display:flex;align-items:center;gap:8px">'
            +        '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
@@ -2289,45 +2289,45 @@ async function fichaPolizas(c) {
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
            +      (p.pdf_url ? '<a href="' + p.pdf_url + '" target="_blank" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,#4A90D9,#2563EB);border-radius:6px;text-decoration:none;box-shadow:0 2px 4px rgba(37,99,235,.25)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg><span style="font-size:10px;color:#fff;font-weight:600;letter-spacing:.02em">Ver p\u00f3liza PDF</span></a>' : '<span style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;border:1px dashed #E5E7EB;border-radius:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span style="font-size:10px;color:#9CA3AF">Sin PDF</span></span>')
-           +  '</div>';
+           +  '</div>');
     });
-    html += '</div>';
+    html.push('</div>');
   }
 
   // Card pólizas inactivas
   if (polInactivas.length > 0) {
-    html += '<div class="card-resumen">'
-         +  '<div class="card-resumen-titulo">Pólizas inactivas</div>';
+    html.push('<div class="card-resumen">'
+         +  '<div class="card-resumen-titulo">Pólizas inactivas</div>');
     polInactivas.forEach(function(p) {
-      html += '<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">'
+      html.push('<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">'
            +    '<div>'
            +      '<div style="font-size:13px;color:#6B7280;text-decoration:line-through">' + (p.numero || '—') + '</div>'
            +      '<div style="font-size:11px;color:#9CA3AF">' + p.ramo + ' · ' + (p.aseguradora || '—') + (p.fecha_vencimiento ? ' · Venció ' + p.fecha_vencimiento : '') + '</div>'
            +    '</div>'
            +    '<span style="font-size:10px;color:#6B7280;background:#F3F4F6;padding:3px 8px;border-radius:4px;font-weight:600;text-transform:uppercase">' + p.estado + '</span>'
-           +  '</div>';
+           +  '</div>');
     });
-    html += '</div>';
+    html.push('</div>');
   }
 
-  html += '</div>'; // fin col izq (span 3)
+  html.push('</div>'); // fin col izq (span 3)
 
   // === SIDEBAR DERECHO: PRÓXIMOS VENCIMIENTOS ===
-  html += '<div class="card-resumen" style="flex:1;position:sticky;top:20px">'
+  html.push('<div class="card-resumen" style="flex:1;position:sticky;top:20px">'
        +  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
        +    '<div class="card-resumen-titulo" style="margin-bottom:0">Próximos vencimientos</div>'
        +    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-       +  '</div>';
+       +  '</div>');
 
   if (top5Vtos.length === 0) {
-    html += '<div style="font-size:12px;color:#9CA3AF;padding:8px 0">Sin vencimientos próximos.</div>';
+    html.push('<div style="font-size:12px;color:#9CA3AF;padding:8px 0">Sin vencimientos próximos.</div>');
   } else {
     top5Vtos.forEach(function(item) {
       const p = item.p;
       const d = item.dias;
       const sc = semaforoColor(d);
       const info = dataVehiculoOrInfo(p);
-      html += '<div style="border-left:3px solid ' + sc.border + ';padding:8px 0 8px 10px;margin-bottom:10px;background:' + sc.bg + ';border-radius:0 6px 6px 0">'
+      html.push('<div style="border-left:3px solid ' + sc.border + ';padding:8px 0 8px 10px;margin-bottom:10px;background:' + sc.bg + ';border-radius:0 6px 6px 0">'
            +    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
            +      '<span style="width:7px;height:7px;background:' + sc.border + ';border-radius:50%"></span>'
            +      '<span style="font-size:10px;color:' + sc.text + ';font-weight:700;text-transform:uppercase">' + d + ' ' + (d === 1 ? 'día' : 'días') + '</span>'
@@ -2335,24 +2335,24 @@ async function fichaPolizas(c) {
            +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero || '—') + '</div>'
            +    '<div style="font-size:11px;color:#6B7280">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
            +    (p.fecha_vencimiento ? '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Vence ' + p.fecha_vencimiento + '</div>' : '')
-           +  '</div>';
+           +  '</div>');
     });
   }
 
   // Leyenda
-  html += '<div style="margin-top:14px;padding-top:10px;border-top:1px solid #F3F4F6">'
+  html.push('<div style="margin-top:14px;padding-top:10px;border-top:1px solid #F3F4F6">'
        +    '<div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;font-weight:600;margin-bottom:6px">Semáforo</div>'
        +    '<div style="font-size:10px;color:#6B7280;display:flex;flex-direction:column;gap:3px">'
        +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#EF4444;border-radius:50%"></span> &lt; 30 días</div>'
        +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#F59E0B;border-radius:50%"></span> 30 - 60 días</div>'
        +      '<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:#16A34A;border-radius:50%"></span> &gt; 60 días</div>'
        +    '</div>'
-       +  '</div>';
+       +  '</div>');
 
-  html += '</div>'; // fin sidebar
+  html.push('</div>'); // fin sidebar
   html += '</div>'; // fin row 2
 
-  return html;
+  return html.join('');
 }
 
 async function fichaSiniestros(c) {
@@ -3062,15 +3062,15 @@ function renderPolAttention() {
   asegs.forEach(function(aseg) {
     const items = grupo[aseg];
     const totalPremio = items.reduce(function(s, x) { return s + (parseFloat(x.p.prima_anual) || 0); }, 0);
-    html += '<div style="margin-bottom:14px">';
-    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F9FAFB;border-radius:6px;margin-bottom:6px">';
-    html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
-    html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#111827">' + aseg.toUpperCase() + '</div>';
-    html += '<div style="font-size:11px;color:#6B7280">' + items.length + ' póliza' + (items.length===1?'':'s') + ' · Premio total: ' + fmtMoney(totalPremio) + '</div></div></div>';
+    html.push('<div style="margin-bottom:14px">');
+    html.push('<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F9FAFB;border-radius:6px;margin-bottom:6px">');
+    html.push('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>');
+    html.push('<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#111827">' + aseg.toUpperCase() + '</div>');
+    html.push('<div style="font-size:11px;color:#6B7280">' + items.length + ' póliza' + (items.length===1?'':'s') + ' · Premio total: ' + fmtMoney(totalPremio) + '</div></div></div>');
 
     // Header cols
-    html += '<div style="display:grid;grid-template-columns:1.5fr 1.4fr 0.8fr 0.8fr 0.9fr 1.5fr;gap:8px;padding:6px 12px;font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em">';
-    html += '<div>Cliente</div><div>Ramo · Dato clave</div><div style="text-align:right">Premio</div><div>Vence</div><div style="text-align:center">Contacto</div><div style="text-align:right">Acciones</div></div>';
+    html.push('<div style="display:grid;grid-template-columns:1.5fr 1.4fr 0.8fr 0.8fr 0.9fr 1.5fr;gap:8px;padding:6px 12px;font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em">');
+    html.push('<div>Cliente</div><div>Ramo · Dato clave</div><div style="text-align:right">Premio</div><div>Vence</div><div style="text-align:center">Contacto</div><div style="text-align:right">Acciones</div></div>');
 
     items.forEach(function(item, idx) {
       const p = item.p;
@@ -3082,16 +3082,16 @@ function renderPolAttention() {
       const diasTxt = e.dias === null ? '' : (e.dias < 0 ? 'hace ' + Math.abs(e.dias) + 'd' : 'en ' + e.dias + 'd');
       const contactos = p.contactos_realizados || {};
 
-      html += '<div style="display:grid;grid-template-columns:1.5fr 1.4fr 0.8fr 0.8fr 0.9fr 1.5fr;gap:8px;padding:11px 12px;' + (isLast ? '' : 'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px">';
-      html += '<div onclick="verFicha(\'' + p.cliente_id + '\')" style="cursor:pointer">';
-      html += '<div style="font-weight:600;color:#111827">' + nombreCl + '</div>';
-      html += '<div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>';
-      html += '<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>';
-      html += '<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>';
-      html += '<div><div style="font-size:11px;color:' + e.color + ';font-weight:600">' + diasTxt + '</div><div style="font-size:10px;color:#9CA3AF">' + fmtDate(p.fecha_vencimiento) + '</div></div>';
+      html.push('<div style="display:grid;grid-template-columns:1.5fr 1.4fr 0.8fr 0.8fr 0.9fr 1.5fr;gap:8px;padding:11px 12px;' + (isLast ? '' : 'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px">');
+      html.push('<div onclick="verFicha(\'' + p.cliente_id + '\')" style="cursor:pointer">');
+      html.push('<div style="font-weight:600;color:#111827">' + nombreCl + '</div>');
+      html.push('<div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>');
+      html.push('<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>');
+      html.push('<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>');
+      html.push('<div><div style="font-size:11px;color:' + e.color + ';font-weight:600">' + diasTxt + '</div><div style="font-size:10px;color:#9CA3AF">' + fmtDate(p.fecha_vencimiento) + '</div></div>');
 
       // Iconos contacto
-      html += '<div style="text-align:center;display:flex;gap:4px;justify-content:center">';
+      html.push('<div style="text-align:center;display:flex;gap:4px;justify-content:center">');
       ['llamado','whatsapp','email'].forEach(function(tipo) {
         const realizado = contactos[tipo] === true;
         const bg = realizado ? '#D1FAE5' : '#F3F4F6';
@@ -3102,20 +3102,20 @@ function renderPolAttention() {
         if (tipo === 'whatsapp') svg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="' + stroke + '" stroke-width="' + sw + '"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
         if (tipo === 'email') svg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="' + stroke + '" stroke-width="' + sw + '"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
         const titlt = realizado ? 'Marcado como ' + tipo + ' realizado' : 'Marcar ' + tipo + ' como realizado';
-        html += '<span title="' + titlt + '" onclick="toggleContactoPoliza(\'' + p.id + '\',\'' + tipo + '\')" style="width:20px;height:20px;background:' + bg + ';border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">' + svg + '</span>';
+        html.push('<span title="' + titlt + '" onclick="toggleContactoPoliza(\'' + p.id + '\',\'' + tipo + '\')" style="width:20px;height:20px;background:' + bg + ';border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">' + svg + '</span>');
       });
-      html += '</div>';
+      html.push('</div>');
 
       // Acciones
-      html += '<div style="text-align:right;display:flex;gap:4px;justify-content:flex-end">';
-      html += '<button type="button" onclick="abrirRenovarPoliza(\'' + p.id + '\')" title="Renovar" style="padding:5px 9px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:5px;cursor:pointer;font-size:11px;color:#1E40AF;font-weight:600">🔄 Renovar</button>';
-      html += '<button type="button" onclick="abrirRefacturarPoliza(\'' + p.id + '\')" title="Refacturar" style="padding:5px 8px;background:#fff;border:1px solid #E5E7EB;border-radius:5px;cursor:pointer;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" style="vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></button>';
-      html += '<button type="button" onclick="abrirMenuPoliza(event,\'' + p.id + '\')" title="Más opciones" style="width:24px;height:24px;background:#fff;border:1px solid #E5E7EB;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>';
-      html += '</div>';
-      html += '</div>';
+      html.push('<div style="text-align:right;display:flex;gap:4px;justify-content:flex-end">');
+      html.push('<button type="button" onclick="abrirRenovarPoliza(\'' + p.id + '\')" title="Renovar" style="padding:5px 9px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:5px;cursor:pointer;font-size:11px;color:#1E40AF;font-weight:600">🔄 Renovar</button>');
+      html.push('<button type="button" onclick="abrirRefacturarPoliza(\'' + p.id + '\')" title="Refacturar" style="padding:5px 8px;background:#fff;border:1px solid #E5E7EB;border-radius:5px;cursor:pointer;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" style="vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></button>');
+      html.push('<button type="button" onclick="abrirMenuPoliza(event,\'' + p.id + '\')" title="Más opciones" style="width:24px;height:24px;background:#fff;border:1px solid #E5E7EB;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>');
+      html.push('</div>');
+      html.push('</div>');
     });
 
-    html += '</div>';
+    html.push('</div>');
   });
 
   listCont.innerHTML = html;
@@ -3210,10 +3210,10 @@ function renderPolListadoCompleto() {
 
   // Header
   let html = '<div style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:8px 12px;background:#F9FAFB;border-radius:6px;font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">';
-  html += '<div>Cliente</div><div>Ramo · Dato clave</div><div>Aseguradora · Póliza</div><div style="text-align:right">Premio</div><div>Inicio</div><div>Fin</div><div style="text-align:center">Estado</div></div>';
+  html.push('<div>Cliente</div><div>Ramo · Dato clave</div><div>Aseguradora · Póliza</div><div style="text-align:right">Premio</div><div>Inicio</div><div>Fin</div><div style="text-align:center">Estado</div></div>');
 
   if (!pageData.length) {
-    html += '<div style="padding:30px;text-align:center;color:#9CA3AF;font-size:13px">Sin pólizas para mostrar.</div>';
+    html.push('<div style="padding:30px;text-align:center;color:#9CA3AF;font-size:13px">Sin pólizas para mostrar.</div>');
   } else {
     pageData.forEach(function(p, idx) {
       const cl = allCl.find(function(c){return c.id===p.cliente_id;}) || {};
@@ -3228,15 +3228,15 @@ function renderPolListadoCompleto() {
       if (p.estado === 'cancelada') { estadoLabel = 'Cancelada'; estadoBg = '#F3F4F6'; estadoColor = '#6B7280'; }
       if (p.estado === 'no_renueva') { estadoLabel = 'No renovó'; estadoBg = '#F3F4F6'; estadoColor = '#6B7280'; }
 
-      html += '<div onclick="verFicha(\'' + p.cliente_id + '\')" style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:11px 12px;' + (isLast?'':'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px;cursor:pointer">';
-      html += '<div><div style="font-weight:600;color:#111827">' + nombreCl + '</div><div style="font-size:11px;color:#9CA3AF">DNI ' + (cl.dni || '—') + '</div></div>';
-      html += '<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>';
-      html += '<div><div style="color:#374151">' + (p.aseguradora || '—') + '</div><div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>';
-      html += '<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>';
-      html += '<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_inicio) + '</div>';
-      html += '<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_vencimiento) + '</div>';
-      html += '<div style="text-align:center"><span style="background:' + estadoBg + ';color:' + estadoColor + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;text-transform:uppercase">' + estadoLabel + '</span></div>';
-      html += '</div>';
+      html.push('<div onclick="verFicha(\'' + p.cliente_id + '\')" style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:11px 12px;' + (isLast?'':'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px;cursor:pointer">');
+      html.push('<div><div style="font-weight:600;color:#111827">' + nombreCl + '</div><div style="font-size:11px;color:#9CA3AF">DNI ' + (cl.dni || '—') + '</div></div>');
+      html.push('<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>');
+      html.push('<div><div style="color:#374151">' + (p.aseguradora || '—') + '</div><div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>');
+      html.push('<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>');
+      html.push('<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_inicio) + '</div>');
+      html.push('<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_vencimiento) + '</div>');
+      html.push('<div style="text-align:center"><span style="background:' + estadoBg + ';color:' + estadoColor + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;text-transform:uppercase">' + estadoLabel + '</span></div>');
+      html.push('</div>');
     });
   }
 
@@ -4163,7 +4163,7 @@ function ramoAutomotor() {
     '<div class="frow"><label>Año *</label>',
     '<select id="fp-auto-anio">',
     '<option value="">Seleccionar...</option>',
-    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html; })(),
+    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html.join(''); })(),
     '</select></div>',
     '</div>',
     '<div class="fg3">',
@@ -4622,7 +4622,7 @@ function onMarcaChange() {
   const modelos = MODELOS_POR_MARCA[marca] || [];
   let html = '<option value="">Seleccionar modelo...</option>';
   modelos.forEach(function(m) { html += '<option value="' + m + '">' + m + '</option>'; });
-  html += '<option value="__otro__">Otro...</option>';
+  html.push('<option value="__otro__">Otro...</option>');
   modeloSel.innerHTML = html;
   modeloSel.disabled = false;
 }
