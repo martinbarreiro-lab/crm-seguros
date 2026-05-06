@@ -429,7 +429,14 @@ tr:hover td{background:var(--bg)}
   box-sizing: border-box;
 }
 
-/* Fila de métricas — 4 columnas iguales (div 2) */
+/* Botón Nueva póliza — alineado a la derecha */
+#ficha-content > div:nth-child(1) {
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-bottom: 14px !important;
+}
+
+/* Fila de métricas — 4 columnas iguales */
 #ficha-content > div:nth-child(2) {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
@@ -438,7 +445,7 @@ tr:hover td{background:var(--bg)}
   width: 100% !important;
 }
 
-/* Fila de contenido — pólizas vigentes (3/4) + próximos vencimientos (1/4) (div 3) */
+/* Fila de contenido — pólizas vigentes (3/4) + próximos vencimientos (1/4) */
 #ficha-content > div:nth-child(3) {
   display: flex !important;
   flex-direction: row !important;
