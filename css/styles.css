@@ -429,14 +429,18 @@ tr:hover td{background:var(--bg)}
   box-sizing: border-box;
 }
 
-/* Botón Nueva póliza — alineado a la derecha */
+/* =============================================
+   BLOQUE 1: Botón Nueva póliza
+   ============================================= */
 #ficha-content > div:nth-child(1) {
   display: flex !important;
   justify-content: flex-end !important;
   margin-bottom: 14px !important;
 }
 
-/* Fila de métricas — 4 columnas iguales */
+/* =============================================
+   BLOQUE 2: 4 cards métricas — NO TOCAR
+   ============================================= */
 #ficha-content > div:nth-child(2) {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
@@ -445,8 +449,10 @@ tr:hover td{background:var(--bg)}
   width: 100% !important;
 }
 
-/* Fila de contenido — pólizas vigentes (3/4) + próximos vencimientos (1/4) */
-#ficha-content > div[style*="align-items:flex-start"] {
+/* =============================================
+   BLOQUE 3: Pólizas vigentes + Próximos vencimientos
+   ============================================= */
+#ficha-pol-row {
   display: flex !important;
   flex-direction: row !important;
   gap: 12px !important;
@@ -454,16 +460,12 @@ tr:hover td{background:var(--bg)}
   width: 100% !important;
 }
 
-/* Columna izquierda: mismo ancho que las 3 primeras cards */
-#ficha-content > div[style*="align-items:flex-start"] > div:first-child {
+#ficha-pol-left {
   flex: 3 !important;
   min-width: 0 !important;
-  width: 0 !important;
 }
 
-/* Columna derecha: mismo ancho que la card Vencidas */
-#ficha-content > div[style*="align-items:flex-start"] > .card-resumen {
+#ficha-pol-right {
   flex: 1 !important;
   min-width: 0 !important;
-  width: 0 !important;
 }
