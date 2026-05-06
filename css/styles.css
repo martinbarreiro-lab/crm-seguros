@@ -446,7 +446,7 @@ tr:hover td{background:var(--bg)}
 }
 
 /* Fila de contenido — pólizas vigentes (3/4) + próximos vencimientos (1/4) */
-#ficha-content > div[style*="gap:12px"] {
+#ficha-content > div[style*="align-items:flex-start"] {
   display: flex !important;
   flex-direction: row !important;
   gap: 12px !important;
@@ -455,14 +455,14 @@ tr:hover td{background:var(--bg)}
 }
 
 /* Columna izquierda: mismo ancho que las 3 primeras cards */
-#ficha-content > div[style*="gap:12px"] > div:first-child {
+#ficha-content > div[style*="align-items:flex-start"] > div:first-child {
   flex: 3 !important;
   min-width: 0 !important;
   width: 0 !important;
 }
 
 /* Columna derecha: mismo ancho que la card Vencidas */
-#ficha-content > div[style*="gap:12px"] > .card-resumen {
+#ficha-content > div[style*="align-items:flex-start"] > .card-resumen {
   flex: 1 !important;
   min-width: 0 !important;
   width: 0 !important;
