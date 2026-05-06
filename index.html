@@ -1015,8 +1015,8 @@
 
     <!-- ===== ARCHIVOS ===== -->
     <div class="sec-label" style="margin-top:14px">Archivos</div>
-    <div class="frow">
-      <label>PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span></label>
+    <div class="frow" id="fp-pdf-row">
+      <label id="fp-pdf-label">PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span></label>
       <input type="file" id="fp-pdf" accept="application/pdf">
       <div id="fp-pdf-status" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
     </div>
@@ -2296,18 +2296,20 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     return;
   }
 
-  // Subir PDF a Storage
+  // Subir PDF a Storage (solo si se selecciono uno nuevo)
   let pdfUrl = '';
-  try {
-    const path = 'polizas/' + cid + '/' + Date.now() + '_' + pdfFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const { data: upData, error: upErr } = await sb.storage.from('archivos').upload(path, pdfFile);
-    if (upErr) throw upErr;
-    const { data: urlData } = sb.storage.from('archivos').getPublicUrl(path);
-    pdfUrl = urlData.publicUrl;
-  } catch (err) {
-    console.warn('Error subiendo PDF:', err);
-    alert('No se pudo subir el PDF: ' + (err.message || err));
-    return;
+  if (pdfFile) {
+    try {
+      const pathPdf = 'polizas/' + cid + '/' + Date.now() + '_' + pdfFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const { data: upData, error: upErr } = await sb.storage.from('archivos').upload(pathPdf, pdfFile);
+      if (upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('archivos').getPublicUrl(pathPdf);
+      pdfUrl = urlData.publicUrl;
+    } catch (err) {
+      console.warn('Error subiendo PDF:', err);
+      alert('No se pudo subir el PDF: ' + (err.message || err));
+      return;
+    }
   }
 
   // Subir cédula verde frente y dorso (solo automotor)
@@ -4295,7 +4297,9 @@ async function abrirEditarPoliza(polId) {
 
   // Avisar que PDF es opcional
   const pdfStatus = document.getElementById('fp-pdf-status');
-  if (pdfStatus) pdfStatus.textContent = p.pdf_url ? '✓ PDF existente (subí uno nuevo para reemplazarlo)' : 'Sin PDF cargado';
+  if (pdfStatus) pdfStatus.textContent = p.pdf_url ? '✓ PDF ya cargado. Subí uno nuevo solo si querés reemplazarlo.' : 'Sin PDF cargado';
+  const pdfLabel = document.getElementById('fp-pdf-label');
+  if (pdfLabel) pdfLabel.innerHTML = p.pdf_url ? 'PDF de la póliza <span style="color:#6B7280;font-weight:400">(opcional — ya tiene uno)</span>' : 'PDF de la póliza <span style="color:#EF4444">(obligatorio)</span>';
 
   setTimeout(function() {
     function sv(id, val) { const el = document.getElementById(id); if (el && val != null) el.value = val; }
@@ -4417,6 +4421,8 @@ function resetModalPoliza() {
   if (tituloModal) tituloModal.textContent = 'Nueva póliza';
   const btnGuardar = document.getElementById('btn-guardar-pol');
   if (btnGuardar) btnGuardar.textContent = 'Guardar póliza';
+  const pdfLabelReset = document.getElementById('fp-pdf-label');
+  if (pdfLabelReset) pdfLabelReset.innerHTML = 'PDF de la póliza * <span style="color:#EF4444">(obligatorio)</span>';
   // Reset all inputs and selects in modal-pol
   modal.querySelectorAll('input').forEach(function(i) {
     if (i.type === 'file') i.value = '';
