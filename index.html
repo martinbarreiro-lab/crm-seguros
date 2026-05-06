@@ -1790,12 +1790,12 @@ async function fichaPolizas(c) {
   const html = [];
 
   // Botón nueva póliza
-  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:14px">'
+  html.push('<div id="ficha-pol-btn" style="display:flex;justify-content:flex-end;margin-bottom:14px">'
        +  '<button type="button" class="btn btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button>'
        +  '</div>');
 
   // Cards de métricas
-  html.push('<div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:12px;row-gap:12px">'
+  html.push('<div id="ficha-pol-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">'
        +  '<div class="metric-card" style="border-left-color:#16A34A">'
        +    '<div class="metric-label">Vigentes</div>'
        +    '<div class="metric-num">' + vigentes + '</div>'
