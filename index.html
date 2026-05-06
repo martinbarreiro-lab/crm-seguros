@@ -1817,11 +1817,11 @@ async function fichaPolizas(c) {
        +    '<div class="metric-sub">Sin renovar</div>'
        +  '</div>'
        +  '</div>');
-  html.push('<div style="display:flex;gap:12px;align-items:flex-start">'); // row 2
+  html.push('<div id="ficha-pol-row" style="display:flex;gap:12px;align-items:flex-start">'); // row 2
 
   // Layout: polizas vigentes spans 3 cols, proximos vencimientos spans 1 col
   // Left column (spans 3)
-  html.push('<div style="flex:3;min-width:0;display:flex;flex-direction:column;gap:14px">');
+  html.push('<div id="ficha-pol-left" style="flex:3;min-width:0;display:flex;flex-direction:column;gap:14px">');
 
   if (polActivas.length === 0 && polInactivas.length === 0) {
     html.push('<div class="empty">Sin pólizas registradas.</div>');
@@ -1872,7 +1872,7 @@ async function fichaPolizas(c) {
   html.push('</div>'); // fin col izq (span 3)
 
   // === SIDEBAR DERECHO: PRÓXIMOS VENCIMIENTOS ===
-  html.push('<div class="card-resumen" style="flex:1;position:sticky;top:20px">'
+  html.push('<div id="ficha-pol-right" class="card-resumen" style="flex:1;position:sticky;top:20px">'
        +  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
        +    '<div class="card-resumen-titulo" style="margin-bottom:0">Próximos vencimientos</div>'
        +    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
