@@ -2058,21 +2058,23 @@ async function fichaTareas(c) {
 }
 // ── Helper global para registrar eventos en historial ──
 async function registrarHistorial(datos) {
-  try {
-    await sb.from('interacciones').insert({
-      productor_id: user ? user.id : null,
-      cliente_id: datos.cliente_id,
-      categoria: datos.categoria || 'sistema',
-      tipo: datos.tipo || 'sistema',
-      resumen: datos.resumen || '',
-      poliza_id: datos.poliza_id || null,
-      poliza_numero: datos.poliza_numero || null,
-      poliza_ramo: datos.poliza_ramo || null,
-      adjuntos: datos.adjuntos || [],
-      usuario_nombre: datos.es_automatico ? 'Sistema autom\u00e1tico' : ((user && ((user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email)) || 'Usuario'),
-      es_automatico: datos.es_automatico || false,
-    });
-  } catch(e) { console.warn('registrarHistorial error:', e); }
+  console.log('registrarHistorial llamado:', datos.categoria, datos.resumen);
+  const _rhPayload = {
+    productor_id: user ? user.id : null,
+    cliente_id: datos.cliente_id,
+    categoria: datos.categoria || 'sistema',
+    tipo: datos.tipo || 'sistema',
+    resumen: datos.resumen || '',
+    poliza_id: datos.poliza_id || null,
+    poliza_numero: datos.poliza_numero || null,
+    poliza_ramo: datos.poliza_ramo || null,
+    adjuntos: datos.adjuntos || [],
+    usuario_nombre: datos.es_automatico ? 'Sistema automatico' : ((user && ((user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email)) || 'Usuario'),
+    es_automatico: datos.es_automatico || false,
+  };
+  const { error: _rhErr } = await sb.from('interacciones').insert(_rhPayload);
+  if (_rhErr) { console.error('registrarHistorial ERROR:', _rhErr); alert('Error historial: ' + _rhErr.message); }
+  else { console.log('registrarHistorial OK'); }
 }
 
 async function fichaHistorial(c) {
