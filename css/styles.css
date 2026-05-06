@@ -429,45 +429,4 @@ tr:hover td{background:var(--bg)}
   box-sizing: border-box;
 }
 
-/* =============================================
-   BLOQUE 1: Botón Nueva póliza
-   ============================================= */
-
-
-/* =============================================
-   BLOQUE 2: 4 cards métricas — NO TOCAR
-   ============================================= */
-
-
-/* =============================================
-   BLOQUE 3: Pólizas vigentes + Próximos vencimientos
-   — layout controlado por JS directamente
-   ============================================= */
-
-/* Cuando ficha-content está en modo pólizas */
-
-
-/* Botón Nueva póliza */
-#ficha-pol-btn {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 14px;
-}
-
-/* 4 cards métricas — NO TOCAR */
-#ficha-pol-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
-  width: 100%;
-}
-
-/* Fila pólizas vigentes + próximos vencimientos */
-#ficha-pol-row {
-  display: grid !important;
-  grid-template-columns: 1fr 260px !important;
-  gap: 14px !important;
-  align-items: start !important;
-  width: 100% !important;
-}
+/* Layout de pólizas en ficha 360° — controlado 100% por inline styles en JS */
