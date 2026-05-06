@@ -432,7 +432,7 @@ tr:hover td{background:var(--bg)}
 /* =============================================
    BLOQUE 1: Botón Nueva póliza
    ============================================= */
-#ficha-content > div:nth-child(1) {
+#ficha-content > div:nth-child(1):not(#ficha-pol-row) {
   display: flex !important;
   justify-content: flex-end !important;
   margin-bottom: 14px !important;
@@ -441,7 +441,7 @@ tr:hover td{background:var(--bg)}
 /* =============================================
    BLOQUE 2: 4 cards métricas — NO TOCAR
    ============================================= */
-#ficha-content > div:nth-child(2) {
+#ficha-content > div:nth-child(2):not(#ficha-pol-row) {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 12px !important;
