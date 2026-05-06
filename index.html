@@ -1834,19 +1834,66 @@ async function fichaPolizas(c) {
     polActivas.forEach(function(p, idx) {
       const esUltimo = idx === polActivas.length - 1;
       const info = dataVehiculoOrInfo(p);
-      // Armar texto de cobertura desde campos disponibles
-      const cobPartes = [];
-      if (p.cobertura) cobPartes.push(p.cobertura);
-      const dr = p.datos_ramo || {};
-      if (dr.suma_asegurada) cobPartes.push('Suma asegurada $' + Number(dr.suma_asegurada).toLocaleString('es-AR'));
-      if (dr.franquicia) cobPartes.push('Franquicia ' + dr.franquicia);
-      if (dr.tipo_bien) cobPartes.push(dr.tipo_bien);
-      if (dr.uso) cobPartes.push(dr.uso);
-      if (dr.tipo_construccion) cobPartes.push(dr.tipo_construccion);
-      if (dr.destino) cobPartes.push(dr.destino);
-      if (dr.actividad) cobPartes.push(dr.actividad);
-      if (p.bien_asegurado && !cobPartes.includes(p.bien_asegurado)) cobPartes.push(p.bien_asegurado);
-      const cobTexto = cobPartes.length ? cobPartes.join(' · ') : '';
+      // Armar resumen de cobertura por ramo
+      const cobTexto = (function() {
+        const dr = p.datos_ramo || {};
+        const partes = [];
+        if (p.cobertura) partes.push(p.cobertura);
+        if (p.ramo === 'Automotor') {
+          if (dr.suma_asegurada) partes.push('Suma asegurada ' + fmtMoney(dr.suma_asegurada));
+          if (dr.franquicia_tipo && dr.franquicia_tipo !== 'sin') {
+            if (dr.franquicia_tipo === 'porcentaje' && dr.franquicia_porcentaje) partes.push('Franquicia ' + dr.franquicia_porcentaje + '%');
+            else if (dr.franquicia_tipo === 'valor' && dr.franquicia_monto) partes.push('Franquicia ' + fmtMoney(dr.franquicia_monto));
+          } else if (dr.franquicia_tipo === 'sin') {
+            partes.push('Sin franquicia');
+          }
+          if (dr.uso) partes.push(dr.uso);
+          if (dr.gnc === 'si') partes.push('GNC');
+          if (dr.acreedor_prendario) partes.push('Prenda: ' + dr.acreedor_prendario);
+        } else if (p.ramo === 'Hogar' || p.ramo === 'Combinado') {
+          if (dr.tipo_vivienda) partes.push(dr.tipo_vivienda);
+          if (dr.uso) partes.push(dr.uso);
+          if (dr.suma_edificio) partes.push('Edificio ' + fmtMoney(dr.suma_edificio));
+          if (dr.suma_contenido) partes.push('Contenido ' + fmtMoney(dr.suma_contenido));
+          if (dr.seguridad && dr.seguridad !== '') partes.push(dr.seguridad);
+          if (dr.adicionales) partes.push(dr.adicionales);
+        } else if (p.ramo === 'Comercio') {
+          if (dr.actividad) partes.push(dr.actividad);
+          if (dr.suma_contenido) partes.push('Contenido ' + fmtMoney(dr.suma_contenido));
+          if (dr.suma_edificio) partes.push('Edificio ' + fmtMoney(dr.suma_edificio));
+          if (dr.empleados) partes.push(dr.empleados + ' empleados');
+        } else if (p.ramo === 'Accidentes Personales') {
+          if (dr.actividad) partes.push(dr.actividad);
+          if (dr.cantidad_personas) partes.push(dr.cantidad_personas + ' persona/s');
+          if (dr.cobertura_muerte) partes.push('Muerte ' + fmtMoney(dr.cobertura_muerte));
+          if (dr.cobertura_invalidez) partes.push('Invalidez ' + fmtMoney(dr.cobertura_invalidez));
+          if (dr.asistencia_medica && dr.asistencia_medica !== 'no') partes.push('Asist. médica ' + fmtMoney(dr.asistencia_medica_monto));
+        } else if (p.ramo === 'Responsabilidad Civil') {
+          if (dr.actividad) partes.push(dr.actividad);
+          if (dr.suma) partes.push('Suma ' + fmtMoney(dr.suma));
+          if (dr.ambito) partes.push(dr.ambito);
+        } else if (p.ramo === 'Vida Individual') {
+          if (dr.plan) partes.push(dr.plan);
+          if (dr.capital) partes.push('Capital ' + fmtMoney(dr.capital));
+        } else if (p.ramo === 'Vida Colectiva') {
+          if (dr.razon_social) partes.push(dr.razon_social);
+          if (dr.cantidad) partes.push(dr.cantidad + ' asegurados');
+          if (dr.capital) partes.push('Capital ' + fmtMoney(dr.capital));
+          if (dr.plan) partes.push(dr.plan);
+        } else if (p.ramo === 'ART') {
+          if (dr.actividad) partes.push(dr.actividad);
+          if (dr.empleados) partes.push(dr.empleados + ' empleados');
+          if (dr.masa_salarial) partes.push('Masa salarial ' + fmtMoney(dr.masa_salarial));
+        } else if (p.ramo === 'Empresas') {
+          if (dr.actividad) partes.push(dr.actividad);
+          if (dr.empleados) partes.push(dr.empleados + ' empleados');
+          if (dr.suma) partes.push('Suma ' + fmtMoney(dr.suma));
+        } else if (p.ramo === 'Otros') {
+          if (dr.descripcion) partes.push(dr.descripcion);
+          if (dr.suma) partes.push('Suma ' + fmtMoney(dr.suma));
+        }
+        return partes.join(' · ');
+      })();
       html.push('<div class="poliza-row" style="' + (esUltimo ? '' : 'border-bottom:1px solid #F3F4F6;') + 'padding:10px 0;display:flex;align-items:center;gap:16px">'
            +    '<div style="flex-shrink:0;min-width:160px">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
