@@ -1488,9 +1488,19 @@ async function renderFichaTab(c) {
     const left = document.getElementById('ficha-pol-left');
     const right = document.getElementById('ficha-pol-right');
     if (row && left && right) {
-      row.style.cssText = 'display:flex;flex-direction:row;gap:12px;align-items:flex-start;width:100%';
-      left.style.cssText = 'width:calc(75% - 3px);flex:none;min-width:0';
-      right.style.cssText = 'width:calc(25% - 9px);flex:none;min-width:0;position:sticky;top:20px';
+      row.style.display = 'flex';
+      row.style.flexDirection = 'row';
+      row.style.gap = '12px';
+      row.style.alignItems = 'flex-start';
+      row.style.width = '100%';
+      left.style.flexBasis = 'calc(75% - 3px)';
+      left.style.flexGrow = '0';
+      left.style.flexShrink = '0';
+      left.style.minWidth = '0';
+      right.style.flexBasis = 'calc(25% - 9px)';
+      right.style.flexGrow = '0';
+      right.style.flexShrink = '0';
+      right.style.minWidth = '0';
     }
 
   }
