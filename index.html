@@ -1489,12 +1489,10 @@ async function renderFichaTab(c) {
     const right = document.getElementById('ficha-pol-right');
     if (row && left && right) {
       row.style.cssText = 'display:flex;flex-direction:row;gap:12px;align-items:flex-start;width:100%';
-      left.style.flex = '3';
-      left.style.minWidth = '0';
-      left.style.width = '0';
-      right.style.flex = '1';
-      right.style.minWidth = '0';
-      right.style.width = '0';
+      left.style.flex = '3 1 0%';
+      left.style.overflow = 'hidden';
+      right.style.flex = '1 1 0%';
+      right.style.overflow = 'hidden';
     }
 
   }
