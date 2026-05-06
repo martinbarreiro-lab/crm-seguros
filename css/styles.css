@@ -460,13 +460,12 @@ tr:hover td{background:var(--bg)}
   width: 100% !important;
 }
 
-#ficha-pol-left {
+#ficha-pol-row > #ficha-pol-left {
   flex: 3 !important;
   min-width: 0 !important;
 }
 
-#ficha-pol-right {
+#ficha-pol-row > #ficha-pol-right {
   flex: 1 !important;
   min-width: 0 !important;
-  display: block !important;
 }
