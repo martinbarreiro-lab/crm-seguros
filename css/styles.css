@@ -463,7 +463,7 @@ tr:hover td{background:var(--bg)}
 #ficha-pol-left {
   flex: 3 !important;
   min-width: 0 !important;
-  max-width: calc(75% - 6px) !important;
+  max-width: calc(75% - 9px) !important;
 }
 
 #ficha-pol-right {
