@@ -2847,7 +2847,7 @@ function renderPolListadoCompleto() {
   const pageData = filtered.slice(startIdx, startIdx + POL_PAGE_SIZE);
 
   // Header
-  let html = '<div style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:8px 12px;background:#F9FAFB;border-radius:6px;font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">';
+  const html = ['<div style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:8px 12px;background:#F9FAFB;border-radius:6px;font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'];
   html.push('<div>Cliente</div><div>Ramo · Dato clave</div><div>Aseguradora · Póliza</div><div style="text-align:right">Premio</div><div>Inicio</div><div>Fin</div><div style="text-align:center">Estado</div></div>');
 
   if (!pageData.length) {
@@ -2878,7 +2878,7 @@ function renderPolListadoCompleto() {
     });
   }
 
-  cont.innerHTML = html;
+  cont.innerHTML = html.join('');
 
   // Pagination
   if (pagCont) {
@@ -3801,7 +3801,7 @@ function ramoAutomotor() {
     '<div class="frow"><label>Año *</label>',
     '<select id="fp-auto-anio">',
     '<option value="">Seleccionar...</option>',
-    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html.join(''); })(),
+    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html; })(),
     '</select></div>',
     '</div>',
     '<div class="fg3">',
