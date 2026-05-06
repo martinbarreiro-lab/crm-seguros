@@ -1748,6 +1748,7 @@ function ir(label, val) {
 async function fichaPolizas(c) {
   const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const polizas = data || [];
+  window._fichaPolizas = polizas; // para eliminarPoliza
 
   // Calcular métricas
   const today = new Date();
@@ -4597,8 +4598,22 @@ async function abrirEditarPoliza(polId) {
 
 async function eliminarPoliza(polId) {
   if (!confirm('¿Eliminar esta póliza? Esta acción no se puede deshacer.')) return;
+  const _epList = window._fichaPolizas || [];
+  const _ep = _epList.find(function(x){ return x.id === polId; }) || {};
+  const _epCid = _ep.cliente_id || fichaId;
   const { error } = await sb.from('polizas').delete().eq('id', polId);
   if (error) { alert('Error al eliminar: ' + error.message); return; }
+  if (_epCid) {
+    await registrarHistorial({
+      cliente_id: _epCid,
+      categoria: 'baja_cancelacion',
+      tipo: 'sistema',
+      poliza_numero: _ep.numero || '',
+      poliza_ramo: _ep.ramo || '',
+      resumen: 'Póliza N° ' + (_ep.numero || polId) + (_ep.ramo ? ' (' + _ep.ramo + ')' : '') + ' eliminada del sistema.',
+      es_automatico: true,
+    });
+  }
   mostrarAlerta('🗑 Póliza eliminada');
   if (typeof cargarPolizas === 'function') cargarPolizas();
   if (typeof renderFicha === 'function') renderFicha();
