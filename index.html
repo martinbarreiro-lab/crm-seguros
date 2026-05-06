@@ -1480,17 +1480,16 @@ function setFichaTab(tab) {
 
 async function renderFichaTab(c) {
   const cont = document.getElementById('ficha-content');
-  if (fichaTab === 'resumen') { cont.innerHTML = await fichaResumen(c); }
-  else if (fichaTab === 'datos') { cont.innerHTML = fichaDatos(c); }
+  if (fichaTab === 'resumen') { cont.className = ''; cont.innerHTML = await fichaResumen(c); }
+  else if (fichaTab === 'datos') { cont.className = ''; cont.innerHTML = fichaDatos(c); }
   else if (fichaTab === 'polizas') {
     cont.innerHTML = await fichaPolizas(c);
-
-
+    cont.className = 'tab-polizas';
   }
-  else if (fichaTab === 'siniestros') { cont.innerHTML = await fichaSiniestros(c); }
-  else if (fichaTab === 'cotizaciones') { cont.innerHTML = await fichaCotizaciones(c); }
-  else if (fichaTab === 'tareas') { cont.innerHTML = await fichaTareas(c); }
-  else if (fichaTab === 'historial') { cont.innerHTML = await fichaHistorial(c); }
+  else if (fichaTab === 'siniestros') { cont.className = ''; cont.innerHTML = await fichaSiniestros(c); }
+  else if (fichaTab === 'cotizaciones') { cont.className = ''; cont.innerHTML = await fichaCotizaciones(c); }
+  else if (fichaTab === 'tareas') { cont.className = ''; cont.innerHTML = await fichaTareas(c); }
+  else if (fichaTab === 'historial') { cont.className = ''; cont.innerHTML = await fichaHistorial(c); }
 }
 
 async function fichaResumen(c) {
