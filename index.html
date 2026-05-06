@@ -2519,6 +2519,20 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
   if (saveError) { alert('Error guardando póliza: ' + saveError.message); return; }
 
   const esEdicion = !!window._editPolizaId;
+
+  // Registrar en historial — el objeto poliza todavia tiene todos los datos
+  await registrarHistorial({
+    cliente_id: cid,
+    categoria: esEdicion ? 'renovacion' : 'poliza',
+    tipo: 'sistema',
+    poliza_numero: poliza.numero || numAseg,
+    poliza_ramo: poliza.ramo || ramo,
+    resumen: esEdicion
+      ? 'P\u00f3liza N\u00b0 ' + (poliza.numero || numAseg) + ' (' + (poliza.ramo || ramo) + ') actualizada.'
+      : 'Nueva p\u00f3liza emitida: N\u00b0 ' + (poliza.numero || numAseg) + ' \u00b7 ' + (poliza.ramo || ramo) + ' \u00b7 ' + (poliza.aseguradora || aseg) + '. Premio anual: ' + fmtMoney(poliza.prima_anual || premio) + '.',
+    es_automatico: true,
+  });
+
   window._editPolizaId = null;
   window._editPolizaExistingPdfUrl = null;
 
@@ -2536,13 +2550,6 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     }
   } else {
     mostrarAlerta(esEdicion ? '✅ Póliza actualizada correctamente' : '✅ Póliza guardada correctamente');
-  // Registrar en historial automáticamente
-  if (!esEdicion) {
-    const polNueva = { numero: document.getElementById('fp-num-aseg') ? document.getElementById('fp-num-aseg').value : '', ramo: document.getElementById('fp-ramo') ? document.getElementById('fp-ramo').value : '', aseguradora: document.getElementById('fp-aseg') ? document.getElementById('fp-aseg').value : '' };
-    await registrarHistorial({ cliente_id: cid, categoria: 'poliza', tipo: 'sistema', poliza_numero: polNueva.numero, poliza_ramo: polNueva.ramo, resumen: 'Nueva póliza emitida: N° ' + polNueva.numero + ' · ' + polNueva.ramo + ' · ' + polNueva.aseguradora + '. Premio anual: ' + fmtMoney(premio) + '.', es_automatico: true });
-  } else {
-    await registrarHistorial({ cliente_id: cid, categoria: 'renovacion', tipo: 'sistema', resumen: 'Póliza actualizada/editada.', es_automatico: true });
-  }
   }
 
   // Reload current section
@@ -4420,7 +4427,7 @@ function onMarcaChange() {
   const modelos = MODELOS_POR_MARCA[marca] || [];
   let html = '<option value="">Seleccionar modelo...</option>';
   modelos.forEach(function(m) { html += '<option value="' + m + '">' + m + '</option>'; });
-  html.push('<option value="__otro__">Otro...</option>');
+  html += '<option value="__otro__">Otro...</option>';
   modeloSel.innerHTML = html;
   modeloSel.disabled = false;
 }
