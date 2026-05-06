@@ -1499,7 +1499,15 @@ async function renderFichaTab(c) {
   else if (fichaTab === 'siniestros') { cont.className = ''; cont.innerHTML = await fichaSiniestros(c); }
   else if (fichaTab === 'cotizaciones') { cont.className = ''; cont.innerHTML = await fichaCotizaciones(c); }
   else if (fichaTab === 'tareas') { cont.className = ''; cont.innerHTML = await fichaTareas(c); }
-  else if (fichaTab === 'historial') { cont.className = ''; cont.innerHTML = await fichaHistorial(c); setTimeout(filtrarHistorial, 50); }
+  else if (fichaTab === 'historial') {
+    cont.className = '';
+    const _hResult = await fichaHistorial(c);
+    cont.innerHTML = _hResult;
+    // innerHTML doesn't run <script> tags — extract and eval manually
+    const _hScript = cont.querySelector('script');
+    if (_hScript) { try { eval(_hScript.textContent); } catch(e) { console.warn(e); } }
+    setTimeout(filtrarHistorial, 50);
+  }
 }
 
 async function fichaResumen(c) {
