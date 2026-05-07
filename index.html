@@ -1834,28 +1834,69 @@ async function fichaPolizas(c) {
     polActivas.forEach(function(p, idx) {
       const esUltimo = idx === polActivas.length - 1;
       const info = dataVehiculoOrInfo(p);
-      html.push('<div class="poliza-row" style="' + (esUltimo ? '' : 'border-bottom:1px solid #F3F4F6;') + 'padding:10px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
-           +    '<div style="flex:1;min-width:0">'
-           +      '<div style="display:flex;align-items:center;gap:8px">'
-           +        '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
-           +      '</div>'
+      // Cobertura por ramo
+      const cobPartes = [];
+      if (p.cobertura) cobPartes.push(p.cobertura);
+      const drC = p.datos_ramo || {};
+      if (p.ramo === 'Automotor') {
+        if (drC.suma_asegurada) cobPartes.push('Suma asegurada ' + fmtMoney(drC.suma_asegurada));
+        if (drC.franquicia_tipo === 'sin') cobPartes.push('Sin franquicia');
+        else if (drC.franquicia_tipo === 'porcentaje' && drC.franquicia_porcentaje) cobPartes.push('Franquicia ' + drC.franquicia_porcentaje + '%');
+        else if (drC.franquicia_tipo === 'valor' && drC.franquicia_monto) cobPartes.push('Franquicia ' + fmtMoney(drC.franquicia_monto));
+        if (drC.uso) cobPartes.push(drC.uso);
+        if (drC.gnc === 'si') cobPartes.push('GNC');
+      } else if (p.ramo === 'Hogar' || p.ramo === 'Combinado') {
+        if (drC.tipo_vivienda) cobPartes.push(drC.tipo_vivienda);
+        if (drC.uso) cobPartes.push(drC.uso);
+        if (drC.suma_edificio) cobPartes.push('Edificio ' + fmtMoney(drC.suma_edificio));
+        if (drC.suma_contenido) cobPartes.push('Contenido ' + fmtMoney(drC.suma_contenido));
+        if (drC.seguridad) cobPartes.push(drC.seguridad);
+      } else if (p.ramo === 'Comercio') {
+        if (drC.actividad) cobPartes.push(drC.actividad);
+        if (drC.suma_contenido) cobPartes.push('Contenido ' + fmtMoney(drC.suma_contenido));
+        if (drC.suma_edificio) cobPartes.push('Edificio ' + fmtMoney(drC.suma_edificio));
+      } else if (p.ramo === 'Accidentes Personales') {
+        if (drC.actividad) cobPartes.push(drC.actividad);
+        if (drC.cobertura_muerte) cobPartes.push('Muerte ' + fmtMoney(drC.cobertura_muerte));
+        if (drC.cobertura_invalidez) cobPartes.push('Invalidez ' + fmtMoney(drC.cobertura_invalidez));
+      } else if (p.ramo === 'Responsabilidad Civil') {
+        if (drC.actividad) cobPartes.push(drC.actividad);
+        if (drC.suma) cobPartes.push('Suma ' + fmtMoney(drC.suma));
+      } else if (p.ramo === 'Vida Individual') {
+        if (drC.plan) cobPartes.push(drC.plan);
+        if (drC.capital) cobPartes.push('Capital ' + fmtMoney(drC.capital));
+      } else if (p.ramo === 'Vida Colectiva') {
+        if (drC.cantidad) cobPartes.push(drC.cantidad + ' asegurados');
+        if (drC.capital) cobPartes.push('Capital ' + fmtMoney(drC.capital));
+      } else if (p.ramo === 'ART') {
+        if (drC.actividad) cobPartes.push(drC.actividad);
+        if (drC.empleados) cobPartes.push(drC.empleados + ' empleados');
+      } else if (p.ramo === 'Otros') {
+        if (drC.descripcion) cobPartes.push(drC.descripcion);
+        if (drC.suma) cobPartes.push('Suma ' + fmtMoney(drC.suma));
+      }
+      const cobTexto = cobPartes.join(' · ');
 
+      html.push('<div class="poliza-row" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px">'
+           +    '<div style="flex-shrink:0;width:200px">'
+           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
            +      (info || p.fecha_vencimiento ? '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">' + (info ? info + ' · ' : '') + (p.fecha_vencimiento ? 'Vto. ' + p.fecha_vencimiento : '') + '</div>' : '')
            +    '</div>'
-           +    '<div style="text-align:right;flex-shrink:0">'
+           +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
+           +      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Detalle de cobertura</div>'
+           +      (cobTexto ? '<div style="font-size:12px;color:#9CA3AF;line-height:1.6">' + cobTexto + '</div>' : '<div style="font-size:12px;color:#D1D5DB;font-style:italic">Sin datos de cobertura cargados</div>')
+           +    '</div>'
+           +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
-           +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
-           +      (p.pdf_url ? '<a href="' + p.pdf_url + '" target="_blank" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,#4A90D9,#2563EB);border-radius:6px;text-decoration:none;box-shadow:0 2px 4px rgba(37,99,235,.25)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg><span style="font-size:10px;color:#fff;font-weight:600;letter-spacing:.02em">Ver p\u00f3liza PDF</span></a>' : '<span style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;border:1px dashed #E5E7EB;border-radius:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span style="font-size:10px;color:#9CA3AF">Sin PDF</span></span>')
-           +      '<div style="position:relative;margin-top:8px;text-align:right" id="pmw-' + p.id + '">'
-           +        '<button onclick="tglPM(\'' + p.id + '\',event)" style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;color:#6B7280;letter-spacing:1px;line-height:1">&#xB7;&#xB7;&#xB7;</button>'
-           +        '<div id="pm-' + p.id + '" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #E5E7EB;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:165px;z-index:99;overflow:hidden;text-align:left">'
-           +          '<div data-pmid="' + p.id + '" data-pmact="editar" onclick="pmAct(this)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:1px solid #F3F4F6">&#9998; Editar</div>'
-           +          '<div data-pmid="' + p.id + '" data-pmact="baja" onclick="pmAct(this)" style="padding:9px 14px;font-size:12px;color:#C2410C;cursor:pointer;font-weight:500;border-bottom:1px solid #F3F4F6">&#8681; Registrar baja</div>'
-           +          '<div data-pmid="' + p.id + '" data-pmact="eliminar" onclick="pmAct(this)" style="padding:9px 14px;font-size:12px;color:#DC2626;cursor:pointer;font-weight:500">&#128465; Eliminar registro</div>'
-           +        '</div>'
+           +      (p.pdf_url ? '<a href="' + p.pdf_url + '" target="_blank" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,#4A90D9,#2563EB);border-radius:6px;text-decoration:none;box-shadow:0 2px 4px rgba(37,99,235,.25)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg><span style="font-size:10px;color:#fff;font-weight:600;letter-spacing:.02em">Ver póliza PDF</span></a>' : '<span style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;border:1px dashed #E5E7EB;border-radius:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span style="font-size:10px;color:#9CA3AF">Sin PDF</span></span>')
+           +      '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">'
+           +        '<button onclick="abrirEditarPoliza(\'' + p.id + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;cursor:pointer;font-size:11px;color:#374151;font-weight:500">✎ Editar</button>'
+           +        '<button onclick="eliminarPoliza(\'' + p.id + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;cursor:pointer;font-size:11px;color:#DC2626;font-weight:500">🗑 Eliminar</button>'
            +      '</div>'
+           +    '</div>'
+           +  '</div>');
            +  '</div>');
     });
     html.push('</div>');
