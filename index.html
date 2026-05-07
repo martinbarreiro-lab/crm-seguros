@@ -4326,6 +4326,112 @@ function pmAct(el) {
 }
 
 
+async function abrirEditarPoliza(polId) {
+  const { data: p, error } = await sb.from('polizas').select('*').eq('id', polId).single();
+  if (error || !p) { alert('No se pudo cargar la póliza'); return; }
+  resetModalPoliza();
+  actualizarSelectsClientes();
+  poblarAniosPoliza();
+  window._editPolizaId = polId;
+  window._editPolizaExistingPdfUrl = p.pdf_url || null;
+  const tituloEdit = document.querySelector('#modal-pol .modal-titulo');
+  if (tituloEdit) tituloEdit.textContent = 'Editar póliza';
+  const btnEdit = document.getElementById('btn-guardar-pol');
+  if (btnEdit) btnEdit.textContent = 'Guardar cambios';
+  const pdfStatus = document.getElementById('fp-pdf-status');
+  if (pdfStatus) pdfStatus.textContent = p.pdf_url ? '✓ PDF ya cargado. Subí uno nuevo solo si querés reemplazarlo.' : 'Sin PDF cargado';
+  const pdfLabel = document.getElementById('fp-pdf-label');
+  if (pdfLabel) pdfLabel.innerHTML = p.pdf_url ? 'PDF de la póliza <span style="color:#6B7280;font-weight:400">(opcional — ya tiene uno)</span>' : 'PDF de la póliza <span style="color:#EF4444">(obligatorio)</span>';
+  function sv(id, val) { const el = document.getElementById(id); if (el && val != null) el.value = val; }
+  sv('fp-cl', p.cliente_id);
+  onClienteChange && onClienteChange();
+  sv('fp-aseg', p.aseguradora);
+  sv('fp-num-aseg', p.numero);
+  sv('fp-cobertura', p.cobertura);
+  sv('fp-emision', p.fecha_emision);
+  sv('fp-inicio', p.fecha_inicio);
+  sv('fp-periodo', p.periodo_meses);
+  sv('fp-vto', p.fecha_vencimiento);
+  sv('fp-premio', p.prima_anual);
+  sv('fp-pago', p.forma_pago);
+  sv('fp-cuotas', p.cantidad_cuotas);
+  sv('fp-valor-cuota', p.valor_cuota);
+  sv('fp-medio', p.medio_pago);
+  sv('fp-dia-debito', p.dia_debito);
+  sv('fp-notas', p.notas);
+  sv('fp-ramo', p.ramo);
+  const ramoCont = document.getElementById('fp-ramo-fields');
+  if (ramoCont) ramoCont.innerHTML = renderRamoFields(p.ramo);
+  const gncEl = document.getElementById('fp-auto-gnc');
+  if (gncEl) gncEl.addEventListener('change', toggleGncFields);
+  const franEl = document.getElementById('fp-auto-fran-tipo');
+  if (franEl) franEl.addEventListener('change', toggleFranquicia);
+  const cvSection = document.getElementById('fp-cv-section');
+  if (cvSection) cvSection.style.display = (p.ramo === 'Automotor') ? 'block' : 'none';
+  const dr = p.datos_ramo || {};
+  await new Promise(function(r){ setTimeout(r, 80); });
+  if (p.ramo === 'Automotor') {
+    sv('fp-auto-marca', dr.marca); if (typeof onMarcaChange === 'function') onMarcaChange();
+    await new Promise(function(r){ setTimeout(r, 200); });
+    sv('fp-auto-modelo', dr.modelo); sv('fp-auto-anio', dr.anio); sv('fp-auto-patente', dr.patente);
+    sv('fp-auto-chasis', dr.chasis); sv('fp-auto-motor', dr.motor); sv('fp-auto-color', dr.color);
+    sv('fp-auto-uso', dr.uso); sv('fp-auto-cond', dr.condicion); sv('fp-auto-gnc', dr.gnc);
+    sv('fp-auto-prenda', dr.acreedor_prendario); sv('fp-auto-suma', dr.suma_asegurada);
+    sv('fp-auto-fran-tipo', dr.franquicia_tipo);
+    if (dr.franquicia_tipo && dr.franquicia_tipo !== 'sin') { if (typeof toggleFranquicia === 'function') toggleFranquicia(); sv('fp-auto-fran-pct', dr.franquicia_porcentaje); sv('fp-auto-fran-monto', dr.franquicia_monto); }
+    if (dr.gnc === 'si') { if (typeof toggleGncFields === 'function') toggleGncFields(); sv('fp-gnc-vto-oblea', dr.gnc_vto_oblea); }
+  } else if (p.ramo === 'Hogar') {
+    sv('fp-hog-dir', dr.direccion); sv('fp-hog-tipo', dr.tipo_vivienda); sv('fp-hog-uso', dr.uso);
+    sv('fp-hog-anio', dr.anio_construccion); sv('fp-hog-m2-total', dr.m2_total); sv('fp-hog-m2-cub', dr.m2_cubierta);
+    sv('fp-hog-seg', dr.seguridad); sv('fp-hog-suma-edif', dr.suma_edificio); sv('fp-hog-suma-cont', dr.suma_contenido);
+  } else if (p.ramo === 'Combinado') {
+    sv('fp-cf-dir', dr.direccion); sv('fp-cf-tipo', dr.tipo_vivienda);
+    sv('fp-cf-suma-edif', dr.suma_edificio); sv('fp-cf-suma-cont', dr.suma_contenido); sv('fp-cf-adic', dr.adicionales);
+  } else if (p.ramo === 'Comercio') {
+    sv('fp-com-nombre', dr.nombre); sv('fp-com-cuit', dr.cuit); sv('fp-com-actividad', dr.actividad);
+    sv('fp-com-dir', dr.direccion); sv('fp-com-m2', dr.m2); sv('fp-com-emp', dr.empleados);
+    sv('fp-com-suma-cont', dr.suma_contenido); sv('fp-com-suma-edif', dr.suma_edificio);
+  } else if (p.ramo === 'Accidentes Personales') {
+    sv('fp-ap-actividad', dr.actividad); sv('fp-ap-cant', dr.cantidad_personas);
+    sv('fp-ap-muerte', dr.cobertura_muerte); sv('fp-ap-invalidez', dr.cobertura_invalidez);
+  } else if (p.ramo === 'Responsabilidad Civil') {
+    sv('fp-rc-actividad', dr.actividad); sv('fp-rc-suma', dr.suma); sv('fp-rc-ambito', dr.ambito);
+  } else if (p.ramo === 'Vida Individual') {
+    sv('fp-vi-capital', dr.capital); sv('fp-vi-plan', dr.plan);
+  } else if (p.ramo === 'Vida Colectiva') {
+    sv('fp-vc-razon', dr.razon_social); sv('fp-vc-cant', dr.cantidad); sv('fp-vc-capital', dr.capital); sv('fp-vc-plan', dr.plan);
+  } else if (p.ramo === 'ART') {
+    sv('fp-art-razon', dr.razon_social); sv('fp-art-cuit', dr.cuit); sv('fp-art-actividad', dr.actividad);
+    sv('fp-art-emp', dr.empleados); sv('fp-art-masa', dr.masa_salarial);
+  } else if (p.ramo === 'Empresas') {
+    sv('fp-emp-razon', dr.razon_social); sv('fp-emp-cuit', dr.cuit); sv('fp-emp-actividad', dr.actividad);
+    sv('fp-emp-dir', dr.direccion); sv('fp-emp-emp', dr.empleados); sv('fp-emp-suma', dr.suma);
+  } else if (p.ramo === 'Otros') {
+    sv('fp-otros-desc', dr.descripcion); sv('fp-otros-suma', dr.suma);
+  }
+  document.getElementById('modal-pol').classList.add('open');
+}
+
+async function anularPoliza(polId) {
+  const { data: p, error } = await sb.from('polizas').select('*').eq('id', polId).single();
+  if (error || !p) { alert('No se pudo cargar la póliza'); return; }
+  // Poblar desglose
+  const des = document.getElementById('baja-desglose');
+  if (des) {
+    const fmtF = function(f) { return f || '—'; };
+    des.innerHTML =
+      '<div style="padding:8px 12px;font-size:12px;font-weight:600;color:#374151;border-bottom:0.5px solid #E5E7EB">'
+        + (p.ramo||'') + ' · N° ' + (p.numero||'—') + ' · ' + (p.aseguradora||'—')
+      + '</div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500;color:#111827">' + fmtF(p.fecha_inicio) + ' → ' + fmtF(p.fecha_vencimiento) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Premio anual</span><span style="font-weight:500;color:#16A34A">' + fmtMoney(p.prima_anual) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Forma de pago</span><span style="font-weight:500;color:#111827">' + fmtF(p.forma_pago) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px"><span style="color:#6B7280">Cobertura</span><span style="font-weight:500;color:#111827">' + fmtF(p.cobertura) + '</span></div>';
+  }
+  // Usar abrirBajaPoliza para el resto del flujo
+  abrirBajaPoliza(polId, p.numero || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
+}
+
 function tglPM2(polId, event) {
   if (event) event.stopPropagation();
   const menu = document.getElementById('pm2-' + polId);
@@ -4460,7 +4566,9 @@ init();
 <div class="modal-ov" id="modal-baja">
   <div class="modal-box" style="max-width:460px">
     <div class="modal-t">Registrar baja de póliza <button type="button" class="modal-x" onclick="cerrarModal('modal-baja')">&#x2715;</button></div>
-    <div id="baja-pol-ref" style="font-size:12px;color:#6B7280;background:#F3F4F6;padding:6px 10px;border-radius:6px;margin-bottom:14px"></div>
+    <div id="baja-pol-ref" style="font-size:12px;color:#6B7280;margin-bottom:14px">
+      <div id="baja-desglose" style="background:#F9FAFB;border-radius:8px;overflow:hidden;border:0.5px solid #E5E7EB;margin-bottom:12px"></div>
+    </div>
     <div class="frow">
       <label>Motivo de baja *</label>
       <select id="baja-motivo" onchange="toggleBajaOtro()">
@@ -4488,7 +4596,7 @@ init();
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
       <button type="button" class="btn" onclick="cerrarModal('modal-baja')">Cancelar</button>
-      <button type="button" class="btn" id="btn-confirmar-baja" style="background:#C2410C;color:#fff;border-color:#C2410C">Registrar baja</button>
+      <button type="button" class="btn" id="btn-confirmar-baja" style="background:#DC2626;color:#fff;border-color:#DC2626">Confirmar anulación</button>
     </div>
   </div>
 </div>
