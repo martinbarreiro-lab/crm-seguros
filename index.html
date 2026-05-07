@@ -1891,11 +1891,7 @@ async function fichaPolizas(c) {
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
            +      (p.pdf_url ? '<a href="' + p.pdf_url + '" target="_blank" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,#4A90D9,#2563EB);border-radius:6px;text-decoration:none;box-shadow:0 2px 4px rgba(37,99,235,.25)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg><span style="font-size:10px;color:#fff;font-weight:600;letter-spacing:.02em">Ver póliza PDF</span></a>' : '<span style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;border:1px dashed #E5E7EB;border-radius:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span style="font-size:10px;color:#9CA3AF">Sin PDF</span></span>')
-           +      '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">'
-           +        '<button onclick="abrirEditarPoliza(\'' + p.id + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;cursor:pointer;font-size:11px;color:#374151;font-weight:500">✎ Editar</button>'
-           +        '<button onclick="eliminarPoliza(\'' + p.id + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;cursor:pointer;font-size:11px;color:#DC2626;font-weight:500">🗑 Eliminar</button>'
-           +      '</div>'
-           +    '</div>'
+           +      '<div style="position:relative;display:inline-block;margin-top:8px" id="pmw-' + p.id + '">'           +        '<button onclick="tglPM2(\'' + p.id + '\',event)" style="background:#fff;border:0.5px solid #E5E7EB;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:16px;color:#6B7280;letter-spacing:2px;line-height:1">&#xB7;&#xB7;&#xB7;</button>'           +        '<div id="pm2-' + p.id + '" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #E5E7EB;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);min-width:160px;z-index:99;overflow:hidden;text-align:left">'           +          '<div onclick="abrirEditarPoliza(\'' + p.id + '\');document.getElementById(\'pm2-' + p.id + '\').style.display=\'none\'" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px">&#9998; Editar</div>'           +          '<div onclick="anularPoliza(\'' + p.id + '\');document.getElementById(\'pm2-' + p.id + '\').style.display=\'none\'" style="padding:9px 14px;font-size:12px;color:#C2410C;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px">&#8856; Anular</div>'           +          '<div onclick="eliminarPoliza(\'' + p.id + '\');document.getElementById(\'pm2-' + p.id + '\').style.display=\'none\'" style="padding:9px 14px;font-size:12px;color:#DC2626;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px">&#128465; Eliminar</div>'           +        '</div>'           +      '</div>'           +    '</div>'
            +  '</div>');
     });
     html.push('</div>');
@@ -4327,6 +4323,41 @@ function pmAct(el) {
     abrirBajaPoliza(id, p.numero || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
   }
   else if (act === 'eliminar') { eliminarPolizaFicha(id); }
+}
+
+
+function tglPM2(polId, event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('pm2-' + polId);
+  if (!menu) return;
+  const isOpen = menu.style.display === 'block';
+  document.querySelectorAll('[id^="pm2-"]').forEach(function(m) { m.style.display = 'none'; });
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    setTimeout(function() {
+      document.addEventListener('click', function handler() {
+        menu.style.display = 'none';
+        document.removeEventListener('click', handler);
+      });
+    }, 10);
+  }
+}
+
+function eliminarPoliza(polId) {
+  eliminarPolizaFicha(polId);
+}
+
+async function anularPoliza(polId) {
+  const motivo = prompt('Motivo de anulación (opcional):');
+  if (motivo === null) return;
+  if (!confirm('¿Confirmar anulación de la póliza?')) return;
+  const { error } = await sb.from('polizas').update({ estado: 'anulada', motivo_cancelacion: motivo || 'Anulada' }).eq('id', polId);
+  if (error) { alert('Error al anular: ' + error.message); return; }
+  const { data: pol } = await sb.from('polizas').select('cliente_id,numero,ramo').eq('id', polId).single();
+  if (pol) await registrarHistorial({ cliente_id: pol.cliente_id, categoria: 'baja_cancelacion', tipo: 'sistema', poliza_numero: pol.numero, poliza_ramo: pol.ramo, resumen: 'Póliza N° ' + pol.numero + ' (' + pol.ramo + ') anulada.' + (motivo ? ' Motivo: ' + motivo : ''), es_automatico: false });
+  mostrarAlerta('Póliza anulada');
+  if (typeof cargarPolizas === 'function') cargarPolizas();
+  if (fichaId && typeof renderFicha === 'function') renderFicha();
 }
 
 async function eliminarPolizaFicha(polId) {
