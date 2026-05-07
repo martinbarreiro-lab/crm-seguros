@@ -2334,7 +2334,10 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
 
   // Reload current section
   if (typeof cargarPolizas === 'function') cargarPolizas();
-  if (fichaId === cid && typeof renderFicha === 'function') renderFicha();
+  if (fichaId === cid && typeof renderFicha === 'function') {
+    renderFicha();
+    if (fichaTab === 'historial') setTimeout(filtrarHistorial, 300);
+  }
 });
 // ---- GUARDAR COTIZACIÓN ----
 document.getElementById('btn-guardar-cotz').onclick = async function() {
