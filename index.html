@@ -4453,18 +4453,7 @@ function eliminarPoliza(polId) {
   eliminarPolizaFicha(polId);
 }
 
-async function anularPoliza(polId) {
-  const motivo = prompt('Motivo de anulación (opcional):');
-  if (motivo === null) return;
-  if (!confirm('¿Confirmar anulación de la póliza?')) return;
-  const { error } = await sb.from('polizas').update({ estado: 'anulada', motivo_cancelacion: motivo || 'Anulada' }).eq('id', polId);
-  if (error) { alert('Error al anular: ' + error.message); return; }
-  const { data: pol } = await sb.from('polizas').select('cliente_id,numero,ramo').eq('id', polId).single();
-  if (pol) await registrarHistorial({ cliente_id: pol.cliente_id, categoria: 'baja_cancelacion', tipo: 'sistema', poliza_numero: pol.numero, poliza_ramo: pol.ramo, resumen: 'Póliza N° ' + pol.numero + ' (' + pol.ramo + ') anulada.' + (motivo ? ' Motivo: ' + motivo : ''), es_automatico: false });
-  mostrarAlerta('Póliza anulada');
-  if (typeof cargarPolizas === 'function') cargarPolizas();
-  if (fichaId && typeof renderFicha === 'function') renderFicha();
-}
+// anularPoliza — ver función global más arriba
 
 async function eliminarPolizaFicha(polId) {
   if (!confirm('¿Eliminar esta póliza? Esta acción no se puede deshacer.')) return;
