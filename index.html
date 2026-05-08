@@ -1877,7 +1877,7 @@ async function fichaPolizas(c) {
       }
       const cobTexto = cobPartes.join(' · ');
 
-      html.push('<div class="poliza-row" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px">'
+      html.push('<div class="poliza-row" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
@@ -1889,7 +1889,7 @@ async function fichaPolizas(c) {
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
-           +    buildPolizaMenu(p.id)
+           +      '<div style="font-size:11px;color:#4A90D9;margin-top:8px;font-weight:500">Ver detalle →</div>'
            +    '</div>'
            +  '</div>');
     });
@@ -2853,7 +2853,7 @@ function renderPolListadoCompleto() {
       if (p.estado === 'cancelada') { estadoLabel = 'Cancelada'; estadoBg = '#F3F4F6'; estadoColor = '#6B7280'; }
       if (p.estado === 'no_renueva') { estadoLabel = 'No renovó'; estadoBg = '#F3F4F6'; estadoColor = '#6B7280'; }
 
-      html.push('<div onclick="verFicha(\'' + p.cliente_id + '\')" style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:11px 12px;' + (isLast?'':'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px;cursor:pointer">');
+      html.push('<div onclick="abrirDetallePol(\'' + p.id + '\')" style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:11px 12px;' + (isLast?'':'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px;cursor:pointer">');
       html.push('<div><div style="font-weight:600;color:#111827">' + nombreCl + '</div><div style="font-size:11px;color:#9CA3AF">DNI ' + (cl.dni || '—') + '</div></div>');
       html.push('<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>');
       html.push('<div><div style="color:#374151">' + (p.aseguradora || '—') + '</div><div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>');
@@ -4666,6 +4666,276 @@ async function confirmarBaja() {
 }
 
 
+
+// ===== DETALLE PÓLIZA MODAL =====
+var _mpdTab = 'cobertura';
+var _mpdPolData = null;
+var _mpdClData = null;
+
+async function abrirDetallePol(polId) {
+  var modal = document.getElementById('modal-pol-det');
+  var box = document.getElementById('mpd-box');
+  if (!modal || !box) return;
+  _mpdTab = 'cobertura';
+  box.innerHTML = '<div style="padding:40px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando póliza...</div>';
+  modal.classList.add('open');
+  var res = await sb.from('polizas').select('*').eq('id', polId).single();
+  var p = res.data;
+  if (!p) { box.innerHTML = '<div style="padding:40px;text-align:center;color:#E74C3C">No se pudo cargar la póliza</div>'; return; }
+  var cl = allCl.find(function(c){ return c.id === p.cliente_id; });
+  if (!cl) {
+    var clRes = await sb.from('clientes').select('*').eq('id', p.cliente_id).single();
+    cl = clRes.data || {};
+  }
+  _mpdPolData = p;
+  _mpdClData = cl;
+  renderDetallePol();
+}
+
+function renderDetallePol() {
+  var p = _mpdPolData;
+  var cl = _mpdClData || {};
+  var box = document.getElementById('mpd-box');
+  if (!box || !p) return;
+  var e = calcEstadoVto(p.fecha_vencimiento);
+  var badgeBg, badgeColor, badgeText;
+  if (p.estado==='cancelada'||p.estado==='baja') { badgeBg='#F3F4F6'; badgeColor='#6B7280'; badgeText=p.estado==='baja'?'Anulada':'Cancelada'; }
+  else if (p.estado==='no_renueva') { badgeBg='#F3F4F6'; badgeColor='#6B7280'; badgeText='No renueva'; }
+  else if (p.estado==='anulada') { badgeBg='#FCEBEB'; badgeColor='#791F1F'; badgeText='Anulada'; }
+  else if (e.key==='vencida') { badgeBg='#FCEBEB'; badgeColor='#791F1F'; badgeText='Vencida'; }
+  else if (e.key==='urgente') { badgeBg='#FED7AA'; badgeColor='#9A3412'; badgeText='Urgente · '+e.dias+'d'; }
+  else { badgeBg='#EAF3DE'; badgeColor='#27500A'; badgeText='Vigente'+(e.dias!==null?' · '+e.dias+'d':''); }
+  var initials = (((cl.nombre||'?')[0]||'')+((cl.apellido||'?')[0]||'')).toUpperCase() || '??';
+  var nombreCl = ((cl.apellido||'')+(cl.apellido&&cl.nombre?', ':'')+( cl.nombre||'')).trim()||'(sin nombre)';
+  var cuotaVal = p.valor_cuota ? fmtMoney(p.valor_cuota) : (p.cantidad_cuotas && p.prima_anual ? fmtMoney(Math.round(p.prima_anual/p.cantidad_cuotas)) : '—');
+  var vtoColor = e.key==='vencida'?'#A32D2D':e.key==='urgente'?'#854F0B':'#111827';
+  var tabs = [{id:'cobertura',label:'Cobertura'},{id:'pagos',label:'Datos de pago'},{id:'documentos',label:'Documentos'},{id:'historial',label:'Historial'}];
+
+  box.innerHTML =
+    '<div style="padding:20px 22px 0">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">'+
+        '<div>'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+            '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero||'—')+'</span>'+
+            '<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;background:'+badgeBg+';color:'+badgeColor+'">'+badgeText+'</span>'+
+          '</div>'+
+          '<div style="font-size:13px;color:#6B7280">'+p.ramo+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
+        '</div>'+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\')" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;padding:4px;line-height:1">✕</button>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F9FAFB;border-radius:8px;margin-bottom:12px">'+
+        '<div style="width:34px;height:34px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#0C447C;flex-shrink:0">'+initials+'</div>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:13px;font-weight:500;color:#111827">'+nombreCl+'</div>'+
+          '<div style="font-size:11px;color:#9CA3AF">'+(cl.dni?'DNI '+cl.dni:'Sin DNI cargado')+'</div>'+
+        '</div>'+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){verFicha(\''+p.cliente_id+'\')},100)" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151">Ver ficha →</button>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
+        mpdMetric('Premio anual',fmtMoney(p.prima_anual),p.forma_pago||'—','#166534')+
+        mpdMetric('Cuota',cuotaVal,p.medio_pago||'—','#111827')+
+        mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
+        mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
+      '</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirRenovarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
+        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>':'')+
+        (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>':'')+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
+      '</div>'+
+      '<div style="display:flex;border-bottom:0.5px solid #E5E7EB">'+
+        tabs.map(function(t){
+          var isA=t.id===_mpdTab;
+          return '<button type="button" class="mpd-tab" data-tab="'+t.id+'" onclick="mpdSetTab(\''+t.id+'\')" style="padding:9px 14px;font-size:12px;font-weight:'+(isA?'600':'500')+';color:'+(isA?'#185FA5':'#6B7280')+';background:none;border:none;border-bottom:2px solid '+(isA?'#185FA5':'transparent')+';cursor:pointer;font-family:inherit">'+t.label+'</button>';
+        }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div id="mpd-tab-cont" style="padding:16px 22px;max-height:340px;overflow-y:auto">'+
+      renderMpdTabContent(p,_mpdTab)+
+    '</div>';
+}
+
+function mpdMetric(label,val,sub,color) {
+  return '<div style="background:#F9FAFB;border-radius:8px;padding:10px 12px">'+
+    '<div style="font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+label+'</div>'+
+    '<div style="font-size:14px;font-weight:600;color:'+color+'">'+val+'</div>'+
+    '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">'+sub+'</div>'+
+  '</div>';
+}
+
+function renderMpdTabContent(p,tab) {
+  if (tab==='cobertura') return renderMpdCobertura(p);
+  if (tab==='pagos') return renderMpdPagos(p);
+  if (tab==='documentos') return renderMpdDocumentos(p);
+  return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando historial...</div>';
+}
+
+async function mpdSetTab(tab) {
+  _mpdTab = tab;
+  var p = _mpdPolData;
+  if (!p) return;
+  document.querySelectorAll('.mpd-tab').forEach(function(btn){
+    var isA = btn.getAttribute('data-tab')===tab;
+    btn.style.color = isA?'#185FA5':'#6B7280';
+    btn.style.fontWeight = isA?'600':'500';
+    btn.style.borderBottom = '2px solid '+(isA?'#185FA5':'transparent');
+  });
+  var cont = document.getElementById('mpd-tab-cont');
+  if (!cont) return;
+  if (tab==='historial') {
+    cont.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando...</div>';
+    var res = await sb.from('interacciones').select('*').eq('cliente_id',p.cliente_id).order('created_at',{ascending:false}).limit(60);
+    var hist = (res.data||[]).filter(function(h){ return h.poliza_id===p.id || h.poliza_numero===p.numero; });
+    cont.innerHTML = renderMpdHistorial(hist);
+  } else {
+    cont.innerHTML = renderMpdTabContent(p,tab);
+  }
+}
+
+function renderMpdCobertura(p) {
+  var dr = p.datos_ramo||{};
+  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'—'; };
+  var rows = [];
+  if (p.cobertura) rows.push(['Tipo de cobertura','<span style="background:#E6F1FB;color:#0C447C;padding:2px 9px;border-radius:10px;font-weight:500;font-size:11px">'+p.cobertura+'</span>']);
+  if (p.ramo==='Automotor') {
+    var veh=[dr.marca,dr.modelo,dr.anio].filter(Boolean).join(' ');
+    if(veh) rows.push(['Vehículo','<strong style="color:#111827">'+veh+'</strong>']);
+    if(dr.patente||p.patente) rows.push(['Dominio','<span style="background:#E6F1FB;color:#0C447C;padding:2px 9px;border-radius:4px;font-weight:700;letter-spacing:.05em">'+(dr.patente||p.patente)+'</span>']);
+    if(dr.chasis) rows.push(['N° de chasis',dr.chasis]);
+    if(dr.motor) rows.push(['N° de motor',dr.motor]);
+    if(dr.color) rows.push(['Color',dr.color]);
+    if(dr.uso) rows.push(['Uso',dr.uso]);
+    if(dr.condicion) rows.push(['Condición',dr.condicion]);
+    rows.push(['GNC',dr.gnc==='si'?'Sí'+(dr.gnc_vto_oblea?' · Oblea '+dr.gnc_vto_oblea:''):'No']);
+    if(dr.acreedor_prendario) rows.push(['Acreedor prendario',dr.acreedor_prendario]);
+    if(dr.suma_asegurada) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(dr.suma_asegurada)+'</strong>']);
+    if(dr.franquicia_tipo) {
+      var fran=dr.franquicia_tipo==='sin'?'Sin franquicia':dr.franquicia_tipo==='porcentaje'?(dr.franquicia_porcentaje+'%'+(dr.franquicia_monto?' = '+fmtM(dr.franquicia_monto):'')):fmtM(dr.franquicia_monto);
+      rows.push(['Franquicia',fran]);
+    }
+  } else if (p.ramo==='Hogar'||p.ramo==='Combinado') {
+    if(dr.direccion) rows.push(['Dirección del riesgo',dr.direccion]);
+    if(dr.tipo_vivienda) rows.push(['Tipo de vivienda',dr.tipo_vivienda]);
+    if(dr.uso) rows.push(['Uso',dr.uso]);
+    if(dr.anio_construccion) rows.push(['Año de construcción',dr.anio_construccion]);
+    if(dr.m2_total) rows.push(['Superficie total',dr.m2_total+' m²']);
+    if(dr.seguridad) rows.push(['Seguridad',dr.seguridad]);
+    if(dr.suma_edificio) rows.push(['Suma edificio','<strong style="color:#166534">'+fmtM(dr.suma_edificio)+'</strong>']);
+    if(dr.suma_contenido) rows.push(['Suma contenido','<strong style="color:#166534">'+fmtM(dr.suma_contenido)+'</strong>']);
+    if(dr.adicionales) rows.push(['Adicionales',dr.adicionales]);
+  } else if (p.ramo==='Comercio') {
+    if(dr.nombre) rows.push(['Nombre',dr.nombre]);
+    if(dr.cuit) rows.push(['CUIT',dr.cuit]);
+    if(dr.actividad) rows.push(['Actividad',dr.actividad]);
+    if(dr.direccion) rows.push(['Dirección',dr.direccion]);
+    if(dr.m2) rows.push(['Superficie',dr.m2+' m²']);
+    if(dr.empleados) rows.push(['Empleados',dr.empleados]);
+    if(dr.suma_contenido) rows.push(['Suma contenido',fmtM(dr.suma_contenido)]);
+    if(dr.suma_edificio) rows.push(['Suma edificio',fmtM(dr.suma_edificio)]);
+  } else if (p.ramo==='Accidentes Personales') {
+    if(dr.actividad) rows.push(['Actividad',dr.actividad]);
+    if(dr.cantidad_personas) rows.push(['Cantidad de personas',dr.cantidad_personas]);
+    if(dr.cobertura_muerte) rows.push(['Cobertura muerte',fmtM(dr.cobertura_muerte)]);
+    if(dr.cobertura_invalidez) rows.push(['Cobertura invalidez',fmtM(dr.cobertura_invalidez)]);
+    if(dr.altura_max) rows.push(['Altura máx. trabajo',dr.altura_max+' m']);
+    if(dr.asistencia_medica) rows.push(['Asistencia médica',dr.asistencia_medica]);
+  } else if (p.ramo==='Responsabilidad Civil') {
+    if(dr.actividad) rows.push(['Actividad asegurada',dr.actividad]);
+    if(dr.suma) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(dr.suma)+'</strong>']);
+    if(dr.ambito) rows.push(['Ámbito',dr.ambito]);
+  } else if (p.ramo==='Vida Individual') {
+    if(dr.capital) rows.push(['Capital asegurado','<strong style="color:#166534">'+fmtM(dr.capital)+'</strong>']);
+    if(dr.plan) rows.push(['Plan',dr.plan]);
+    if(dr.examen) rows.push(['Examen médico',dr.examen]);
+    if(dr.beneficiarios) rows.push(['Beneficiarios','<div style="white-space:pre-line;font-size:11px;line-height:1.6">'+dr.beneficiarios+'</div>']);
+  } else if (p.ramo==='Vida Colectiva') {
+    if(dr.razon_social) rows.push(['Razón social',dr.razon_social]);
+    if(dr.cantidad) rows.push(['Asegurados',dr.cantidad]);
+    if(dr.capital) rows.push(['Capital por asegurado',fmtM(dr.capital)]);
+    if(dr.plan) rows.push(['Plan',dr.plan]);
+  } else if (p.ramo==='ART') {
+    if(dr.razon_social) rows.push(['Razón social',dr.razon_social]);
+    if(dr.cuit) rows.push(['CUIT',dr.cuit]);
+    if(dr.actividad) rows.push(['Actividad',dr.actividad]);
+    if(dr.empleados) rows.push(['Empleados',dr.empleados]);
+    if(dr.masa_salarial) rows.push(['Masa salarial mensual',fmtM(dr.masa_salarial)]);
+  } else if (p.ramo==='Empresas') {
+    if(dr.razon_social) rows.push(['Razón social',dr.razon_social]);
+    if(dr.cuit) rows.push(['CUIT',dr.cuit]);
+    if(dr.actividad) rows.push(['Actividad',dr.actividad]);
+    if(dr.direccion) rows.push(['Dirección del riesgo',dr.direccion]);
+    if(dr.empleados) rows.push(['Empleados',dr.empleados]);
+    if(dr.suma) rows.push(['Suma asegurada',fmtM(dr.suma)]);
+  } else if (p.ramo==='Otros') {
+    if(dr.descripcion) rows.push(['Descripción del riesgo',dr.descripcion]);
+    if(dr.suma) rows.push(['Suma asegurada',fmtM(dr.suma)]);
+  }
+  if (p.notas) rows.push(['Notas internas','<span style="color:#6B7280;font-style:italic">'+p.notas+'</span>']);
+  if (!rows.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin datos de cobertura cargados.</div>';
+  return rows.map(function(r){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid #F3F4F6;gap:16px">'+
+      '<span style="font-size:12px;color:#6B7280;flex-shrink:0">'+r[0]+'</span>'+
+      '<span style="font-size:12px;font-weight:500;color:#111827;text-align:right">'+r[1]+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function renderMpdPagos(p) {
+  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'—'; };
+  var rows = [
+    ['Premio total',fmtM(p.prima_anual)],
+    ['Forma de pago',p.forma_pago||'—'],
+    ['Cantidad de cuotas',p.cantidad_cuotas||'—'],
+    ['Valor de cuota',fmtM(p.valor_cuota)],
+    ['Medio de pago',p.medio_pago||'—'],
+    ['Día de débito',p.dia_debito?'Día '+p.dia_debito:'—'],
+    ['Período de vigencia',p.periodo_meses?p.periodo_meses+' meses':'—'],
+    ['Fecha de emisión',p.fecha_emision||'—'],
+  ];
+  return rows.map(function(r){
+    return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid #F3F4F6">'+
+      '<span style="font-size:12px;color:#6B7280">'+r[0]+'</span>'+
+      '<span style="font-size:12px;font-weight:500;color:#111827">'+r[1]+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function renderMpdDocumentos(p) {
+  var docs = [];
+  if (p.pdf_url) docs.push({label:'Póliza PDF',url:p.pdf_url,icon:'📄',sub:'Documento de emisión'});
+  if (p.endoso_pdf_url) docs.push({label:'Endoso PDF',url:p.endoso_pdf_url,icon:'📎',sub:'Último endoso'});
+  if (p.cedula_verde_frente_url) docs.push({label:'Cédula verde — frente',url:p.cedula_verde_frente_url,icon:'🪪',sub:'Imagen / PDF'});
+  if (p.cedula_verde_dorso_url) docs.push({label:'Cédula verde — dorso',url:p.cedula_verde_dorso_url,icon:'🪪',sub:'Imagen / PDF'});
+  if (!docs.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin documentos adjuntos a esta póliza.</div>';
+  return docs.map(function(d){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F3F4F6">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:22px">'+d.icon+'</span>'+
+        '<div><div style="font-size:13px;font-weight:500;color:#111827">'+d.label+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+d.sub+'</div></div>'+
+      '</div>'+
+      '<button type="button" onclick="window.open(\''+d.url+'\',\'_blank\')" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-family:inherit">Ver ↗</button>'+
+    '</div>';
+  }).join('');
+}
+
+function renderMpdHistorial(hist) {
+  if (!hist||!hist.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin historial registrado para esta póliza.</div>';
+  var catIcon = {baja_cancelacion:'🚫',renovacion:'🔄',poliza:'📄',interaccion:'💬',sistema:'🤖'};
+  return hist.map(function(h){
+    var icon = h.es_automatico?'🤖':(catIcon[h.categoria]||'💬');
+    return '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:0.5px solid #F3F4F6">'+
+      '<div style="width:28px;height:28px;border-radius:50%;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">'+icon+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;color:#111827">'+(h.resumen||'—')+'</div>'+
+        '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+new Date(h.created_at).toLocaleDateString('es-AR')+(h.usuario_nombre?' · '+h.usuario_nombre:'')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+// ===== FIN DETALLE PÓLIZA MODAL =====
+
 init();
 </script>
 <!-- MODAL BAJA PÓLIZA -->
@@ -4707,6 +4977,13 @@ init();
   </div>
 </div>
 
+
+<!-- MODAL DETALLE PÓLIZA -->
+<div class="modal-ov" id="modal-pol-det">
+  <div class="modal-box" style="max-width:720px;padding:0;overflow:hidden" id="mpd-box">
+    <div style="padding:40px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando...</div>
+  </div>
+</div>
 
 </body>
 </html>
