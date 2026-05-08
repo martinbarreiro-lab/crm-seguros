@@ -4482,11 +4482,15 @@ function tglSub(polId, sub, event) {
   el.style.display = isOpen ? 'none' : 'block';
 }
 
-function descargarPdfPoliza(polId) {
-  const pol = (window._fichaPolizas || []).find(function(p){ return p.id === polId; });
+async function descargarPdfPoliza(polId) {
+  document.querySelectorAll('[id^="pm2-"]').forEach(function(m){ m.style.display='none'; });
+  let pol = (window._fichaPolizas || []).find(function(p){ return p.id === polId; });
+  if (!pol) {
+    const { data } = await sb.from('polizas').select('pdf_url').eq('id', polId).single();
+    pol = data;
+  }
   if (pol && pol.pdf_url) { window.open(pol.pdf_url, '_blank'); }
   else { mostrarAlerta('Esta póliza no tiene PDF cargado'); }
-  document.querySelectorAll('[id^="pm2-"]').forEach(function(m){ m.style.display='none'; });
 }
 
 function descargarPdfEndoso(polId) {
