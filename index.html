@@ -2025,6 +2025,24 @@ async function fichaTareas(c) {
   html.push('</div>');
   return html.join('');
 }
+async function registrarHistorial(datos) {
+  try {
+    await sb.from('interacciones').insert({
+      productor_id: user ? user.id : null,
+      cliente_id: datos.cliente_id,
+      categoria: datos.categoria || 'sistema',
+      tipo: datos.tipo || 'sistema',
+      resumen: datos.resumen || '',
+      poliza_id: datos.poliza_id || null,
+      poliza_numero: datos.poliza_numero || null,
+      poliza_ramo: datos.poliza_ramo || null,
+      adjuntos: datos.adjuntos || [],
+      usuario_nombre: datos.es_automatico ? 'Sistema automático' : ((user && ((user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email)) || 'Usuario'),
+      es_automatico: datos.es_automatico || false,
+    });
+  } catch(e) { console.warn('registrarHistorial error:', e); }
+}
+
 async function fichaHistorial(c) {
   const { data: ints } = await sb.from('interacciones').select('*').eq('cliente_id', c.id).order('created_at',{ascending:false});
   const { data: pols } = await sb.from('polizas').select('numero,ramo,aseguradora,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
