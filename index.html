@@ -4500,53 +4500,51 @@ function toggleBajaOtro() {
 }
 
 
-document.addEventListener('DOMContentLoaded', function() {
-  var btnBaja = document.getElementById('btn-confirmar-baja');
-  if (btnBaja) btnBaja.onclick = async function() {
-    var motivo = document.getElementById('baja-motivo').value;
-    if (!motivo) { alert('Seleccioná un motivo de baja'); return; }
-    var esOtro = motivo === 'Otro';
-    var otroTxt = document.getElementById('baja-otro-texto').value.trim();
-    if (esOtro && !otroTxt) { alert('Especificá el motivo'); return; }
-    var motivoFinal = esOtro ? ('Otro: ' + otroTxt) : motivo;
-    var detalle = document.getElementById('baja-detalle').value.trim();
-    var polId = window._bajaPolizaId;
-    var clienteId = window._bajaClienteId;
-    var d = window._bajaDatos || {};
-    // Subir adjunto
-    var adjuntosArr = [];
-    var adjEl = document.getElementById('baja-adjunto');
-    if (adjEl && adjEl.files[0]) {
-      try {
-        var file = adjEl.files[0];
-        var path = 'historial/' + clienteId + '/baja_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-        var up = await sb.storage.from('archivos').upload(path, file);
-        if (!up.error) {
-          var urlData = sb.storage.from('archivos').getPublicUrl(path);
-          adjuntosArr.push({ nombre: file.name, tipo: file.type, url: urlData.data.publicUrl });
-        }
-      } catch(e) { console.warn('adj baja:', e); }
-    }
-    // Cambiar estado póliza
-    var res = await sb.from('polizas').update({ estado: 'baja', motivo_cancelacion: motivoFinal }).eq('id', polId);
-    if (res.error) { alert('Error: ' + res.error.message); return; }
-    // Registrar en historial
-    await registrarHistorial({
-      cliente_id: clienteId,
-      categoria: 'baja_cancelacion',
-      tipo: 'sistema',
-      poliza_id: polId,
-      poliza_numero: d.numero || '',
-      poliza_ramo: d.ramo || '',
-      resumen: 'Baja de póliza. Motivo: ' + motivoFinal + (detalle ? '. ' + detalle : ''),
-      adjuntos: adjuntosArr,
-      es_automatico: false,
-    });
-    cerrarModal('modal-baja');
-    mostrarAlerta('Baja registrada correctamente');
-    if (fichaId) renderFicha();
-  };
-});
+var btnBaja = document.getElementById('btn-confirmar-baja');
+if (btnBaja) btnBaja.onclick = async function() {
+  var motivo = document.getElementById('baja-motivo').value;
+  if (!motivo) { alert('Seleccioná un motivo de baja'); return; }
+  var esOtro = motivo === 'Otro';
+  var otroTxt = document.getElementById('baja-otro-texto').value.trim();
+  if (esOtro && !otroTxt) { alert('Especificá el motivo'); return; }
+  var motivoFinal = esOtro ? ('Otro: ' + otroTxt) : motivo;
+  var detalle = document.getElementById('baja-detalle').value.trim();
+  var polId = window._bajaPolizaId;
+  var clienteId = window._bajaClienteId;
+  var d = window._bajaDatos || {};
+  // Subir adjunto
+  var adjuntosArr = [];
+  var adjEl = document.getElementById('baja-adjunto');
+  if (adjEl && adjEl.files[0]) {
+    try {
+      var file = adjEl.files[0];
+      var path = 'historial/' + clienteId + '/baja_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var up = await sb.storage.from('archivos').upload(path, file);
+      if (!up.error) {
+        var urlData = sb.storage.from('archivos').getPublicUrl(path);
+        adjuntosArr.push({ nombre: file.name, tipo: file.type, url: urlData.data.publicUrl });
+      }
+    } catch(e) { console.warn('adj baja:', e); }
+  }
+  // Cambiar estado póliza
+  var res = await sb.from('polizas').update({ estado: 'baja', motivo_cancelacion: motivoFinal }).eq('id', polId);
+  if (res.error) { alert('Error: ' + res.error.message); return; }
+  // Registrar en historial
+  await registrarHistorial({
+    cliente_id: clienteId,
+    categoria: 'baja_cancelacion',
+    tipo: 'sistema',
+    poliza_id: polId,
+    poliza_numero: d.numero || '',
+    poliza_ramo: d.ramo || '',
+    resumen: 'Baja de póliza. Motivo: ' + motivoFinal + (detalle ? '. ' + detalle : ''),
+    adjuntos: adjuntosArr,
+    es_automatico: false,
+  });
+  cerrarModal('modal-baja');
+  mostrarAlerta('Baja registrada correctamente');
+  if (fichaId) renderFicha();
+};
 
 
 init();
