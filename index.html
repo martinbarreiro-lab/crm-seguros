@@ -1958,7 +1958,7 @@ async function fichaPolizas(c) {
 }
 
 async function fichaSiniestros(c) {
-  var { data } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  var { data } = await sb.from('siniestros').select('*,polizas(numero,ramo)').eq('cliente_id', c.id).order('created_at', { ascending: false });
   var sins = data || [];
   var total = sins.length;
   var abiertos = sins.filter(function(s){ return s.estado !== 'cerrado'; }).length;
@@ -2001,7 +2001,9 @@ async function fichaSiniestros(c) {
     // Header colapsable
     html.push('<div onclick="toggleSin(\''+sinId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
     html.push('<div><div id="sin-header-'+sinId+'" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
-    html.push('<span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'Sin expediente')+'</span>');
+    var polizaRef = s.polizas ? ' · Póliza ' + s.polizas.numero : (s.poliza_id ? '' : '');
+    html.push('<span style="font-size:11px;color:#9CA3AF;font-weight:500">N° Siniestro:&nbsp;</span><span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'—')+'</span>');
+    if (s.polizas) html.push('<span style="font-size:11px;color:#9CA3AF;margin-left:4px">· Póliza '+s.polizas.numero+'</span>');
     html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span>');
     if (!isCerrado) html.push('<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:'+(dias>30?'#FEF2F2':'#FFFBEB')+';color:'+(dias>30?'#991B1B':'#854F0B')+'">'+dias+'d</span>');
     html.push('</div>');
@@ -2074,7 +2076,7 @@ async function fichaSiniestros(c) {
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
     if (!isCerrado) {
       html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
-      html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
+      if (etapa === 'cierre') html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
     }
     html.push('</div>');
 
@@ -2174,10 +2176,10 @@ function renderSinEtapaPanel(s, etapa) {
       html.push('<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 Documento adjunto</span>');
       html.push('<div style="display:flex;gap:5px">');
       html.push('<button type="button" class="btn btn-sm" onclick="window.open(\''+p.fileUrl+'\',\'_blank\')">Ver ↗</button>');
-      html.push('<button type="button" class="btn btn-sm" onclick="sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')">Reemplazar</button>');
+      html.push('<button type="button" class="btn btn-sm" onclick="event.stopPropagation();sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')">Reemplazar</button>');
       html.push('</div></div>');
     } else {
-      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" onclick="sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">');
+      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" onclick="event.stopPropagation();sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">');
       html.push('<span style="font-size:12px;color:#9CA3AF">📎 Subir '+p.fileLabel.toLowerCase()+'</span>');
       html.push('<button type="button" class="btn btn-sm btn-p" style="pointer-events:none">Subir archivo</button>');
       html.push('</div>');
@@ -2215,6 +2217,7 @@ function sinSetEtapa(sinId, etapa) {
 }
 
 function sinSubirArchivo(sinId, campo) {
+  if (event) event.stopPropagation();
   var input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/pdf,image/*';
@@ -2245,7 +2248,7 @@ function sinSubirArchivo(sinId, campo) {
         '<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 '+file.name+'</span>'+
         '<div style="display:flex;gap:5px">'+
           '<button type="button" class="btn btn-sm" onclick="window.open(\''+publicUrl+'\',\'_blank\')">Ver ↗</button>'+
-          '<button type="button" class="btn btn-sm" onclick="sinSubirArchivo(\''+sinId+'\',\''+campo+'\')">Reemplazar</button>'+
+          '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();sinSubirArchivo(\''+sinId+'\',\''+campo+'\')">Reemplazar</button>'+
         '</div>';
     }
     mostrarAlerta('✅ Archivo subido: '+file.name);
