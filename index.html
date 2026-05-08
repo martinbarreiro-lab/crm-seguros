@@ -1890,8 +1890,8 @@ async function fichaPolizas(c) {
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
-
-           +      '<div style="position:relative;display:inline-block;margin-top:8px" id="pmw-' + p.id + '">'           +        '<button onclick="tglPM2(\'' + p.id + '\',event)" style="background:#fff;border:0.5px solid #E5E7EB;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:16px;color:#6B7280;letter-spacing:2px;line-height:1">&#xB7;&#xB7;&#xB7;</button>'           +        '<div id="pm2-' + p.id + '" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:220px;z-index:99;overflow:visible;text-align:left">'           +          '<div onclick="abrirEditarPoliza(\'' + p.id + '\');tglPM2(\'' + p.id + '\')" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class=\"ti ti-edit\" style=\"font-size:14px;color:#9CA3AF\"></i>Editar</div>'           +          '<div id="pi-end-' + p.id + '" onclick="tglSub(\'' + p.id + '\',\'end\',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;position:relative"><span style=\"display:flex;align-items:center;gap:8px\"><i class=\"ti ti-file-plus\" style=\"font-size:14px;color:#9CA3AF\"></i>Endosos</span><i class=\"ti ti-chevron-left\" style=\"font-size:11px;color:#9CA3AF\"></i><div id=\"ps-end-' + p.id + '\" style=\"display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden\"><div onclick=\"nuevoEndoso(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-plus\" style=\"font-size:14px;color:#9CA3AF\"></i>Nuevo endoso</div><div onclick=\"verEndosos(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-list\" style=\"font-size:14px;color:#9CA3AF\"></i>Ver endosos</div></div></div>'           +          '<div id="pi-doc-' + p.id + '" onclick="tglSub(\'' + p.id + '\',\'doc\',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;position:relative"><span style=\"display:flex;align-items:center;gap:8px\"><i class=\"ti ti-download\" style=\"font-size:14px;color:#9CA3AF\"></i>Descargar documentaci\u00f3n</span><i class=\"ti ti-chevron-left\" style=\"font-size:11px;color:#9CA3AF\"></i><div id=\"ps-doc-' + p.id + '\" style=\"display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden\"><div onclick=\"descargarPdfPoliza(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-file-text\" style=\"font-size:14px;color:#9CA3AF\"></i>P\u00f3liza PDF</div><div onclick=\"descargarPdfEndoso(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-file-plus\" style=\"font-size:14px;color:#9CA3AF\"></i>Endoso PDF</div></div></div>'           +          '<div onclick="abrirPlanPagos(\'' + p.id + '\');tglPM2(\'' + p.id + '\')" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class=\"ti ti-credit-card\" style=\"font-size:14px;color:#9CA3AF\"></i>Plan de pagos / Comisiones</div>'           +          '<div id="pi-acc-' + p.id + '" onclick="tglSub(\'' + p.id + '\',\'acc\',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:space-between;position:relative"><span style=\"display:flex;align-items:center;gap:8px\"><i class=\"ti ti-settings\" style=\"font-size:14px;color:#9CA3AF\"></i>Acciones</span><i class=\"ti ti-chevron-left\" style=\"font-size:11px;color:#9CA3AF\"></i><div id=\"ps-acc-' + p.id + '\" style=\"display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden\"><div onclick=\"renovarPoliza(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-refresh\" style=\"font-size:14px;color:#9CA3AF\"></i>Renovar p\u00f3liza</div><div onclick=\"anularPoliza(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#C2410C;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-ban\" style=\"font-size:14px;color:#C2410C\"></i>Anular</div><div onclick=\"eliminarPoliza(\\\'' + p.id + '\\\');event.stopPropagation()\" style=\"padding:9px 14px;font-size:12px;color:#DC2626;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px\"><i class=\"ti ti-trash\" style=\"font-size:14px;color:#DC2626\"></i>Eliminar del sistema</div></div></div>'           +        '</div>'           +      '</div>'           +    '</div>'
+           +      buildPolizaMenu(p.id)
+           +    '</div>'
            +  '</div>');
     });
     html.push('</div>');
@@ -4450,6 +4450,52 @@ async function anularPoliza(polId) {
   }
   // Usar abrirBajaPoliza para el resto del flujo
   abrirBajaPoliza(polId, p.numero || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
+}
+
+function buildPolizaMenu(polId) {
+  var id = polId;
+  var m = '<div style="position:relative;display:inline-block;margin-top:8px" id="pmw-' + id + '">';
+  m += '<button onclick="tglPM2('' + id + '',event)" style="background:#fff;border:0.5px solid #E5E7EB;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:16px;color:#6B7280;letter-spacing:2px;line-height:1">&#xB7;&#xB7;&#xB7;</button>';
+  m += '<div id="pm2-' + id + '" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:220px;z-index:99;overflow:visible;text-align:left">';
+
+  // Editar
+  m += '<div onclick="abrirEditarPoliza('' + id + '');tglPM2('' + id + '')" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px">';
+  m += '<i class="ti ti-edit" style="font-size:14px;color:#9CA3AF"></i>Editar</div>';
+
+  // Endosos
+  m += '<div id="pi-end-' + id + '" onclick="tglSub('' + id + '','end',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;position:relative">';
+  m += '<span style="display:flex;align-items:center;gap:8px"><i class="ti ti-file-plus" style="font-size:14px;color:#9CA3AF"></i>Endosos</span>';
+  m += '<i class="ti ti-chevron-left" style="font-size:11px;color:#9CA3AF"></i>';
+  m += '<div id="ps-end-' + id + '" style="display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden">';
+  m += '<div onclick="nuevoEndoso('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class="ti ti-plus" style="font-size:14px;color:#9CA3AF"></i>Nuevo endoso</div>';
+  m += '<div onclick="verEndosos('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-list" style="font-size:14px;color:#9CA3AF"></i>Ver endosos</div>';
+  m += '</div></div>';
+
+  // Descargar documentación
+  m += '<div id="pi-doc-' + id + '" onclick="tglSub('' + id + '','doc',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;position:relative">';
+  m += '<span style="display:flex;align-items:center;gap:8px"><i class="ti ti-download" style="font-size:14px;color:#9CA3AF"></i>Descargar documentación</span>';
+  m += '<i class="ti ti-chevron-left" style="font-size:11px;color:#9CA3AF"></i>';
+  m += '<div id="ps-doc-' + id + '" style="display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden">';
+  m += '<div onclick="descargarPdfPoliza('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class="ti ti-file-text" style="font-size:14px;color:#9CA3AF"></i>Póliza PDF</div>';
+  m += '<div onclick="descargarPdfEndoso('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-file-plus" style="font-size:14px;color:#9CA3AF"></i>Endoso PDF</div>';
+  m += '</div></div>';
+
+  // Plan de pagos
+  m += '<div onclick="abrirPlanPagos('' + id + '');tglPM2('' + id + '')" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px">';
+  m += '<i class="ti ti-credit-card" style="font-size:14px;color:#9CA3AF"></i>Plan de pagos / Comisiones</div>';
+
+  // Acciones
+  m += '<div id="pi-acc-' + id + '" onclick="tglSub('' + id + '','acc',event)" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:space-between;position:relative">';
+  m += '<span style="display:flex;align-items:center;gap:8px"><i class="ti ti-settings" style="font-size:14px;color:#9CA3AF"></i>Acciones</span>';
+  m += '<i class="ti ti-chevron-left" style="font-size:11px;color:#9CA3AF"></i>';
+  m += '<div id="ps-acc-' + id + '" style="display:none;position:absolute;right:calc(100% + 4px);top:0;background:#fff;border:0.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:180px;overflow:hidden">';
+  m += '<div onclick="renovarPoliza('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class="ti ti-refresh" style="font-size:14px;color:#9CA3AF"></i>Renovar póliza</div>';
+  m += '<div onclick="anularPoliza('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#C2410C;cursor:pointer;font-weight:500;border-bottom:0.5px solid #F3F4F6;display:flex;align-items:center;gap:8px"><i class="ti ti-ban" style="font-size:14px;color:#C2410C"></i>Anular</div>';
+  m += '<div onclick="eliminarPoliza('' + id + '');event.stopPropagation()" style="padding:9px 14px;font-size:12px;color:#DC2626;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-trash" style="font-size:14px;color:#DC2626"></i>Eliminar del sistema</div>';
+  m += '</div></div>';
+
+  m += '</div></div>';
+  return m;
 }
 
 function tglPM2(polId, event) {
