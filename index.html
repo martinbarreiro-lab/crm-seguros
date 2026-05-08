@@ -2280,7 +2280,7 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
   if (!periodo) { alert('Debe seleccionar el período'); return; }
   if (!premio || premio <= 0) { alert('Debe ingresar el premio total'); return; }
   if (!pago) { alert('Debe seleccionar la forma de pago'); return; }
-  if (!pdfFile) { alert('Debe adjuntar el PDF de la póliza (obligatorio)'); return; }
+  if (!pdfFile && !window._editPolizaId) { alert('Debe adjuntar el PDF de la póliza (obligatorio)'); return; }
 
   // Validar datos básicos del cliente desde su ficha
   const cl = allCl.find(function(c) { return c.id === cid; });
