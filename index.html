@@ -2000,7 +2000,7 @@ async function fichaSiniestros(c) {
 
     // Header colapsable
     html.push('<div onclick="toggleSin(\''+sinId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
-    html.push('<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
+    html.push('<div><div id="sin-header-'+sinId+'" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
     html.push('<span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'Sin expediente')+'</span>');
     html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span>');
     if (!isCerrado) html.push('<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:'+(dias>30?'#FEF2F2':'#FFFBEB')+';color:'+(dias>30?'#991B1B':'#854F0B')+'">'+dias+'d</span>');
@@ -2027,7 +2027,7 @@ async function fichaSiniestros(c) {
       var bg = isDone?'#EAF3DE':isCur?'#4A90D9':'#F9FAFB';
       var color = isDone?'#27500A':isCur?'#fff':'#9CA3AF';
       var border = i < pasos.length-1 ? 'border-right:0.5px solid rgba(0,0,0,.07);' : '';
-      html.push('<div onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+labels[p]+'</div>');
+      html.push('<div id="sin-step-'+sinId+'-'+p+'" onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+labels[p]+'</div>');
     });
     html.push('</div>');
     html.push('</div>');
@@ -2049,12 +2049,12 @@ async function fichaSiniestros(c) {
       html.push('<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;'+(gi===0?'border-bottom:0.5px solid #F3F4F6':'')+'">');
       html.push('<div><div style="font-size:13px;color:#111827">'+g.label+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+g.sub+'</div></div>');
       html.push('<div style="display:flex;align-items:center;gap:10px">');
-      if (done) html.push('<span style="font-size:11px;color:#22C55E;font-weight:500">✓ '+(fecha?new Date(fecha).toLocaleDateString('es-AR'):'Enviada')+'</span>');
-      else html.push('<span style="font-size:11px;color:#9CA3AF">Pendiente</span>');
+      if (done) html.push('<span data-toggle-label="'+sinId+'-'+g.key+'" style="font-size:11px;color:#22C55E;font-weight:500">✓ '+(fecha?new Date(fecha).toLocaleDateString('es-AR'):'Enviada')+'</span>');
+      else html.push('<span data-toggle-label="'+sinId+'-'+g.key+'" style="font-size:11px;color:#9CA3AF">Pendiente</span>');
       // Toggle
       var toggleBg = done ? '#22C55E' : '#D1D5DB';
       var thumbLeft = done ? '19px' : '3px';
-      html.push('<div onclick="toggleGestion(\''+sinId+'\',\''+g.key+'\')" style="width:38px;height:22px;border-radius:11px;background:'+toggleBg+';position:relative;cursor:pointer;flex-shrink:0;transition:background .2s">');
+      html.push('<div data-toggle-sin="'+sinId+'-'+g.key+'" onclick="toggleGestion(\''+sinId+'\',\''+g.key+'\')" style="width:38px;height:22px;border-radius:11px;background:'+toggleBg+';position:relative;cursor:pointer;flex-shrink:0;transition:background .2s">');
       html.push('<div style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:'+thumbLeft+';transition:left .2s"></div>');
       html.push('</div>');
       html.push('</div></div>');
@@ -2073,8 +2073,8 @@ async function fichaSiniestros(c) {
     html.push('<div style="display:flex;gap:6px;flex-wrap:wrap">');
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
     if (!isCerrado) {
-      html.push('<button type="button" class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
-      html.push('<button type="button" class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
+      html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
+      html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
     }
     html.push('</div>');
 
@@ -2170,14 +2170,14 @@ function renderSinEtapaPanel(s, etapa) {
   if (p.fileLabel) {
     html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.fileLabel+'</div>');
     if (p.fileUrl) {
-      html.push('<div style="border:1px solid #C0DD97;border-radius:6px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;background:#F0FDF4">');
+      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" style="border:1px solid #C0DD97;border-radius:6px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;background:#F0FDF4">');
       html.push('<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 Documento adjunto</span>');
       html.push('<div style="display:flex;gap:5px">');
       html.push('<button type="button" class="btn btn-sm" onclick="window.open(\''+p.fileUrl+'\',\'_blank\')">Ver ↗</button>');
       html.push('<button type="button" class="btn btn-sm" onclick="sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')">Reemplazar</button>');
       html.push('</div></div>');
     } else {
-      html.push('<div onclick="sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">');
+      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" onclick="sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">');
       html.push('<span style="font-size:12px;color:#9CA3AF">📎 Subir '+p.fileLabel.toLowerCase()+'</span>');
       html.push('<button type="button" class="btn btn-sm btn-p" style="pointer-events:none">Subir archivo</button>');
       html.push('</div>');
@@ -2221,15 +2221,34 @@ function sinSubirArchivo(sinId, campo) {
   input.onchange = async function() {
     var file = input.files[0];
     if (!file) return;
+    // Show uploading state
+    var zoneEl = document.getElementById('sin-file-'+sinId+'-'+campo);
+    if (zoneEl) {
+      zoneEl.innerHTML = '<span style="font-size:12px;color:#9CA3AF;display:flex;align-items:center;gap:7px"><span class="spin"></span>Subiendo '+file.name+'...</span>';
+      zoneEl.style.cursor = 'default';
+      zoneEl.onclick = null;
+    }
     var path = 'siniestros/'+sinId+'/'+Date.now()+'_'+campo+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     var up = await sb.storage.from('archivos').upload(path, file);
-    if (up.error) { mostrarAlerta('Error subiendo archivo'); return; }
+    if (up.error) { mostrarAlerta('Error subiendo archivo: '+up.error.message); if (fichaId) renderFicha(); return; }
     var urlData = sb.storage.from('archivos').getPublicUrl(path);
-    var update = {};
-    update[campo] = urlData.data.publicUrl;
+    var publicUrl = urlData.data.publicUrl;
+    var update = {}; update[campo] = publicUrl;
     await sb.from('siniestros').update(update).eq('id', sinId);
-    mostrarAlerta('✅ Archivo subido correctamente');
-    if (fichaId) renderFicha();
+    // Update zone in place
+    if (zoneEl) {
+      zoneEl.style.cssText = 'border:1px solid #C0DD97;border-radius:6px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;background:#F0FDF4;cursor:default';
+      zoneEl.onclick = null;
+      zoneEl.onmouseover = null;
+      zoneEl.onmouseout = null;
+      zoneEl.innerHTML =
+        '<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 '+file.name+'</span>'+
+        '<div style="display:flex;gap:5px">'+
+          '<button type="button" class="btn btn-sm" onclick="window.open(\''+publicUrl+'\',\'_blank\')">Ver ↗</button>'+
+          '<button type="button" class="btn btn-sm" onclick="sinSubirArchivo(\''+sinId+'\',\''+campo+'\')">Reemplazar</button>'+
+        '</div>';
+    }
+    mostrarAlerta('✅ Archivo subido: '+file.name);
   };
   input.click();
 }
@@ -2241,18 +2260,115 @@ async function toggleGestion(sinId, gestionKey) {
   gestiones[gestionKey] = !isOn;
   gestiones[gestionKey+'_fecha'] = !isOn ? new Date().toISOString() : null;
   await sb.from('siniestros').update({ gestiones_enviadas: gestiones }).eq('id',sinId);
+  // Actualizar DOM en lugar de re-renderizar todo
+  var toggleEl = document.querySelector('[data-toggle-sin="'+sinId+'-'+gestionKey+'"]');
+  var labelEl = document.querySelector('[data-toggle-label="'+sinId+'-'+gestionKey+'"]');
+  if (toggleEl) {
+    toggleEl.style.background = !isOn ? '#22C55E' : '#D1D5DB';
+    var thumb = toggleEl.querySelector('div');
+    if (thumb) thumb.style.left = !isOn ? '19px' : '3px';
+  }
+  if (labelEl) {
+    if (!isOn) {
+      var fecha = new Date().toLocaleDateString('es-AR');
+      labelEl.textContent = '✓ ' + fecha;
+      labelEl.style.color = '#22C55E';
+    } else {
+      labelEl.textContent = 'Pendiente';
+      labelEl.style.color = '#9CA3AF';
+    }
+  }
   mostrarAlerta((!isOn ? '✅ ' : '↩ ') + (gestionKey==='constancia_cobertura'?'Constancia de cobertura':'Carta de franquicia') + (!isOn?' marcada como enviada':' desmarcada'));
-  if (fichaId) renderFicha();
 }
 
+var SIN_ETAPAS = ['denuncia','inspeccion','taller','liquidacion','cierre'];
+var SIN_ETAPA_LABELS = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre'};
+var SIN_ETAPA_COLORES = {
+  done: {bg:'#EAF3DE', color:'#27500A'},
+  current: {bg:'#4A90D9', color:'#fff'},
+  pending: {bg:'#F9FAFB', color:'#9CA3AF'}
+};
+
+// Campos requeridos por etapa para poder avanzar
+var SIN_REQUISITOS = {
+  denuncia:    { criticos: ['numero_expediente','fecha_denuncia'], importantes: ['descripcion','denuncia_url'] },
+  inspeccion:  { criticos: ['fecha_inspeccion'], importantes: ['resultado_inspeccion','inspeccion_url'] },
+  taller:      { criticos: ['taller'], importantes: ['presupuesto_taller','presupuesto_url'] },
+  liquidacion: { criticos: ['monto_liquidado','fecha_liquidacion'], importantes: ['numero_liquidacion','liquidacion_url'] },
+  cierre:      { criticos: [], importantes: [] },
+};
+var SIN_FIELD_LABELS = {
+  numero_expediente:'N° de expediente', fecha_denuncia:'Fecha de denuncia', descripcion:'Descripción del hecho',
+  denuncia_url:'Denuncia administrativa (PDF)', fecha_inspeccion:'Fecha de inspección',
+  resultado_inspeccion:'Resultado de inspección', inspeccion_url:'Informe de inspección (PDF)',
+  taller:'Taller asignado', presupuesto_taller:'Presupuesto aprobado', presupuesto_url:'Presupuesto (PDF)',
+  monto_liquidado:'Monto liquidado', fecha_liquidacion:'Fecha de liquidación',
+  numero_liquidacion:'N° de liquidación', liquidacion_url:'Documento de liquidación (PDF)',
+};
+
 async function avanzarEtapaSin(sinId, etapaActual) {
-  var pasos = ['denuncia','inspeccion','taller','liquidacion','cierre'];
-  var idx = pasos.indexOf(etapaActual);
-  if (idx >= pasos.length-1) return;
-  var nuevaEtapa = pasos[idx+1];
-  await sb.from('siniestros').update({ etapa_actual: nuevaEtapa }).eq('id',sinId);
-  mostrarAlerta('Estado avanzado a: '+ nuevaEtapa.charAt(0).toUpperCase()+nuevaEtapa.slice(1));
-  if (fichaId) renderFicha();
+  var idx = SIN_ETAPAS.indexOf(etapaActual);
+  if (idx >= SIN_ETAPAS.length - 1) return;
+  var nuevaEtapa = SIN_ETAPAS[idx + 1];
+
+  // Traer datos actuales para validar
+  var { data: s } = await sb.from('siniestros').select('*').eq('id', sinId).single();
+  if (!s) return;
+
+  var req = SIN_REQUISITOS[etapaActual] || { criticos: [], importantes: [] };
+  var faltanCriticos = req.criticos.filter(function(f){ return !s[f]; });
+  var faltanImportantes = req.importantes.filter(function(f){ return !s[f]; });
+
+  var doAvanzar = async function() {
+    await sb.from('siniestros').update({ etapa_actual: nuevaEtapa }).eq('id', sinId);
+    // Actualizar timeline en lugar
+    SIN_ETAPAS.forEach(function(p, i) {
+      var el = document.getElementById('sin-step-'+sinId+'-'+p);
+      if (!el) return;
+      var isDone = i < idx + 1;
+      var isCur = i === idx + 1;
+      el.style.background = isDone ? SIN_ETAPA_COLORES.done.bg : isCur ? SIN_ETAPA_COLORES.current.bg : SIN_ETAPA_COLORES.pending.bg;
+      el.style.color = isDone ? SIN_ETAPA_COLORES.done.color : isCur ? SIN_ETAPA_COLORES.current.color : SIN_ETAPA_COLORES.pending.color;
+    });
+    // Actualizar panel
+    var panelEl = document.getElementById('sin-etapa-panel-'+sinId);
+    if (panelEl) panelEl.innerHTML = renderSinEtapaPanel(Object.assign({}, s, {etapa_actual: nuevaEtapa}), nuevaEtapa);
+    // Actualizar botón avanzar
+    var bodyEl = document.getElementById('sin-body-'+sinId);
+    if (bodyEl) {
+      var btnAvanzar = bodyEl.querySelector('[data-btn-avanzar]');
+      if (btnAvanzar) {
+        if (idx + 1 >= SIN_ETAPAS.length - 1) btnAvanzar.style.display = 'none';
+        else btnAvanzar.setAttribute('onclick', 'avanzarEtapaSin(\''+sinId+'\',\''+nuevaEtapa+'\')');
+      }
+    }
+    mostrarAlerta('✅ Estado avanzado a: '+SIN_ETAPA_LABELS[nuevaEtapa]);
+  };
+
+  if (faltanCriticos.length) {
+    // Rojo — faltan campos críticos
+    var listaCrit = faltanCriticos.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
+    var listaImp = faltanImportantes.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
+    confirmarAccion({
+      icon: '🔴',
+      titulo: 'Faltan datos importantes',
+      msg: 'Para avanzar a "'+SIN_ETAPA_LABELS[nuevaEtapa]+'" faltan campos críticos:\n'+listaCrit+(listaImp?'\n\nTambién falta (no crítico):\n'+listaImp:''),
+      btnOk: 'Avanzar igual',
+      btnOkStyle: 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+    }, doAvanzar);
+  } else if (faltanImportantes.length) {
+    // Amarillo — faltan campos no críticos
+    var listaImp2 = faltanImportantes.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
+    confirmarAccion({
+      icon: '🟡',
+      titulo: 'Algunos datos están incompletos',
+      msg: 'Podés avanzar, pero te falta completar:\n'+listaImp2,
+      btnOk: 'Avanzar igual',
+      btnOkStyle: 'background:#F59E0B;color:#fff;border-color:#F59E0B;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+    }, doAvanzar);
+  } else {
+    doAvanzar();
+  }
 }
 
 async function cerrarSiniestro(sinId) {
@@ -2265,8 +2381,27 @@ async function cerrarSiniestro(sinId) {
   }, async function() {
     await sb.from('siniestros').update({ estado:'cerrado', etapa_actual:'cierre', fecha_cierre: new Date().toISOString().split('T')[0] }).eq('id',sinId);
     await registrarHistorial({ cliente_id: fichaId, categoria:'siniestro', tipo:'sistema', resumen:'Siniestro cerrado.', es_automatico:false });
+    // Actualizar header badge en lugar
+    var headerEl = document.getElementById('sin-header-'+sinId);
+    if (headerEl) {
+      headerEl.innerHTML =
+        '<span style="font-size:13px;font-weight:600;color:#111827">' + (headerEl.querySelector('span') ? headerEl.querySelector('span').textContent : 'Siniestro') + '</span>'+
+        '<span style="font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;background:#EAF3DE;color:#166534">✓ Cerrado</span>';
+    }
+    // Actualizar timeline - todos done
+    SIN_ETAPAS.forEach(function(p) {
+      var el = document.getElementById('sin-step-'+sinId+'-'+p);
+      if (el) { el.style.background = '#EAF3DE'; el.style.color = '#27500A'; }
+    });
+    // Ocultar botones de acción
+    var bodyEl = document.getElementById('sin-body-'+sinId);
+    if (bodyEl) {
+      var btnAvanzar = bodyEl.querySelector('[data-btn-avanzar]');
+      var btnCerrar = bodyEl.querySelector('[data-btn-cerrar]');
+      if (btnAvanzar) btnAvanzar.style.display = 'none';
+      if (btnCerrar) btnCerrar.style.display = 'none';
+    }
     mostrarAlerta('✅ Siniestro cerrado correctamente');
-    if (fichaId) renderFicha();
   });
 }
 
