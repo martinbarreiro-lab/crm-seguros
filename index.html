@@ -4500,8 +4500,7 @@ function toggleBajaOtro() {
 }
 
 
-var btnBaja = document.getElementById('btn-confirmar-baja');
-if (btnBaja) btnBaja.onclick = async function() {
+async function confirmarBaja() {
   var motivo = document.getElementById('baja-motivo').value;
   if (!motivo) { alert('Seleccioná un motivo de baja'); return; }
   var esOtro = motivo === 'Otro';
@@ -4544,7 +4543,7 @@ if (btnBaja) btnBaja.onclick = async function() {
   cerrarModal('modal-baja');
   mostrarAlerta('Baja registrada correctamente');
   if (fichaId) renderFicha();
-};
+}
 
 
 init();
@@ -4583,7 +4582,7 @@ init();
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
       <button type="button" class="btn" onclick="cerrarModal('modal-baja')">Cancelar</button>
-      <button type="button" class="btn" id="btn-confirmar-baja" style="background:#DC2626;color:#fff;border-color:#DC2626">Confirmar anulación</button>
+      <button type="button" class="btn" id="btn-confirmar-baja" onclick="confirmarBaja()" style="background:#DC2626;color:#fff;border-color:#DC2626">Confirmar anulación</button>
     </div>
   </div>
 </div>
