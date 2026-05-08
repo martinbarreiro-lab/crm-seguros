@@ -1881,7 +1881,6 @@ async function fichaPolizas(c) {
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
-           +      (info || p.fecha_vencimiento ? '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">' + (info ? info + ' · ' : '') + (p.fecha_vencimiento ? 'Vto. ' + p.fecha_vencimiento : '') + '</div>' : '')
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
            +      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Detalle de cobertura</div>'
@@ -1890,7 +1889,7 @@ async function fichaPolizas(c) {
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Premio anual</div>'
-           +      buildPolizaMenu(p.id)
+           +    buildPolizaMenu(p.id)
            +    '</div>'
            +  '</div>');
     });
