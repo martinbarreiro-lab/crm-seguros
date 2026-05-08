@@ -4626,14 +4626,34 @@ function eliminarPoliza(polId) {
 
 // anularPoliza — ver función global más arriba
 
+// ===== CONFIRM MODAL CUSTOM =====
+function confirmarAccion(opts, callback) {
+  // opts: { titulo, msg, icon, btnOk, btnOkStyle }
+  document.getElementById('confirm-icon').textContent = opts.icon || '⚠️';
+  document.getElementById('confirm-titulo').textContent = opts.titulo || '¿Confirmar acción?';
+  document.getElementById('confirm-msg').textContent = opts.msg || '';
+  var btnOk = document.getElementById('confirm-btn-ok');
+  btnOk.textContent = opts.btnOk || 'Confirmar';
+  btnOk.style.cssText = opts.btnOkStyle || 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px';
+  btnOk.onclick = function() { cerrarModal('modal-confirm'); callback(); };
+  document.getElementById('modal-confirm').classList.add('open');
+}
+
 async function eliminarPolizaFicha(polId) {
-  if (!confirm("¿Eliminar esta póliza del sistema?\n\nEsta acción no se puede deshacer y no quedará registro en el historial.")) return;
-  var { error } = await sb.from("polizas").delete().eq("id", polId);
-  if (error) { alert("Error al eliminar: " + error.message); return; }
-  cerrarModal("modal-pol-det");
-  mostrarAlerta("🗑 Póliza eliminada del sistema");
-  if (typeof cargarPolizas === "function") cargarPolizas();
-  if (fichaId && typeof renderFicha === "function") renderFicha();
+  confirmarAccion({
+    icon: '🗑',
+    titulo: 'Eliminar póliza del sistema',
+    msg: 'Esta acción no se puede deshacer y no quedará registro en el historial. Usá esta opción solo para eliminar duplicados o cargas erróneas.',
+    btnOk: 'Sí, eliminar',
+    btnOkStyle: 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+  }, async function() {
+    var { error } = await sb.from('polizas').delete().eq('id', polId);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    cerrarModal('modal-pol-det');
+    mostrarAlerta('🗑 Póliza eliminada del sistema');
+    if (typeof cargarPolizas === 'function') cargarPolizas();
+    if (fichaId && typeof renderFicha === 'function') renderFicha();
+  });
 }
 
 function abrirBajaPoliza(polId, numero, ramo, aseguradora, clienteId) {
@@ -5020,6 +5040,19 @@ init();
   </div>
 </div>
 
+
+<!-- MODAL CONFIRMACIÓN CUSTOM -->
+<div class="modal-ov" id="modal-confirm">
+  <div class="modal-box" style="max-width:380px;text-align:center">
+    <div id="confirm-icon" style="font-size:32px;margin-bottom:12px"></div>
+    <div id="confirm-titulo" style="font-size:15px;font-weight:600;color:#111827;margin-bottom:8px"></div>
+    <div id="confirm-msg" style="font-size:13px;color:#6B7280;line-height:1.6;margin-bottom:20px"></div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button type="button" class="btn" onclick="cerrarModal('modal-confirm')" id="confirm-btn-cancel">Cancelar</button>
+      <button type="button" class="btn" id="confirm-btn-ok" style="min-width:120px">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL REFACTURAR PÓLIZA -->
 <div class="modal-ov" id="modal-refact">
