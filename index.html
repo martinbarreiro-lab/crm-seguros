@@ -2093,7 +2093,7 @@ async function fichaSiniestros(c) {
       var bg = isDone?'#EAF3DE':isCur?'#4A90D9':'#F9FAFB';
       var color = isDone?'#27500A':isCur?'#fff':'#9CA3AF';
       var border = i < pasos.length-1 ? 'border-right:0.5px solid rgba(0,0,0,.07);' : '';
-      html.push('<div id="sin-step-'+sinId+'-'+p+'" onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+labels[p]+'</div>');
+      html.push('<div id="sin-step-'+sinId+'-'+p+'" onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+(labels[p]||p.charAt(0).toUpperCase()+p.slice(1))+'</div>');
     });
     html.push('</div>');
     html.push('</div>');
@@ -2141,6 +2141,7 @@ async function fichaSiniestros(c) {
     if (!isCerrado) {
       html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
       if (etapa === 'cierre') html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
+      html.push('<button type="button" title="Eliminar siniestro sin dejar registro" onclick="eliminarSiniestro(\''+sinId+'\')" style="'+(etapa!=='cierre'?'margin-left:auto;':'')+'padding:5px 8px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--lt)" >🗑</button>');
     }
     html.push('</div>');
 
@@ -2599,9 +2600,9 @@ function getSinRamoGroup(s) {
   if (['Vida Individual','Vida Colectiva','Accidentes Personales'].indexOf(ramo) > -1) return 'vida';
   return 'general';
 }
-function getSinEtapas(s) { return SIN_CONFIG[getSinRamoGroup(s)].etapas; }
-function getSinLabels(s) { return SIN_CONFIG[getSinRamoGroup(s)].labels; }
-function getSinReq(s, etapa) { return SIN_CONFIG[getSinRamoGroup(s)].req[etapa] || {c:[],i:[]}; }
+function getSinEtapas(s) { var cfg = SIN_CONFIG[getSinRamoGroup(s)]; return cfg ? cfg.etapas : SIN_CONFIG.general.etapas; }
+function getSinLabels(s) { var cfg = SIN_CONFIG[getSinRamoGroup(s)]; return cfg ? cfg.labels : SIN_CONFIG.general.labels; }
+function getSinReq(s, etapa) { var cfg = SIN_CONFIG[getSinRamoGroup(s)]; return (cfg && cfg.req[etapa]) ? cfg.req[etapa] : {c:[],i:[]}; }
 // ===== FIN CONFIG SINIESTROS =====
 
 async function avanzarEtapaSin(sinId, etapaActual) {
@@ -2654,6 +2655,22 @@ async function avanzarEtapaSin(sinId, etapaActual) {
       btnOk:'Avanzar igual',btnOkStyle:'background:#F59E0B;color:#fff;border-color:#F59E0B;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
     }, doAvanzar);
   } else { doAvanzar(); }
+}
+
+async function eliminarSiniestro(sinId) {
+  confirmarAccion({
+    icon: '🗑',
+    titulo: 'Eliminar siniestro del sistema',
+    msg: 'Esta acción no se puede deshacer y no quedará registro en el historial. Usá esta opción solo para eliminar duplicados o cargas erróneas.',
+    btnOk: 'Sí, eliminar',
+    btnOkStyle: 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+  }, async function() {
+    var { error } = await sb.from('siniestros').delete().eq('id', sinId);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    mostrarAlerta('🗑 Siniestro eliminado del sistema');
+    if (fichaId && typeof renderFicha === 'function') renderFicha();
+    cargarDashboard();
+  });
 }
 
 async function cerrarSiniestro(sinId) {
