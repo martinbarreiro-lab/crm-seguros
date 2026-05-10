@@ -2086,7 +2086,12 @@ async function fichaSiniestros(c) {
     html.push('<div>');
     html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Estado del trámite</div>');
     html.push('<div style="display:flex;border-radius:8px;overflow:hidden;border:0.5px solid #E5E7EB">');
-    var labels = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre'};
+    var labels = Object.assign(
+      {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',
+       peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',
+       resolucion:'Resolución',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación'},
+      getSinLabels(s) || {}
+    );
     pasos.forEach(function(p, i) {
       var isDone = i < etapaIdx;
       var isCur = i === etapaIdx;
@@ -2136,13 +2141,13 @@ async function fichaSiniestros(c) {
     }
 
     // Acciones
-    html.push('<div style="display:flex;gap:6px;flex-wrap:wrap">');
+    html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">');
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
     if (!isCerrado) {
       html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
       if (etapa === 'cierre') html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
-      html.push('<button type="button" title="Eliminar siniestro sin dejar registro" onclick="eliminarSiniestro(\''+sinId+'\')" style="'+(etapa!=='cierre'?'margin-left:auto;':'')+'padding:5px 8px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--lt)" >🗑</button>');
     }
+    html.push('<button type="button" title="Eliminar siniestro sin dejar registro" onclick="eliminarSiniestro(\''+sinId+'\')" style="margin-left:auto;padding:5px 9px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--lt)">🗑</button>');
     html.push('</div>');
 
     html.push('</div></div>'); // fin body
