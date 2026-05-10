@@ -2017,7 +2017,7 @@ async function fichaSiniestros(c) {
     html.push('<div style="padding:14px;display:flex;flex-direction:column;gap:14px">');
 
     // Timeline clickeable
-    var pasos = ['denuncia','inspeccion','taller','liquidacion','cierre'];
+    var pasos = getSinEtapas(s);
     var etapaIdx = pasos.indexOf(etapa);
     html.push('<div>');
     html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Estado del trámite</div>');
@@ -2095,99 +2095,236 @@ function sinMetric(label, val, color) {
 }
 
 function renderSinEtapaPanel(s, etapa) {
-  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'—'; };
-  var panelData = {
-    denuncia: {
-      icon:'📋', label:'Denuncia',
-      fields:[
-        {l:'Fecha de denuncia', v: s.fecha_denuncia||s.fecha_hecho||''},
-        {l:'N° de expediente', v: s.numero_expediente||''},
-        {l:'Tipo de siniestro', v: s.tipo_siniestro||''},
-        {l:'Aseguradora', v: s.aseguradora||''},
-        {l:'Descripción del hecho', v: s.descripcion||'', full:true},
-      ],
-      fileUrl: s.denuncia_url, fileLabel:'Denuncia administrativa', fileKey:'denuncia_url'
-    },
-    inspeccion: {
-      icon:'🔍', label:'Inspección',
-      fields:[
-        {l:'Fecha de inspección', v: s.fecha_inspeccion||''},
-        {l:'Inspector asignado', v: s.inspector||''},
-        {l:'Resultado', v: s.resultado_inspeccion||''},
-        {l:'Observaciones', v: s.obs_inspeccion||''},
-      ],
-      fileUrl: s.inspeccion_url, fileLabel:'Informe de inspección', fileKey:'inspeccion_url'
-    },
-    taller: {
-      icon:'🔧', label:'Taller',
-      fields:[
-        {l:'Taller asignado', v: s.taller||''},
-        {l:'Fecha de ingreso', v: s.fecha_ingreso_taller||''},
-        {l:'Fecha estimada entrega', v: s.fecha_entrega_taller||''},
-        {l:'Presupuesto aprobado', v: s.presupuesto_taller ? fmtM(s.presupuesto_taller) : ''},
-      ],
-      fileUrl: s.presupuesto_url, fileLabel:'Presupuesto del taller', fileKey:'presupuesto_url'
-    },
-    liquidacion: {
-      icon:'💰', label:'Liquidación',
-      fields:[
-        {l:'Monto liquidado', v: s.monto_liquidado ? fmtM(s.monto_liquidado) : ''},
-        {l:'Fecha de liquidación', v: s.fecha_liquidacion||''},
-        {l:'Forma de pago', v: s.forma_pago_liquidacion||''},
-        {l:'N° de liquidación', v: s.numero_liquidacion||''},
-      ],
-      fileUrl: s.liquidacion_url, fileLabel:'Documento de liquidación', fileKey:'liquidacion_url'
-    },
-    cierre: {
-      icon:'✅', label:'Cierre',
-      fields:[
-        {l:'Fecha de cierre', v: s.fecha_cierre||''},
-        {l:'Resultado', v: s.resultado_cierre||''},
-        {l:'Notas de cierre', v: s.notas_cierre||'', full:true},
-        {l:'', v:''},
-      ],
-      fileUrl: null, fileLabel:null, fileKey:null
-    },
-  };
-  var p = panelData[etapa] || panelData.denuncia;
+  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
+  var group = getSinRamoGroup(s);
+  var isAuto = group === 'auto';
+  var isArt = group === 'art';
+  var isHogar = group === 'hogar';
+  var isComercio = group === 'comercio';
+  var isVida = group === 'vida';
+  var notas = (s.notas_etapa && s.notas_etapa[etapa]) || '';
+  var tercero = s.tercero_datos || {};
   var html = [];
-  html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-radius:8px;padding:14px">');
-  html.push('<div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:6px">'+p.icon+' '+p.label+'</div>');
-  // Fields
-  var fullFields = p.fields.filter(function(f){ return f.full; });
-  var halfFields = p.fields.filter(function(f){ return !f.full && f.l; });
-  if (halfFields.length) {
-    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">');
-    halfFields.forEach(function(f){
-      html.push('<div><div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+f.l+'</div>'+
-        '<div style="font-size:12px;font-weight:500;color:'+(f.v?'#111827':'#D1D5DB')+';font-style:'+(f.v?'normal':'italic')+'">'+( f.v||'Sin datos')+'</div></div>');
-    });
+  html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:14px">');
+
+  // ── DENUNCIA ─────────────────────────────────────────
+  if (etapa === 'denuncia') {
+    html.push(sinSeccion('Datos del siniestro'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Fecha de denuncia', s.fecha_denuncia||s.fecha_hecho||''));
+    html.push(sinField('N° de expediente', s.numero_expediente||''));
+    html.push(sinField('Tipo de siniestro', s.tipo_siniestro||''));
+    html.push(sinField('Aseguradora', s.aseguradora||''));
+    if (!isArt && !isVida) html.push(sinField('Lugar del hecho', s.lugar_hecho||''));
+    if (isAuto) {
+      html.push(sinField('¿Hubo lesionados?', s.hay_lesionados?'Sí':'No'));
+      html.push(sinField('¿Intervino la policía?', s.interv_policia?'Sí · N° '+( s.n_actuacion||'—'):'No'));
+    }
+    if (isArt) {
+      html.push(sinField('Empleado afectado', s.empleado_nombre||''));
+      html.push(sinField('DNI empleado', s.empleado_dni||''));
+      html.push(sinField('Tipo de lesión', s.tipo_lesion||''));
+    }
+    if (isHogar||isComercio) {
+      html.push(sinField('Tipo de daño', s.tipo_dano||''));
+      html.push(sinField('Área/sector afectado', s.area_afectada||''));
+    }
     html.push('</div>');
-  }
-  fullFields.forEach(function(f){
-    html.push('<div style="margin-bottom:10px"><div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+f.l+'</div>'+
-      '<div style="font-size:12px;color:'+(f.v?'#374151':'#D1D5DB')+';line-height:1.5;font-style:'+(f.v?'normal':'italic')+'">'+( f.v||'Sin datos')+'</div></div>');
-  });
-  // Archivo adjunto
-  if (p.fileLabel) {
-    html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+p.fileLabel+'</div>');
-    if (p.fileUrl) {
-      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" style="border:1px solid #C0DD97;border-radius:6px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;background:#F0FDF4">');
-      html.push('<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 Documento adjunto</span>');
-      html.push('<div style="display:flex;gap:5px">');
-      html.push('<button type="button" class="btn btn-sm" onclick="window.open(\''+p.fileUrl+'\',\'_blank\')">Ver ↗</button>');
-      html.push('<button type="button" class="btn btn-sm" onclick="event.stopPropagation();sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')">Reemplazar</button>');
-      html.push('</div></div>');
-    } else {
-      html.push('<div id="sin-file-'+s.id+'-'+p.fileKey+'" onclick="event.stopPropagation();sinSubirArchivo(\''+s.id+'\',\''+p.fileKey+'\')" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">');
-      html.push('<span style="font-size:12px;color:#9CA3AF">📎 Subir '+p.fileLabel.toLowerCase()+'</span>');
-      html.push('<button type="button" class="btn btn-sm btn-p" style="pointer-events:none">Subir archivo</button>');
+    // Descripción
+    html.push(sinSeccion('Descripción del siniestro'));
+    html.push('<div style="background:#F9FAFB;border:0.5px solid #E5E7EB;border-radius:6px;padding:10px 12px;font-size:12px;color:'+(s.descripcion?'#374151':'#D1D5DB')+';line-height:1.6;min-height:54px;font-style:'+(s.descripcion?'normal':'italic')+'">'+(s.descripcion||'Sin descripción cargada')+'</div>');
+    // PDF Denuncia
+    html.push(sinSeccion('Denuncia administrativa'));
+    html.push(sinFileZone(s, 'denuncia_url', 'Denuncia administrativa'));
+    // Tercero (solo automotor/RC)
+    if (isAuto) {
+      html.push('<div style="height:0.5px;background:#F3F4F6"></div>');
+      html.push('<div style="display:flex;align-items:center;justify-content:space-between">');
+      html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em">Tercero involucrado</div>');
+      var hasTercero = s.hay_tercero;
+      var tBg = hasTercero?'#22C55E':'#D1D5DB';
+      var tLeft = hasTercero?'19px':'3px';
+      html.push('<div data-toggle-sin="'+s.id+'-hay_tercero" onclick="toggleGestion(\''+s.id+'\',\'hay_tercero\')" style="width:38px;height:22px;border-radius:11px;background:'+tBg+';position:relative;cursor:pointer;flex-shrink:0;transition:background .2s"><div style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:'+tLeft+';transition:left .2s"></div></div>');
       html.push('</div>');
+      if (hasTercero) {
+        html.push('<div style="background:#F0F9FF;border:0.5px solid #BAE0FD;border-radius:8px;padding:12px 14px">');
+        html.push('<div style="font-size:10px;font-weight:600;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datos personales del tercero</div>');
+        html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">');
+        html.push(sinField('Nombre / Razón social', tercero.nombre||''));
+        html.push(sinField('DNI / CUIT', tercero.dni||''));
+        html.push(sinField('Teléfono', tercero.telefono||''));
+        html.push(sinField('Email', tercero.email||''));
+        html.push('</div>');
+        html.push('<div style="height:0.5px;background:#BAE0FD;margin:6px 0 10px"></div>');
+        html.push('<div style="font-size:10px;font-weight:600;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Vehículo y seguro del tercero</div>');
+        html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+        html.push(sinField('Dominio (patente)', tercero.patente||'', true));
+        html.push(sinField('Vehículo', tercero.vehiculo||''));
+        html.push(sinField('Compañía de seguro', tercero.compania||''));
+        html.push(sinField('N° de póliza del tercero', tercero.poliza||''));
+        html.push('</div></div>');
+      }
     }
   }
+
+  // ── INSPECCIÓN / PERITAJE ──────────────────────────────
+  else if (etapa==='inspeccion'||etapa==='peritaje') {
+    var lbl = etapa==='peritaje'?'Peritaje':'Inspección';
+    html.push(sinSeccion('Datos de '+lbl.toLowerCase()));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Fecha de '+lbl.toLowerCase(), s.fecha_inspeccion||''));
+    html.push(sinField(etapa==='peritaje'?'Perito asignado':'Inspector asignado', s.inspector||''));
+    html.push(sinField('Resultado', s.resultado_inspeccion||''));
+    html.push(sinField('Observaciones', s.obs_inspeccion||''));
+    if (isHogar||isComercio) html.push(sinField('Monto estimado del daño', s.monto_estimado_dano?fmtM(s.monto_estimado_dano):''));
+    html.push('</div>');
+    html.push(sinSeccion('Informe de '+lbl.toLowerCase()));
+    html.push(sinFileZone(s, 'inspeccion_url', 'Informe de '+lbl.toLowerCase()));
+  }
+
+  // ── TALLER / PRESUPUESTO ───────────────────────────────
+  else if (etapa==='taller'||etapa==='presupuesto') {
+    var lbl2 = isHogar||isComercio ? 'empresa de reparación' : 'taller';
+    html.push(sinSeccion('Datos del taller / empresa'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Taller / Empresa', (isHogar||isComercio)?s.empresa_reparacion||'':s.taller||''));
+    html.push(sinField('Fecha de ingreso', s.fecha_ingreso_taller||''));
+    html.push(sinField('Fecha estimada entrega', s.fecha_entrega_taller||''));
+    html.push(sinField('Fecha real de entrega', s.fecha_entrega_real||''));
+    html.push(sinField('N° orden de reparación', s.orden_reparacion||''));
+    html.push(sinField('Presupuesto aprobado', s.presupuesto_taller?fmtM(s.presupuesto_taller):''));
+    html.push('</div>');
+    html.push(sinSeccion('Presupuesto'));
+    html.push(sinFileZone(s, 'presupuesto_url', 'Presupuesto del taller'));
+  }
+
+  // ── ATENCIÓN MÉDICA (ART) ─────────────────────────────
+  else if (etapa==='atencion') {
+    html.push(sinSeccion('Atención médica'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Médico tratante', s.medico_tratante||''));
+    html.push(sinField('Diagnóstico', s.diagnostico||''));
+    html.push(sinField('ILT estimada (días)', s.ilt_dias||''));
+    html.push(sinField('ART interviniente', s.art_nombre||''));
+    html.push('</div>');
+    html.push(sinSeccion('Parte médico'));
+    html.push(sinFileZone(s, 'inspeccion_url', 'Parte médico'));
+  }
+
+  // ── TRÁMITE SRT (ART) ─────────────────────────────────
+  else if (etapa==='tramite') {
+    html.push(sinSeccion('Trámite SRT'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('N° expediente SRT', s.srt_expediente||''));
+    html.push(sinField('Estado SRT', s.srt_estado||''));
+    html.push(sinField('Alta médica estimada', s.alta_medica_fecha||''));
+    html.push(sinField('% incapacidad estimada', s.porcentaje_incapacidad||''));
+    html.push('</div>');
+    html.push(sinSeccion('Documentación SRT'));
+    html.push(sinFileZone(s, 'inspeccion_url', 'Documentación SRT'));
+  }
+
+  // ── DOCUMENTACIÓN (VIDA) ──────────────────────────────
+  else if (etapa==='documentacion') {
+    html.push(sinSeccion('Documentación requerida'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Beneficiario', s.beneficiario_nombre||''));
+    html.push(sinField('Causa del siniestro', s.causa_siniestro||''));
+    html.push('</div>');
+    html.push(sinSeccion('Documentos'));
+    html.push(sinFileZone(s, 'denuncia_url', 'Documentos del siniestro'));
+  }
+
+  // ── EVALUACIÓN (VIDA) ─────────────────────────────────
+  else if (etapa==='evaluacion') {
+    html.push(sinSeccion('Evaluación'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Resultado evaluación', s.resultado_evaluacion||''));
+    html.push(sinField('Observaciones', s.obs_evaluacion||''));
+    html.push('</div>');
+  }
+
+  // ── GESTIÓN (GENERAL) ─────────────────────────────────
+  else if (etapa==='gestion') {
+    html.push(sinSeccion('Gestión'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Responsable asignado', s.responsable_gestion||''));
+    html.push(sinField('Fecha de gestión', s.fecha_gestion||''));
+    html.push('</div>');
+    html.push(sinSeccion('Documentación'));
+    html.push(sinFileZone(s, 'inspeccion_url', 'Documentación'));
+  }
+
+  // ── LIQUIDACIÓN / RESOLUCIÓN ──────────────────────────
+  else if (etapa==='liquidacion'||etapa==='resolucion') {
+    html.push(sinSeccion('Liquidación'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Monto liquidado', s.monto_liquidado?fmtM(s.monto_liquidado):'', false, s.monto_liquidado?'#166534':null));
+    html.push(sinField('Fecha de liquidación', s.fecha_liquidacion||''));
+    html.push(sinField('Forma de pago', s.forma_pago_liquidacion||''));
+    html.push(sinField('N° de liquidación', s.numero_liquidacion||''));
+    if (isArt) {
+      html.push(sinField('Tipo de resolución', s.tipo_resolucion||''));
+      html.push(sinField('% incapacidad', s.porcentaje_incapacidad||''));
+    }
+    if (!isVida && !isArt) html.push(sinField('¿Aplica deducible?', s.aplica_deducible?'Sí · '+fmtM(s.monto_deducible):'No'));
+    html.push('</div>');
+    html.push(sinSeccion('Documento de liquidación'));
+    html.push(sinFileZone(s, 'liquidacion_url', 'Documento de liquidación'));
+  }
+
+  // ── CIERRE ────────────────────────────────────────────
+  else if (etapa==='cierre') {
+    html.push(sinSeccion('Datos de cierre'));
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push(sinField('Fecha de cierre', s.fecha_cierre||''));
+    html.push(sinField('Resultado', s.resultado_cierre||''));
+    html.push('</div>');
+    if (s.notas_cierre) {
+      html.push(sinSeccion('Notas de cierre'));
+      html.push('<div style="background:#F9FAFB;border-radius:6px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.5">'+s.notas_cierre+'</div>');
+    }
+  }
+
+  // ── NOTAS DE ETAPA (todas) ────────────────────────────
+  html.push('<div>');
+  html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Notas de esta etapa</div>');
+  html.push('<div style="background:#F9FAFB;border:0.5px solid #E5E7EB;border-radius:6px;padding:10px 12px;font-size:12px;color:'+(notas?'#374151':'#D1D5DB')+';line-height:1.5;font-style:'+(notas?'normal':'italic')+'">'+(notas||'Sin notas para esta etapa')+'</div>');
+  html.push('</div>');
+
   html.push('</div>');
   return html.join('');
 }
+
+function sinSeccion(label) {
+  return '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;border-bottom:0.5px solid #F3F4F6">'+label+'</div>';
+}
+function sinField(label, val, pill, color) {
+  if (!label) return '';
+  var displayVal = val || 'Sin datos';
+  var textColor = val ? (color||'#111827') : '#D1D5DB';
+  var style = val && pill ? 'background:#E6F1FB;color:#0C447C;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;letter-spacing:.06em' : 'font-size:12px;font-weight:500';
+  return '<div><div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+label+'</div>'+(val&&pill?'<span style="'+style+'">'+displayVal+'</span>':'<div style="'+style+';color:'+textColor+';font-style:'+(val?'normal':'italic')+'">'+displayVal+'</div>')+'</div>';
+}
+function sinFileZone(s, campo, label) {
+  var url = s[campo];
+  var sid = s.id;
+  if (url) {
+    return '<div id="sin-file-'+sid+'-'+campo+'" style="border:1px solid #C0DD97;border-radius:6px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;background:#F0FDF4">'
+      +'<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 '+label+' cargado</span>'
+      +'<div style="display:flex;gap:5px">'
+      +'<button type="button" class="btn btn-sm" data-fileurl="'+url+'" onclick="window.open(this.dataset.fileurl,\'_blank\')">Ver ↗</button>'
+      +'<button type="button" class="btn btn-sm" data-sid="'+sid+'" data-campo="'+campo+'" onclick="event.stopPropagation();sinSubirArchivo(this.dataset.sid,this.dataset.campo)">Reemplazar</button>'
+      +'</div></div>';
+  } else {
+    return '<div id="sin-file-'+sid+'-'+campo+'" data-sid="'+sid+'" data-campo="'+campo+'" onclick="event.stopPropagation();sinSubirArchivo(this.dataset.sid,this.dataset.campo)" style="border:1.5px dashed #D1D5DB;border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#fff" onmouseover="this.style.borderColor=\'#4A90D9\';this.style.background=\'#F0F9FF\'" onmouseout="this.style.borderColor=\'#D1D5DB\';this.style.background=\'#fff\'">'
+      +'<span style="font-size:12px;color:#9CA3AF">📎 Subir '+label.toLowerCase()+'</span>'
+      +'<button type="button" class="btn btn-sm btn-p" style="pointer-events:none">Subir archivo</button>'
+      +'</div>';
+  }
+}
+
+
 
 function toggleSin(sinId) {
   var body = document.getElementById('sin-body-'+sinId);
@@ -2209,9 +2346,9 @@ function sinSetEtapa(sinId, etapa) {
       // Update DB
       sb.from('siniestros').update({ etapa_actual: etapa }).eq('id',sinId);
       // Update timeline visual
-      var pasos = ['denuncia','inspeccion','taller','liquidacion','cierre'];
+      var pasos = getSinEtapas(res.data);
       var etapaIdx = pasos.indexOf(etapa);
-      var labels = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre'};
+      var labels = getSinLabels(res.data);
     }
   });
 }
@@ -2284,94 +2421,156 @@ async function toggleGestion(sinId, gestionKey) {
   mostrarAlerta((!isOn ? '✅ ' : '↩ ') + (gestionKey==='constancia_cobertura'?'Constancia de cobertura':'Carta de franquicia') + (!isOn?' marcada como enviada':' desmarcada'));
 }
 
-var SIN_ETAPAS = ['denuncia','inspeccion','taller','liquidacion','cierre'];
-var SIN_ETAPA_LABELS = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre'};
-var SIN_ETAPA_COLORES = {
+// ===== CONFIG SINIESTROS POR RAMO =====
+var SIN_COLORES = {
   done: {bg:'#EAF3DE', color:'#27500A'},
   current: {bg:'#4A90D9', color:'#fff'},
   pending: {bg:'#F9FAFB', color:'#9CA3AF'}
 };
-
-// Campos requeridos por etapa para poder avanzar
-var SIN_REQUISITOS = {
-  denuncia:    { criticos: ['numero_expediente','fecha_denuncia'], importantes: ['descripcion','denuncia_url'] },
-  inspeccion:  { criticos: ['fecha_inspeccion'], importantes: ['resultado_inspeccion','inspeccion_url'] },
-  taller:      { criticos: ['taller'], importantes: ['presupuesto_taller','presupuesto_url'] },
-  liquidacion: { criticos: ['monto_liquidado','fecha_liquidacion'], importantes: ['numero_liquidacion','liquidacion_url'] },
-  cierre:      { criticos: [], importantes: [] },
-};
 var SIN_FIELD_LABELS = {
-  numero_expediente:'N° de expediente', fecha_denuncia:'Fecha de denuncia', descripcion:'Descripción del hecho',
-  denuncia_url:'Denuncia administrativa (PDF)', fecha_inspeccion:'Fecha de inspección',
-  resultado_inspeccion:'Resultado de inspección', inspeccion_url:'Informe de inspección (PDF)',
-  taller:'Taller asignado', presupuesto_taller:'Presupuesto aprobado', presupuesto_url:'Presupuesto (PDF)',
+  numero_expediente:'N° de expediente', fecha_denuncia:'Fecha de denuncia',
+  descripcion:'Descripción del siniestro', lugar_hecho:'Lugar del hecho',
+  denuncia_url:'Denuncia administrativa (PDF)',
+  fecha_inspeccion:'Fecha de inspección/peritaje', resultado_inspeccion:'Resultado',
+  inspeccion_url:'Informe (PDF)', taller:'Taller / Empresa de reparación',
+  empresa_reparacion:'Empresa de reparación',
+  presupuesto_taller:'Presupuesto aprobado', presupuesto_url:'Presupuesto (PDF)',
   monto_liquidado:'Monto liquidado', fecha_liquidacion:'Fecha de liquidación',
   numero_liquidacion:'N° de liquidación', liquidacion_url:'Documento de liquidación (PDF)',
+  medico_tratante:'Médico tratante', diagnostico:'Diagnóstico',
+  srt_expediente:'Expediente SRT', tipo_resolucion:'Tipo de resolución',
 };
+var SIN_CONFIG = {
+  auto: {
+    etapas:['denuncia','inspeccion','taller','liquidacion','cierre'],
+    labels:{denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','lugar_hecho','denuncia_url']},
+      inspeccion:{c:['fecha_inspeccion'],i:['resultado_inspeccion','inspeccion_url']},
+      taller:{c:['taller'],i:['presupuesto_taller','presupuesto_url']},
+      liquidacion:{c:['monto_liquidado','fecha_liquidacion'],i:['numero_liquidacion','liquidacion_url']},
+      cierre:{c:[],i:[]},
+    }
+  },
+  art: {
+    etapas:['denuncia','atencion','tramite','resolucion','cierre'],
+    labels:{denuncia:'Denuncia',atencion:'Atención médica',tramite:'Trámite SRT',resolucion:'Resolución',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','denuncia_url']},
+      atencion:{c:['medico_tratante'],i:['diagnostico','ilt_dias']},
+      tramite:{c:['srt_expediente'],i:['srt_estado']},
+      resolucion:{c:['tipo_resolucion'],i:['monto_liquidado','liquidacion_url']},
+      cierre:{c:[],i:[]},
+    }
+  },
+  hogar: {
+    etapas:['denuncia','peritaje','presupuesto','liquidacion','cierre'],
+    labels:{denuncia:'Denuncia',peritaje:'Peritaje',presupuesto:'Presupuesto',liquidacion:'Liquidación',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','lugar_hecho','denuncia_url']},
+      peritaje:{c:['fecha_inspeccion'],i:['resultado_inspeccion','inspeccion_url']},
+      presupuesto:{c:['empresa_reparacion'],i:['presupuesto_taller','presupuesto_url']},
+      liquidacion:{c:['monto_liquidado','fecha_liquidacion'],i:['liquidacion_url']},
+      cierre:{c:[],i:[]},
+    }
+  },
+  comercio: {
+    etapas:['denuncia','peritaje','presupuesto','liquidacion','cierre'],
+    labels:{denuncia:'Denuncia',peritaje:'Peritaje',presupuesto:'Presupuesto',liquidacion:'Liquidación',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','denuncia_url']},
+      peritaje:{c:['fecha_inspeccion'],i:['resultado_inspeccion']},
+      presupuesto:{c:['empresa_reparacion'],i:['presupuesto_taller','presupuesto_url']},
+      liquidacion:{c:['monto_liquidado','fecha_liquidacion'],i:['liquidacion_url']},
+      cierre:{c:[],i:[]},
+    }
+  },
+  vida: {
+    etapas:['denuncia','documentacion','evaluacion','resolucion','cierre'],
+    labels:{denuncia:'Denuncia',documentacion:'Documentación',evaluacion:'Evaluación',resolucion:'Resolución',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','denuncia_url']},
+      documentacion:{c:[],i:['denuncia_url']},
+      evaluacion:{c:[],i:[]},
+      resolucion:{c:['monto_liquidado'],i:['liquidacion_url']},
+      cierre:{c:[],i:[]},
+    }
+  },
+  general: {
+    etapas:['denuncia','gestion','resolucion','cierre'],
+    labels:{denuncia:'Denuncia',gestion:'Gestión',resolucion:'Resolución',cierre:'Cierre'},
+    req:{
+      denuncia:{c:['numero_expediente','fecha_denuncia'],i:['descripcion','denuncia_url']},
+      gestion:{c:[],i:[]},
+      resolucion:{c:[],i:[]},
+      cierre:{c:[],i:[]},
+    }
+  },
+};
+function getSinRamoGroup(s) {
+  var ramo = (s.polizas && s.polizas.ramo) || s.tipo_ramo || '';
+  if (['Automotor','Responsabilidad Civil'].indexOf(ramo) > -1) return 'auto';
+  if (['ART'].indexOf(ramo) > -1) return 'art';
+  if (['Hogar','Combinado'].indexOf(ramo) > -1) return 'hogar';
+  if (['Comercio','Empresas'].indexOf(ramo) > -1) return 'comercio';
+  if (['Vida Individual','Vida Colectiva','Accidentes Personales'].indexOf(ramo) > -1) return 'vida';
+  return 'general';
+}
+function getSinEtapas(s) { return SIN_CONFIG[getSinRamoGroup(s)].etapas; }
+function getSinLabels(s) { return SIN_CONFIG[getSinRamoGroup(s)].labels; }
+function getSinReq(s, etapa) { return SIN_CONFIG[getSinRamoGroup(s)].req[etapa] || {c:[],i:[]}; }
+// ===== FIN CONFIG SINIESTROS =====
 
 async function avanzarEtapaSin(sinId, etapaActual) {
-  var idx = SIN_ETAPAS.indexOf(etapaActual);
-  if (idx >= SIN_ETAPAS.length - 1) return;
-  var nuevaEtapa = SIN_ETAPAS[idx + 1];
-
-  // Traer datos actuales para validar
-  var { data: s } = await sb.from('siniestros').select('*').eq('id', sinId).single();
+  var { data: s } = await sb.from('siniestros').select('*,polizas(ramo)').eq('id', sinId).single();
   if (!s) return;
-
-  var req = SIN_REQUISITOS[etapaActual] || { criticos: [], importantes: [] };
-  var faltanCriticos = req.criticos.filter(function(f){ return !s[f]; });
-  var faltanImportantes = req.importantes.filter(function(f){ return !s[f]; });
+  var etapas = getSinEtapas(s);
+  var labels = getSinLabels(s);
+  var idx = etapas.indexOf(etapaActual);
+  if (idx >= etapas.length - 1) return;
+  var nuevaEtapa = etapas[idx + 1];
+  var req = getSinReq(s, etapaActual);
+  var faltanCriticos = req.c.filter(function(f){ return !s[f]; });
+  var faltanImportantes = req.i.filter(function(f){ return !s[f]; });
 
   var doAvanzar = async function() {
     await sb.from('siniestros').update({ etapa_actual: nuevaEtapa }).eq('id', sinId);
-    // Actualizar timeline en lugar
-    SIN_ETAPAS.forEach(function(p, i) {
+    etapas.forEach(function(p, i) {
       var el = document.getElementById('sin-step-'+sinId+'-'+p);
       if (!el) return;
-      var isDone = i < idx + 1;
-      var isCur = i === idx + 1;
-      el.style.background = isDone ? SIN_ETAPA_COLORES.done.bg : isCur ? SIN_ETAPA_COLORES.current.bg : SIN_ETAPA_COLORES.pending.bg;
-      el.style.color = isDone ? SIN_ETAPA_COLORES.done.color : isCur ? SIN_ETAPA_COLORES.current.color : SIN_ETAPA_COLORES.pending.color;
+      var isDone = i < idx + 1; var isCur = i === idx + 1;
+      el.style.background = isDone?SIN_COLORES.done.bg:isCur?SIN_COLORES.current.bg:SIN_COLORES.pending.bg;
+      el.style.color = isDone?SIN_COLORES.done.color:isCur?SIN_COLORES.current.color:SIN_COLORES.pending.color;
     });
-    // Actualizar panel
     var panelEl = document.getElementById('sin-etapa-panel-'+sinId);
-    if (panelEl) panelEl.innerHTML = renderSinEtapaPanel(Object.assign({}, s, {etapa_actual: nuevaEtapa}), nuevaEtapa);
-    // Actualizar botón avanzar
+    if (panelEl) panelEl.innerHTML = renderSinEtapaPanel(Object.assign({},s,{etapa_actual:nuevaEtapa}), nuevaEtapa);
     var bodyEl = document.getElementById('sin-body-'+sinId);
     if (bodyEl) {
-      var btnAvanzar = bodyEl.querySelector('[data-btn-avanzar]');
-      if (btnAvanzar) {
-        if (idx + 1 >= SIN_ETAPAS.length - 1) btnAvanzar.style.display = 'none';
-        else btnAvanzar.setAttribute('onclick', 'avanzarEtapaSin(\''+sinId+'\',\''+nuevaEtapa+'\')');
+      var btnA = bodyEl.querySelector('[data-btn-avanzar]');
+      if (btnA) {
+        if (idx+1 >= etapas.length-1) btnA.style.display='none';
+        else { btnA.dataset.etapa = nuevaEtapa; btnA.dataset.sinid = sinId; btnA.setAttribute('onclick','avanzarEtapaSin(this.dataset.sinid,this.dataset.etapa)'); }
       }
+      var btnC = bodyEl.querySelector('[data-btn-cerrar]');
+      if (btnC) btnC.style.display = (nuevaEtapa === etapas[etapas.length-1]) ? 'inline-flex' : 'none';
     }
-    mostrarAlerta('✅ Estado avanzado a: '+SIN_ETAPA_LABELS[nuevaEtapa]);
+    mostrarAlerta('✅ Estado avanzado a: '+labels[nuevaEtapa]);
   };
 
   if (faltanCriticos.length) {
-    // Rojo — faltan campos críticos
     var listaCrit = faltanCriticos.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
     var listaImp = faltanImportantes.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
-    confirmarAccion({
-      icon: '🔴',
-      titulo: 'Faltan datos importantes',
-      msg: 'Para avanzar a "'+SIN_ETAPA_LABELS[nuevaEtapa]+'" faltan campos críticos:\n'+listaCrit+(listaImp?'\n\nTambién falta (no crítico):\n'+listaImp:''),
-      btnOk: 'Avanzar igual',
-      btnOkStyle: 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+    confirmarAccion({icon:'🔴',titulo:'Faltan datos importantes',
+      msg:'Para avanzar a "'+labels[nuevaEtapa]+'" faltan campos críticos:\n'+listaCrit+(listaImp?'\n\nTambién falta (no crítico):\n'+listaImp:''),
+      btnOk:'Avanzar igual',btnOkStyle:'background:#EF4444;color:#fff;border-color:#EF4444;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
     }, doAvanzar);
   } else if (faltanImportantes.length) {
-    // Amarillo — faltan campos no críticos
     var listaImp2 = faltanImportantes.map(function(f){ return '• '+(SIN_FIELD_LABELS[f]||f); }).join('\n');
-    confirmarAccion({
-      icon: '🟡',
-      titulo: 'Algunos datos están incompletos',
-      msg: 'Podés avanzar, pero te falta completar:\n'+listaImp2,
-      btnOk: 'Avanzar igual',
-      btnOkStyle: 'background:#F59E0B;color:#fff;border-color:#F59E0B;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+    confirmarAccion({icon:'🟡',titulo:'Algunos datos incompletos',
+      msg:'Podés avanzar, pero falta:\n'+listaImp2,
+      btnOk:'Avanzar igual',btnOkStyle:'background:#F59E0B;color:#fff;border-color:#F59E0B;min-width:120px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
     }, doAvanzar);
-  } else {
-    doAvanzar();
-  }
+  } else { doAvanzar(); }
 }
 
 async function cerrarSiniestro(sinId) {
@@ -2392,7 +2591,8 @@ async function cerrarSiniestro(sinId) {
         '<span style="font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;background:#EAF3DE;color:#166534">✓ Cerrado</span>';
     }
     // Actualizar timeline - todos done
-    SIN_ETAPAS.forEach(function(p) {
+    // Mark all steps done (fetch group from DOM data)
+    ['denuncia','inspeccion','taller','liquidacion','cierre','atencion','tramite','resolucion','peritaje','presupuesto','documentacion','evaluacion','gestion'].forEach(function(p) {
       var el = document.getElementById('sin-step-'+sinId+'-'+p);
       if (el) { el.style.background = '#EAF3DE'; el.style.color = '#27500A'; }
     });
@@ -5323,7 +5523,7 @@ async function mpdSetTab(tab) {
 
 function renderMpdCobertura(p) {
   var dr = p.datos_ramo||{};
-  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'—'; };
+  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
   var rows = [];
   if (p.cobertura) rows.push(['Tipo de cobertura','<span style="background:#E6F1FB;color:#0C447C;padding:2px 9px;border-radius:10px;font-weight:500;font-size:11px">'+p.cobertura+'</span>']);
   if (p.ramo==='Automotor') {
@@ -5410,7 +5610,7 @@ function renderMpdCobertura(p) {
 }
 
 function renderMpdPagos(p) {
-  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'—'; };
+  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
   var rows = [
     ['Premio total',fmtM(p.prima_anual)],
     ['Forma de pago',p.forma_pago||'—'],
