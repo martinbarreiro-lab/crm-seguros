@@ -1526,7 +1526,6 @@ async function renderFicha() {
     { id: 'polizas', label: 'Pólizas' },
     { id: 'siniestros', label: 'Siniestros' },
     { id: 'cotizaciones', label: 'Cotizaciones' },
-    { id: 'tareas', label: 'Tareas' },
     { id: 'historial', label: 'Historial' },
     { id: 'datos', label: 'Datos personales' },
   ];
@@ -1552,14 +1551,12 @@ async function renderFichaTab(c) {
   }
   else if (fichaTab === 'siniestros') { cont.className = ''; cont.innerHTML = await fichaSiniestros(c); }
   else if (fichaTab === 'cotizaciones') { cont.className = ''; cont.innerHTML = await fichaCotizaciones(c); }
-  else if (fichaTab === 'tareas') { cont.className = ''; cont.innerHTML = await fichaTareas(c); }
   else if (fichaTab === 'historial') { cont.className = ''; cont.innerHTML = await fichaHistorial(c); }
 }
 
 async function fichaResumen(c) {
   const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const { data: sins } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).neq('estado', 'cerrado');
-  const { data: tars } = await sb.from('tareas').select('*').eq('cliente_id', c.id).order('created_at',{ascending:false}).limit(8);
   const polsActivas = (pols||[]).filter(function(p){return p.estado==='activa';});
   const premioAnual = polsActivas.reduce(function(s,p){return s+(p.prima_anual||0);},0);
   const hoy = new Date();
@@ -1583,7 +1580,6 @@ async function fichaResumen(c) {
   html.push('<div class="ficha-fin-card green"><div class="ficha-fin-label">Premio anual</div><div class="ficha-fin-val">$'+premioAnual.toLocaleString('es-AR')+'</div><div class="ficha-fin-sub">Cartera activa</div></div>');
   html.push('<div class="ficha-fin-card blue"><div class="ficha-fin-label">P\u00f3lizas activas</div><div class="ficha-fin-val">'+polsActivas.length+'</div><div class="ficha-fin-sub">Vigentes</div></div>');
   html.push('<div class="ficha-fin-card red"><div class="ficha-fin-label">Siniestros</div><div class="ficha-fin-val">'+(sins||[]).length+'</div><div class="ficha-fin-sub">Abiertos</div></div>');
-  html.push('<div class="ficha-fin-card amber"><div class="ficha-fin-label">Tareas</div><div class="ficha-fin-val">'+(tars||[]).filter(function(t){return t.estado!=='cerrada'&&t.estado!=='cancelada';}).length+'</div><div class="ficha-fin-sub">Pendientes</div></div>');
   html.push('</div>');
 
   // Layout C: narrow right sidebar (contacto) + wide left main (actividad)
@@ -1601,17 +1597,6 @@ async function fichaResumen(c) {
     html.push('</div>');
   } else {
     html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button type="button" class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva p\u00f3liza</button></div></div>');
-  }
-
-  // Tareas recientes
-  if(tars&&tars.length){
-    html.push('<div class="ficha-card"><div class="ficha-card-title">Tareas recientes</div>');
-    const eCol={pendiente:'ft-pendiente',encurso:'ft-encurso',esperando:'ft-esperando',cerrada:'ft-cerrada',cancelada:'ft-cancelada'};
-    const eLbl={pendiente:'Pendiente',encurso:'En curso',esperando:'Esp. respuesta',cerrada:'Cerrada',cancelada:'Cancelada'};
-    tars.forEach(function(t){
-      html.push('<div class="ficha-task-item"><div class="ft-estado '+(eCol[t.estado]||'ft-pendiente')+'"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.titulo+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+t.tablero+' \u00b7 '+(eLbl[t.estado]||t.estado)+(t.fecha_limite?' \u00b7 Vence '+t.fecha_limite:'')+'</div></div></div>');
-    });
-    html.push('</div>');
   }
 
   // Vencimientos próximos
