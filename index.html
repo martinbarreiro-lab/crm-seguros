@@ -683,35 +683,84 @@
 
 <!-- MODAL SINIESTRO -->
 <div class="modal-ov" id="modal-sin">
-  <div class="modal-box">
-    <div class="modal-t">Nuevo siniestro <button type="button" class="modal-x" onclick="cerrarModal('modal-sin')">✕</button></div>
-    <div class="frow"><label>Cliente *</label><select id="fs-cl"><option value="">Seleccionar...</option></select></div>
-    <div class="fg2">
-      <div class="frow"><label>N° expediente</label><input type="text" id="fs-exp" placeholder="SIN-2025-XXX"></div>
-      <div class="frow"><label>Aseguradora</label><input type="text" id="fs-aseg" placeholder="Sancor, Zurich..."></div>
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-t" id="sin-modal-titulo">Nuevo siniestro <button type="button" class="modal-x" onclick="cerrarModal('modal-sin');window._editSiniestroId=null;">✕</button></div>
+
+    <div class="frow">
+      <label>Cliente *</label>
+      <select id="fs-cl" onchange="onSinClienteChange()"><option value="">Seleccionar...</option></select>
     </div>
+
+    <!-- Ramo visual -->
+    <div class="sec-label">Tipo de ramo</div>
+    <div id="fs-ramo-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:14px">
+      <div class="sin-ramo-btn active" data-ramo="auto" onclick="setSinRamo('auto',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #BFDBFE;background:#EFF6FF;cursor:pointer;text-align:center;font-size:11px;font-weight:600;color:#1E40AF;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">🚗</div>Automotor</div>
+      <div class="sin-ramo-btn" data-ramo="hogar" onclick="setSinRamo('hogar',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:center;font-size:11px;font-weight:500;color:#374151;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">🏠</div>Hogar</div>
+      <div class="sin-ramo-btn" data-ramo="comercio" onclick="setSinRamo('comercio',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:center;font-size:11px;font-weight:500;color:#374151;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">🏪</div>Comercio</div>
+      <div class="sin-ramo-btn" data-ramo="art" onclick="setSinRamo('art',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:center;font-size:11px;font-weight:500;color:#374151;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">👷</div>ART</div>
+      <div class="sin-ramo-btn" data-ramo="vida" onclick="setSinRamo('vida',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:center;font-size:11px;font-weight:500;color:#374151;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">❤️</div>Vida / AP</div>
+      <div class="sin-ramo-btn" data-ramo="general" onclick="setSinRamo('general',this)" style="padding:9px 6px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:center;font-size:11px;font-weight:500;color:#374151;transition:all .15s"><div style="font-size:18px;margin-bottom:2px">📋</div>Otro</div>
+    </div>
+
+    <!-- Datos base -->
+    <div class="sec-label">Datos del siniestro</div>
     <div class="fg2">
-      <div class="frow"><label>Fecha del hecho</label><input type="date" id="fs-fh"></div>
-      <div class="frow"><label>Tipo de siniestro</label>
-        <select id="fs-tipo">
+      <div class="frow">
+        <label>Compañía aseguradora *</label>
+        <select id="fs-aseg">
           <option value="">Seleccionar...</option>
-          <option>Choque</option><option>Robo total</option><option>Robo parcial</option>
-          <option>Incendio</option><option>Granizo</option><option>Inundación</option>
-          <option>Accidente personal</option><option>Otro</option>
+          <option>Federación Patronal</option>
+          <option>Sancor Seguros</option>
+          <option>La Segunda</option>
+          <option>RUS</option>
+          <option>Zurich Argentina</option>
+          <option>Mapfre Argentina</option>
+          <option>San Cristóbal</option>
+          <option>Provincia Seguros</option>
+          <option>Nación Seguros</option>
+          <option>Integrity Seguros</option>
+          <option>Berkley</option>
+          <option>Chubb</option>
+          <option>QBE</option>
+          <option>Otra...</option>
         </select>
       </div>
+      <div class="frow">
+        <label>Póliza vinculada</label>
+        <select id="fs-poliza"><option value="">Seleccionar primero el cliente</option></select>
+      </div>
     </div>
-    <div class="frow"><label>Descripción *</label><textarea id="fs-desc" placeholder="Describí lo que ocurrió..."></textarea></div>
-    <div class="fg2">
-      <div class="frow"><label>Taller asignado</label><input type="text" id="fs-taller" placeholder="Nombre del taller"></div>
-      <div class="frow"><label>Fecha de inspección</label><input type="date" id="fs-insp"></div>
+    <div class="fg3">
+      <div class="frow">
+        <label>N° de expediente</label>
+        <input type="text" id="fs-exp" placeholder="SIN-2025-XXX">
+      </div>
+      <div class="frow">
+        <label>Tipo de siniestro *</label>
+        <select id="fs-tipo" onchange="onSinTipoChange()"><option value="">Seleccionar...</option></select>
+      </div>
+      <div class="frow">
+        <label>Fecha del hecho *</label>
+        <input type="date" id="fs-fh">
+      </div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button type="button" class="btn" onclick="cerrarModal('modal-sin')">Cancelar</button>
+
+    <!-- Campos dinámicos -->
+    <div id="fs-dyn-section"></div>
+
+    <!-- Descripción -->
+    <div class="frow" style="margin-top:10px">
+      <label>Descripción del siniestro *</label>
+      <textarea id="fs-desc" placeholder="Describí lo que ocurrió según el asegurado..." style="min-height:70px;resize:none"></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6">
+      <button type="button" class="btn" onclick="cerrarModal('modal-sin');window._editSiniestroId=null;">Cancelar</button>
       <button type="button" class="btn btn-p" id="btn-guardar-sin">Registrar siniestro</button>
     </div>
   </div>
 </div>
+
 
 <!-- MODAL COBRANZA -->
 <div class="modal-ov" id="modal-cob">
@@ -2394,13 +2443,35 @@ function sinSubirArchivo(sinId, campo) {
 }
 
 async function toggleGestion(sinId, gestionKey) {
+  // hay_tercero es una columna boolean, no parte de gestiones_enviadas
+  if (gestionKey === 'hay_tercero') {
+    var { data: s2 } = await sb.from('siniestros').select('hay_tercero').eq('id',sinId).single();
+    var newVal = !(s2 && s2.hay_tercero);
+    await sb.from('siniestros').update({ hay_tercero: newVal }).eq('id',sinId);
+    // Actualizar toggle en DOM
+    var toggleEl = document.querySelector('[data-toggle-sin="'+sinId+'-hay_tercero"]');
+    if (toggleEl) {
+      toggleEl.style.background = newVal ? '#22C55E' : '#D1D5DB';
+      var thumb = toggleEl.querySelector('div');
+      if (thumb) thumb.style.left = newVal ? '19px' : '3px';
+    }
+    // Re-render panel para mostrar/ocultar sección tercero
+    var { data: sR } = await sb.from('siniestros').select('*,polizas(ramo)').eq('id',sinId).single();
+    if (sR) {
+      var panelEl = document.getElementById('sin-etapa-panel-'+sinId);
+      if (panelEl) panelEl.innerHTML = renderSinEtapaPanel(sR, sR.etapa_actual||'denuncia');
+    }
+    return;
+  }
   var { data: s } = await sb.from('siniestros').select('gestiones_enviadas').eq('id',sinId).single();
   var gestiones = (s && s.gestiones_enviadas) || {};
-  var isOn = gestiones[gestionKey];
+  // Asegurarse que sea un objeto plano, no truthy por error
+  if (typeof gestiones !== 'object' || Array.isArray(gestiones)) gestiones = {};
+  var isOn = gestiones[gestionKey] === true;
   gestiones[gestionKey] = !isOn;
   gestiones[gestionKey+'_fecha'] = !isOn ? new Date().toISOString() : null;
   await sb.from('siniestros').update({ gestiones_enviadas: gestiones }).eq('id',sinId);
-  // Actualizar DOM en lugar de re-renderizar todo
+  // Actualizar DOM sin re-renderizar
   var toggleEl = document.querySelector('[data-toggle-sin="'+sinId+'-'+gestionKey+'"]');
   var labelEl = document.querySelector('[data-toggle-label="'+sinId+'-'+gestionKey+'"]');
   if (toggleEl) {
@@ -2409,16 +2480,10 @@ async function toggleGestion(sinId, gestionKey) {
     if (thumb) thumb.style.left = !isOn ? '19px' : '3px';
   }
   if (labelEl) {
-    if (!isOn) {
-      var fecha = new Date().toLocaleDateString('es-AR');
-      labelEl.textContent = '✓ ' + fecha;
-      labelEl.style.color = '#22C55E';
-    } else {
-      labelEl.textContent = 'Pendiente';
-      labelEl.style.color = '#9CA3AF';
-    }
+    if (!isOn) { labelEl.textContent = '✓ '+new Date().toLocaleDateString('es-AR'); labelEl.style.color='#22C55E'; }
+    else { labelEl.textContent = 'Pendiente'; labelEl.style.color='#9CA3AF'; }
   }
-  mostrarAlerta((!isOn ? '✅ ' : '↩ ') + (gestionKey==='constancia_cobertura'?'Constancia de cobertura':'Carta de franquicia') + (!isOn?' marcada como enviada':' desmarcada'));
+  mostrarAlerta((!isOn?'✅ ':'↩ ')+(gestionKey==='constancia_cobertura'?'Constancia de cobertura':'Carta de franquicia')+(!isOn?' marcada como enviada':' desmarcada'));
 }
 
 // ===== CONFIG SINIESTROS POR RAMO =====
@@ -2509,6 +2574,9 @@ var SIN_CONFIG = {
 };
 function getSinRamoGroup(s) {
   var ramo = (s.polizas && s.polizas.ramo) || s.tipo_ramo || '';
+  // Map tipo_ramo (stored as group key) directly
+  if (['auto','hogar','comercio','art','vida','general'].indexOf(ramo) > -1) return ramo;
+  // Map from ramo name
   if (['Automotor','Responsabilidad Civil'].indexOf(ramo) > -1) return 'auto';
   if (['ART'].indexOf(ramo) > -1) return 'art';
   if (['Hogar','Combinado'].indexOf(ramo) > -1) return 'hogar';
@@ -2609,20 +2677,38 @@ async function cerrarSiniestro(sinId) {
 }
 
 function abrirEditarSiniestro(sinId) {
-  sb.from('siniestros').select('*').eq('id',sinId).single().then(function(res){
+  sb.from('siniestros').select('*,polizas(ramo)').eq('id',sinId).single().then(function(res){
     var s = res.data;
     if (!s) return;
     actualizarSelectsClientes();
+    abrirModalSinInit();
+    window._editSiniestroId = sinId;
     setTimeout(function(){
       document.getElementById('fs-cl').value = s.cliente_id || '';
-      document.getElementById('fs-exp').value = s.numero_expediente || '';
+      onSinClienteChange().then(function(){
+        setTimeout(function(){
+          if (s.poliza_id) document.getElementById('fs-poliza').value = s.poliza_id;
+        }, 300);
+      });
       document.getElementById('fs-aseg').value = s.aseguradora || '';
+      document.getElementById('fs-exp').value = s.numero_expediente || '';
       document.getElementById('fs-fh').value = s.fecha_hecho || '';
-      document.getElementById('fs-tipo').value = s.tipo_siniestro || '';
       document.getElementById('fs-desc').value = s.descripcion || '';
-      document.getElementById('fs-taller').value = s.taller || '';
-      document.getElementById('fs-insp').value = s.fecha_inspeccion || '';
-      window._editSiniestroId = sinId;
+      // Set ramo
+      var grp = getSinRamoGroup(s);
+      var btn = document.querySelector('.sin-ramo-btn[data-ramo="'+grp+'"]');
+      if (btn) setSinRamo(grp, btn);
+      // Set tipo
+      setTimeout(function(){
+        var tipoSel = document.getElementById('fs-tipo');
+        if (tipoSel && s.tipo_siniestro) tipoSel.value = s.tipo_siniestro;
+        onSinTipoChange();
+      }, 100);
+      // Título
+      var tit = document.getElementById('sin-modal-titulo');
+      if (tit) tit.childNodes[0].textContent = 'Editar siniestro ';
+      var btn2 = document.getElementById('btn-guardar-sin');
+      if (btn2) btn2.textContent = 'Guardar cambios';
       document.getElementById('modal-sin').classList.add('open');
     }, 80);
   });
@@ -2745,8 +2831,13 @@ function abrirModalTareaParaCliente(clienteId) {
 }
 function abrirModalSiniestroParaCliente(clienteId) {
   actualizarSelectsClientes();
-  document.getElementById('fs-cl').value = clienteId;
-  document.getElementById('modal-sin').classList.add('open');
+  window._editSiniestroId = null;
+  abrirModalSinInit();
+  setTimeout(function() {
+    document.getElementById('fs-cl').value = clienteId;
+    onSinClienteChange();
+    document.getElementById('modal-sin').classList.add('open');
+  }, 80);
 }
 function abrirModalCotzParaCliente(clienteId) {
   actualizarSelectsClientes();
@@ -3097,25 +3188,324 @@ async function cambiarEstadoCotz(id, estado) {
 }
 
 // ---- GUARDAR SINIESTRO ----
+// ===== MODAL SINIESTRO =====
+var _sinRamoActual = 'auto';
+
+var SIN_TIPOS = {
+  auto:    ['Choque','Robo total','Robo parcial','Granizo','Incendio','Rotura de vidrios','Responsabilidad civil','Robo de ruedas','Daño eléctrico','Otro'],
+  hogar:   ['Incendio','Inundación / agua','Robo / hurto','Rotura de vidrios','Daño eléctrico','Granizo','Caída de objetos','Todo riesgo objetos electrónicos','Responsabilidad civil','Otro'],
+  comercio:['Incendio','Robo total','Robo parcial','Daño por agua','Rotura de vidrios','Robo de mercadería','Todo riesgo objetos electrónicos','Responsabilidad civil','Daño eléctrico','Otro'],
+  art:     ['Accidente de trabajo','Enfermedad profesional','Accidente in itinere','Otro'],
+  vida:    ['Fallecimiento','Invalidez total','Invalidez parcial','Accidente personal','Enfermedad grave','Otro'],
+  general: ['Siniestro general','Otro'],
+};
+
+var SIN_RAMO_A_POLIZA = {
+  auto:['Automotor','Responsabilidad Civil'],
+  hogar:['Hogar','Combinado'],
+  comercio:['Comercio','Empresas'],
+  art:['ART'],
+  vida:['Vida Individual','Vida Colectiva','Accidentes Personales'],
+  general:[]
+};
+
+function setSinRamo(ramo, el) {
+  _sinRamoActual = ramo;
+  document.querySelectorAll('.sin-ramo-btn').forEach(function(b) {
+    b.style.borderColor='#E5E7EB'; b.style.background='#fff'; b.style.color='#374151'; b.style.fontWeight='500';
+  });
+  if (el) { el.style.borderColor='#BFDBFE'; el.style.background='#EFF6FF'; el.style.color='#1E40AF'; el.style.fontWeight='600'; }
+  // Tipos
+  var tipos = SIN_TIPOS[ramo] || SIN_TIPOS.general;
+  var sel = document.getElementById('fs-tipo');
+  if (sel) sel.innerHTML = '<option value="">Seleccionar...</option>' + tipos.map(function(t){ return '<option>'+t+'</option>'; }).join('');
+  // Filtrar pólizas por ramo
+  filtrarPolizasSinRamo(ramo);
+  // Campos dinámicos
+  renderSinDynFields(ramo, '');
+}
+
+async function onSinClienteChange() {
+  var cid = document.getElementById('fs-cl').value;
+  var sel = document.getElementById('fs-poliza');
+  if (!sel) return;
+  if (!cid) { sel.innerHTML = '<option value="">Seleccionar primero el cliente</option>'; return; }
+  var { data } = await sb.from('polizas').select('id,numero,ramo,aseguradora').eq('cliente_id', cid).eq('estado','activa');
+  var pols = data || [];
+  sel.innerHTML = '<option value="">Sin vincular</option>' + pols.map(function(p){
+    return '<option value="'+p.id+'" data-ramo="'+p.ramo+'" data-aseg="'+p.aseguradora+'">'+p.numero+' · '+p.ramo+'</option>';
+  }).join('');
+  // Auto-fill aseguradora cuando elige póliza
+  sel.onchange = function() {
+    var opt = sel.options[sel.selectedIndex];
+    var aseg = opt ? opt.getAttribute('data-aseg') : '';
+    var ramo = opt ? opt.getAttribute('data-ramo') : '';
+    if (aseg) { var asegSel = document.getElementById('fs-aseg'); if(asegSel) { /* try match */ for(var i=0;i<asegSel.options.length;i++) { if(asegSel.options[i].text.indexOf(aseg)>-1){asegSel.selectedIndex=i;break;} } } }
+    if (ramo) {
+      var ramoGrp = getSinRamoGroup({tipo_ramo:ramo});
+      var btn = document.querySelector('.sin-ramo-btn[data-ramo="'+ramoGrp+'"]');
+      if (btn) setSinRamo(ramoGrp, btn);
+    }
+  };
+}
+
+function filtrarPolizasSinRamo(ramo) {
+  var sel = document.getElementById('fs-poliza');
+  if (!sel) return;
+  var ramosValidos = SIN_RAMO_A_POLIZA[ramo] || [];
+  Array.from(sel.options).forEach(function(opt) {
+    var dataRamo = opt.getAttribute('data-ramo') || '';
+    if (!opt.value) return; // keep "Sin vincular"
+    opt.style.display = (ramosValidos.length === 0 || ramosValidos.indexOf(dataRamo) > -1) ? '' : 'none';
+  });
+}
+
+function onSinTipoChange() {
+  var tipo = document.getElementById('fs-tipo').value;
+  renderSinDynFields(_sinRamoActual, tipo);
+}
+
+function renderSinDynFields(ramo, tipo) {
+  var cont = document.getElementById('fs-dyn-section');
+  if (!cont) return;
+  var esElectronico = tipo === 'Todo riesgo objetos electrónicos';
+  var html = [];
+  html.push('<div class="sec-label">Datos específicos</div>');
+  html.push('<div style="background:#F9FAFB;border:0.5px solid #E5E7EB;border-radius:8px;padding:12px 14px">');
+
+  if (esElectronico) {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💻 Todo riesgo objetos electrónicos</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Objeto / equipo afectado *</label><input type="text" id="fsd-objeto" placeholder="Ej: Notebook HP, Smart TV 55&quot;"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Marca y modelo</label><input type="text" id="fsd-marca-modelo" placeholder="Ej: Samsung Galaxy S23"></div>');
+    html.push('</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>N° de serie</label><input type="text" id="fsd-serie" placeholder="Número de serie del equipo"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Tipo de daño</label><select id="fsd-tipo-dano"><option value="">Seleccionar...</option><option>Rotura de pantalla</option><option>Daño por agua / humedad</option><option>Robo</option><option>Falla eléctrica</option><option>Pérdida / extravío</option><option>Otro</option></select></div>');
+    html.push('</div>');
+    // Sección valores
+    html.push('<div style="background:#EFF6FF;border:0.5px solid #BFDBFE;border-radius:8px;padding:11px 13px;margin-top:10px">');
+    html.push('<div style="font-size:10px;font-weight:600;color:#1E40AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores del siniestro</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Precio de mercado actual *</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fsd-precio-mercado" placeholder="0" oninput="sinCalcDif()"></div></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Presupuesto de reparación</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fsd-presup-rep" placeholder="0" oninput="sinCalcDif()"></div></div>');
+    html.push('</div>');
+    html.push('<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:#374151;cursor:pointer"><input type="checkbox" id="fsd-no-repara" onchange="sinToggleNoRepara()"> No se puede reparar / pérdida total</label>');
+    html.push('<div id="fsd-dif-box" style="display:none;margin-top:8px;padding:7px 10px;border-radius:6px;font-size:12px"></div>');
+    // Orden reposición
+    html.push('<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;margin-top:8px;border-top:0.5px solid #BFDBFE">');
+    html.push('<div><div style="font-size:13px;color:#111827;font-weight:500">Orden de reposición enviada</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">¿Ya se envió la orden de reposición al cliente?</div></div>');
+    html.push('<div style="display:flex;align-items:center;gap:8px"><span id="fsd-orden-label" style="font-size:11px;color:#9CA3AF">Pendiente</span>');
+    html.push('<div id="fsd-orden-toggle" onclick="sinTogOrden()" style="width:38px;height:22px;border-radius:11px;background:#D1D5DB;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s"><div id="fsd-orden-thumb" style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s"></div></div>');
+    html.push('</div></div></div>');
+  } else if (ramo === 'auto') {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🚗 Automotor</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Lugar del hecho</label><input type="text" id="fsd-lugar" placeholder="Av. Pellegrini 1200, Rosario"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Taller preferente</label><input type="text" id="fs-taller" placeholder="Nombre del taller"></div>');
+    html.push('</div>');
+    html.push('<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px">');
+    html.push(sinToggleHTML('fsd-lesionados','¿Hubo lesionados?'));
+    html.push(sinToggleHTML('fsd-policia','¿Intervino la policía?'));
+    html.push(sinToggleHTML('fsd-tercero','¿Hay tercero involucrado?'));
+    html.push('</div>');
+  } else if (ramo === 'hogar') {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🏠 Hogar</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Dirección del riesgo</label><input type="text" id="fsd-lugar" placeholder="Dirección donde ocurrió"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Área / sector afectado</label><input type="text" id="fsd-sector" placeholder="Ej: Cocina, baño, living..."></div>');
+    html.push('</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Tipo de daño</label><select id="fsd-tipo-dano"><option value="">Seleccionar...</option><option>Daño parcial</option><option>Daño total</option><option>Robo</option><option>Daño por agua / humedad</option><option>Daño eléctrico</option></select></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Monto estimado del daño</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fsd-monto-dano" placeholder="0"></div></div>');
+    html.push('</div>');
+  } else if (ramo === 'comercio') {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🏪 Comercio / Empresa</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Dirección del local</label><input type="text" id="fsd-lugar" placeholder="Dirección donde ocurrió"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Sector afectado</label><input type="text" id="fsd-sector" placeholder="Ej: Depósito, salón de ventas..."></div>');
+    html.push('</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Tipo de daño</label><select id="fsd-tipo-dano"><option value="">Seleccionar...</option><option>Daño parcial</option><option>Daño total</option><option>Robo de mercadería</option><option>Robo de dinero</option><option>Daño por agua</option><option>Daño eléctrico</option></select></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Monto estimado</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="fsd-monto-dano" placeholder="0"></div></div>');
+    html.push('</div>');
+    html.push('<div style="margin-top:10px">'+sinToggleHTML('fsd-policia','¿Hubo denuncia policial?')+'</div>');
+  } else if (ramo === 'art') {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">👷 ART</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Empleado afectado *</label><input type="text" id="fsd-empleado" placeholder="Nombre completo"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>DNI del empleado</label><input type="text" id="fsd-empleado-dni" placeholder="XX.XXX.XXX"></div>');
+    html.push('</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Tipo de lesión</label><input type="text" id="fsd-lesion" placeholder="Ej: Fractura, corte, lumbar..."></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Lugar del accidente</label><input type="text" id="fsd-lugar" placeholder="Dirección o descripción"></div>');
+    html.push('</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>ART interviniente</label><input type="text" id="fsd-art" placeholder="Nombre de la ART"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"></div>');
+    html.push('</div>');
+    html.push('<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px">');
+    html.push(sinToggleHTML('fsd-internacion','¿Requirió internación?'));
+    html.push(sinToggleHTML('fsd-ilt','¿Hay ILT (baja laboral)?'));
+    html.push('</div>');
+  } else if (ramo === 'vida') {
+    html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">❤️ Vida / Accidentes Personales</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+    html.push('<div class="frow" style="margin-bottom:0"><label>Nombre del beneficiario *</label><input type="text" id="fsd-beneficiario" placeholder="Nombre completo"></div>');
+    html.push('<div class="frow" style="margin-bottom:0"><label>DNI del beneficiario</label><input type="text" id="fsd-beneficiario-dni" placeholder="XX.XXX.XXX"></div>');
+    html.push('</div>');
+    html.push('<div style="margin-top:8px" class="frow" style="margin-bottom:0"><label>Causa del siniestro</label><input type="text" id="fsd-causa" placeholder="Descripción breve"></div>');
+  } else {
+    html.push('<div class="frow" style="margin-bottom:0"><label>Lugar del hecho</label><input type="text" id="fsd-lugar" placeholder="Dirección o descripción del lugar"></div>');
+  }
+
+  html.push('</div>');
+  cont.innerHTML = html.join('');
+}
+
+function sinToggleHTML(id, label) {
+  return '<div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="sinTogField(\''+id+'\',this)">'
+    +'<div id="'+id+'-tog" style="width:36px;height:20px;border-radius:10px;background:#D1D5DB;position:relative;flex-shrink:0;transition:background .2s"><div style="position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s"></div></div>'
+    +'<span style="font-size:13px;color:#111827">'+label+'</span>'
+    +'</div>';
+}
+
+function sinTogField(id, row) {
+  var tog = document.getElementById(id+'-tog');
+  if (!tog) return;
+  var isOn = tog.style.background === 'rgb(34, 197, 94)' || tog.dataset.on === '1';
+  tog.style.background = !isOn ? '#22C55E' : '#D1D5DB';
+  tog.firstElementChild.style.left = !isOn ? '19px' : '3px';
+  tog.dataset.on = !isOn ? '1' : '0';
+}
+
+function sinTogOrden() {
+  var tog = document.getElementById('fsd-orden-toggle');
+  var thumb = document.getElementById('fsd-orden-thumb');
+  var label = document.getElementById('fsd-orden-label');
+  if (!tog) return;
+  var isOn = tog.dataset.on === '1';
+  tog.style.background = !isOn ? '#22C55E' : '#D1D5DB';
+  if (thumb) thumb.style.left = !isOn ? '19px' : '3px';
+  if (label) { label.textContent = !isOn ? ('✓ '+new Date().toLocaleDateString('es-AR')) : 'Pendiente'; label.style.color = !isOn ? '#22C55E' : '#9CA3AF'; }
+  tog.dataset.on = !isOn ? '1' : '0';
+}
+
+function sinToggleNoRepara() {
+  var cb = document.getElementById('fsd-no-repara');
+  var presup = document.getElementById('fsd-presup-rep');
+  if (presup) { presup.disabled = cb.checked; presup.style.background = cb.checked ? '#F3F4F6' : '#fff'; if(cb.checked) presup.value=''; }
+  sinCalcDif();
+}
+
+function sinCalcDif() {
+  var noRep = document.getElementById('fsd-no-repara');
+  var precio = parseFloat((document.getElementById('fsd-precio-mercado')||{}).value) || 0;
+  var presup = parseFloat((document.getElementById('fsd-presup-rep')||{}).value) || 0;
+  var box = document.getElementById('fsd-dif-box');
+  if (!box) return;
+  if (noRep && noRep.checked) {
+    box.style.display='block'; box.style.background='#FEF2F2'; box.style.color='#991B1B';
+    box.textContent = '🔴 Pérdida total — Se gestionará reposición por $'+(precio?precio.toLocaleString('es-AR'):'—');
+  } else if (precio && presup) {
+    box.style.display='block';
+    if (presup >= precio * 0.8) {
+      box.style.background='#FEF2F2'; box.style.color='#991B1B';
+      box.textContent = '⚠ Presupuesto supera el 80% del valor → conviene reposición ($'+precio.toLocaleString('es-AR')+')';
+    } else {
+      box.style.background='#DBEAFE'; box.style.color='#1E40AF';
+      box.textContent = '✓ Reparación conveniente · Diferencia: $'+(precio-presup).toLocaleString('es-AR');
+    }
+  } else { box.style.display='none'; }
+}
+
+function abrirModalSinInit() {
+  // Reset ramo buttons
+  document.querySelectorAll('.sin-ramo-btn').forEach(function(b) {
+    b.style.borderColor='#E5E7EB'; b.style.background='#fff'; b.style.color='#374151'; b.style.fontWeight='500';
+  });
+  var autoBtn = document.querySelector('.sin-ramo-btn[data-ramo="auto"]');
+  if (autoBtn) { autoBtn.style.borderColor='#BFDBFE'; autoBtn.style.background='#EFF6FF'; autoBtn.style.color='#1E40AF'; autoBtn.style.fontWeight='600'; }
+  _sinRamoActual = 'auto';
+  var tipos = SIN_TIPOS.auto;
+  var sel = document.getElementById('fs-tipo');
+  if (sel) sel.innerHTML = '<option value="">Seleccionar...</option>' + tipos.map(function(t){ return '<option>'+t+'</option>'; }).join('');
+  renderSinDynFields('auto','');
+  // Reset poliza
+  var polSel = document.getElementById('fs-poliza');
+  if (polSel) polSel.innerHTML = '<option value="">Seleccionar primero el cliente</option>';
+  // Reset titulo
+  var tit = document.getElementById('sin-modal-titulo');
+  if (tit) tit.childNodes[0].textContent = 'Nuevo siniestro ';
+  var btn = document.getElementById('btn-guardar-sin');
+  if (btn) btn.textContent = 'Registrar siniestro';
+}
+
 document.getElementById('btn-guardar-sin').onclick = async function() {
+  var cid = document.getElementById('fs-cl').value;
+  var desc = document.getElementById('fs-desc').value.trim();
+  var tipo = document.getElementById('fs-tipo').value;
+  var fh = document.getElementById('fs-fh').value;
+  var aseg = document.getElementById('fs-aseg').value;
+  if (!cid) { alert('Seleccioná un cliente'); return; }
+  if (!desc) { alert('La descripción es obligatoria'); return; }
+
+  // Recolectar datos específicos
+  var gv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
+  var togOn = function(id){ var e=document.getElementById(id+'-tog'); return e&&e.dataset.on==='1'; };
+
   var datos = {
     productor_id: user.id,
-    cliente_id: document.getElementById('fs-cl').value || null,
-    numero_expediente: document.getElementById('fs-exp').value.trim(),
-    aseguradora: document.getElementById('fs-aseg').value.trim(),
-    fecha_hecho: document.getElementById('fs-fh').value || null,
-    fecha_denuncia: document.getElementById('fs-fh').value || null,
-    tipo_siniestro: document.getElementById('fs-tipo').value,
-    descripcion: document.getElementById('fs-desc').value.trim(),
-    taller: document.getElementById('fs-taller').value.trim(),
-    fecha_inspeccion: document.getElementById('fs-insp').value || null,
+    cliente_id: cid,
+    poliza_id: gv('fs-poliza') || null,
+    numero_expediente: gv('fs-exp'),
+    aseguradora: aseg,
+    fecha_hecho: fh || null,
+    fecha_denuncia: fh || null,
+    tipo_siniestro: tipo,
+    descripcion: desc,
+    tipo_ramo: _sinRamoActual,
     etapa_actual: 'denuncia',
     estado: 'abierto',
+    gestiones_enviadas: {},
+    // Campos dinámicos según ramo
+    lugar_hecho: gv('fsd-lugar'),
+    taller: gv('fs-taller'),
+    hay_lesionados: togOn('fsd-lesionados'),
+    interv_policia: togOn('fsd-policia'),
+    hay_tercero: togOn('fsd-tercero'),
+    empleado_nombre: gv('fsd-empleado'),
+    empleado_dni: gv('fsd-empleado-dni'),
+    tipo_lesion: gv('fsd-lesion'),
+    art_nombre: gv('fsd-art'),
+    area_afectada: gv('fsd-sector'),
+    tipo_dano: gv('fsd-tipo-dano'),
+    monto_estimado_dano: parseFloat(gv('fsd-monto-dano'))||null,
+    beneficiario_nombre: gv('fsd-beneficiario'),
+    causa_siniestro: gv('fsd-causa'),
   };
-  if (!datos.descripcion) { alert('La descripción es obligatoria'); return; }
+
+  // Objetos electrónicos
+  if (tipo === 'Todo riesgo objetos electrónicos') {
+    var noRep = document.getElementById('fsd-no-repara');
+    var ordenOn = document.getElementById('fsd-orden-toggle');
+    datos.bien_asegurado = gv('fsd-objeto');
+    datos.tipo_dano = gv('fsd-tipo-dano');
+    var electData = {
+      objeto: gv('fsd-objeto'),
+      marca_modelo: gv('fsd-marca-modelo'),
+      numero_serie: gv('fsd-serie'),
+      precio_mercado: parseFloat(gv('fsd-precio-mercado'))||0,
+      presupuesto_reparacion: (noRep&&noRep.checked)?0:(parseFloat(gv('fsd-presup-rep'))||0),
+      no_se_puede_reparar: noRep?noRep.checked:false,
+      orden_reposicion_enviada: ordenOn?ordenOn.dataset.on==='1':false,
+    };
+    datos.datos_electronicos = electData;
+  }
+
   var editId = window._editSiniestroId;
   if (editId) {
-    delete datos.productor_id; delete datos.etapa_actual; delete datos.estado;
+    delete datos.productor_id; delete datos.etapa_actual; delete datos.estado; delete datos.gestiones_enviadas;
     var { error } = await sb.from('siniestros').update(datos).eq('id', editId);
     if (error) { alert('Error: ' + error.message); return; }
     window._editSiniestroId = null;
@@ -3129,6 +3519,7 @@ document.getElementById('btn-guardar-sin').onclick = async function() {
   if (fichaId) renderFicha();
   cargarDashboard();
 };
+// ===== FIN MODAL SINIESTRO =====
 
 // ---- GUARDAR INTERACCIÓN ----
 document.getElementById('btn-guardar-int').onclick = async function() {
@@ -4256,7 +4647,7 @@ document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclic
 document.getElementById('btn-np2') && (document.getElementById('btn-np2').onclick = function() { resetModalPoliza(); actualizarSelectsClientes(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
-document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-sin').classList.add('open'); });
+document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); window._editSiniestroId=null; abrirModalSinInit(); document.getElementById('modal-sin').classList.add('open'); });
 document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cob').classList.add('open'); });
 document.getElementById('btn-ntar') && (document.getElementById('btn-ntar').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-tar').classList.add('open'); });
 
