@@ -994,15 +994,13 @@
         <select id="fp-ramo" onchange="onRamoChange()">
           <option value="">Seleccionar...</option>
           <option value="Automotor">Automotor</option>
-          <option value="Vida Individual">Vida Individual</option>
-          <option value="Vida Colectiva">Vida Colectiva</option>
           <option value="Hogar">Hogar</option>
+          <option value="Comercio">Integral de comercio</option>
           <option value="ART">ART</option>
-          <option value="Combinado">Combinado</option>
-          <option value="Empresas">Empresas</option>
-          <option value="Comercio">Comercio</option>
           <option value="Accidentes Personales">Accidentes Personales</option>
           <option value="Responsabilidad Civil">Responsabilidad Civil</option>
+          <option value="Vida Individual">Vida Individual</option>
+          <option value="Vida Colectiva">Vida Colectiva</option>
           <option value="Otros">Otros</option>
         </select>
       </div>
@@ -1010,7 +1008,7 @@
 
     <div class="frow">
       <label>Tipo de cobertura</label>
-      <input type="text" id="fp-cobertura" placeholder="Todo riesgo, RC, Terceros completo...">
+      <select id="fp-cobertura" style="width:100%"><option value="">Seleccionar ramo primero...</option></select>
     </div>
 
     <div class="fg3">
@@ -3243,26 +3241,6 @@ function calcVto() {
   document.getElementById('fp-vto').value = d.toISOString().split('T')[0];
 }
 
-function calcFranquicia() {
-  const tipo = document.getElementById('fp-franq-tipo').value;
-  const val = parseFloat(document.getElementById('fp-franq-val').value) || 0;
-  const suma = parseFloat(document.getElementById('fp-suma').value) || 0;
-  const lbl = document.getElementById('fp-franq-lbl');
-  const res = document.getElementById('fp-franq-res');
-  if (!tipo) { res.style.display = 'none'; return; }
-  if (tipo === 'fija') {
-    lbl.textContent = 'Franquicia fija ($)';
-    res.style.display = val ? 'block' : 'none';
-    res.textContent = 'Franquicia fija: $' + val.toLocaleString('es-AR');
-  } else if (tipo === 'pct') {
-    lbl.textContent = 'Franquicia (%)';
-    if (val && suma) {
-      const monto = Math.round(suma * val / 100);
-      res.style.display = 'block';
-      res.textContent = val + '% sobre suma asegurada $' + suma.toLocaleString('es-AR') + ' = Franquicia: $' + monto.toLocaleString('es-AR');
-    } else { res.style.display = 'none'; }
-  }
-}
 
 function poblarAniosPoliza() {
   const sel = document.getElementById('fp-anio-auto');
@@ -5278,11 +5256,33 @@ function calcCuota() {
   }
 }
 
+var COB_POR_RAMO = {
+  'Automotor':             ['Todo riesgo','Terceros completo','Terceros básico','RC obligatoria'],
+  'Hogar':                 ['Incendio y robo','Incendio edificio','Integral hogar','Robo contenido'],
+  'Comercio':              ['Integral de comercio','Incendio y robo','Multiriesgo comercial'],
+  'ART':                   ['ART Ley 24.557'],
+  'Accidentes Personales': ['AP 24hs','AP laboral','AP deportiva'],
+  'Responsabilidad Civil': ['RC general','RC profesional','RC producto'],
+  'Vida Individual':       ['Vida temporario','Vida entera','Vida con ahorro'],
+  'Vida Colectiva':        ['Vida colectivo obligatorio','Vida colectivo voluntario'],
+  'Otros':                 [],
+};
+
 function onRamoChange() {
   const ramo = document.getElementById('fp-ramo').value;
   const cont = document.getElementById('fp-ramo-fields');
   if (!cont) return;
   cont.innerHTML = renderRamoFields(ramo);
+
+  // Populate coberturas
+  const cobSel = document.getElementById('fp-cobertura');
+  if (cobSel) {
+    const cobs = COB_POR_RAMO[ramo] || [];
+    cobSel.innerHTML = cobs.length
+      ? cobs.map(function(c){ return '<option>'+c+'</option>'; }).join('')
+      : '<option value="">—</option>';
+  }
+
   // Re-bind GNC toggle if automotor
   const gnc = document.getElementById('fp-auto-gnc');
   if (gnc) gnc.addEventListener('change', toggleGncFields);
@@ -5304,8 +5304,6 @@ function renderRamoFields(ramo) {
   if (ramo === 'Vida Individual') return ramoVidaInd();
   if (ramo === 'Vida Colectiva') return ramoVidaCol();
   if (ramo === 'ART') return ramoART();
-  if (ramo === 'Combinado') return ramoCombinado();
-  if (ramo === 'Empresas') return ramoEmpresas();
   if (ramo === 'Otros') return ramoOtros();
   return '';
 }
@@ -5333,7 +5331,7 @@ function ramoAutomotor() {
     '<div class="frow"><label>Año *</label>',
     '<select id="fp-auto-anio">',
     '<option value="">Seleccionar...</option>',
-    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html.join(''); })(),
+    (function() { var html = ''; for (var y = 2026; y >= 1960; y--) html += '<option value="' + y + '">' + y + '</option>'; return html; })(),
     '</select></div>',
     '</div>',
     '<div class="fg3">',
