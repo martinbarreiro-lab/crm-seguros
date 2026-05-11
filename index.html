@@ -5039,7 +5039,7 @@ async function cargarAnalisis() {
 document.getElementById('btn-nc') && (document.getElementById('btn-nc').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
 document.getElementById('btn-nc2') && (document.getElementById('btn-nc2').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cl').classList.add('open'); });
 document.getElementById('btn-np2') && (document.getElementById('btn-np2').onclick = function() { resetModalPoliza(); actualizarSelectsClientes(); document.getElementById('modal-pol').classList.add('open'); });
-document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); document.getElementById('modal-pol').classList.add('open'); });
+document.getElementById('btn-np') && (document.getElementById('btn-np').onclick = function() { actualizarSelectsClientes(); poblarAniosPoliza(); resetModalPoliza(); document.getElementById('modal-pol').classList.add('open'); });
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
 document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); window._editSiniestroId=null; abrirModalSinInit(); document.getElementById('modal-sin').classList.add('open'); });
 document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cob').classList.add('open'); });
@@ -5840,6 +5840,8 @@ function resetModalPoliza() {
   // Default valor cuota
   const vc = document.getElementById('fp-valor-cuota');
   if (vc) { vc.readOnly = true; vc.style.background = '#F9FAFB'; }
+  // Reset ramo fields to empty state
+  if (typeof onRamoChange === 'function') onRamoChange();
 }
 
 
@@ -6447,6 +6449,16 @@ function renderMpdHistorial(hist) {
   }).join('');
 }
 // ===== FIN DETALLE PÓLIZA MODAL =====
+
+// Ensure fp-ramo always triggers onRamoChange
+document.addEventListener('DOMContentLoaded', function() {
+  var ramoSel = document.getElementById('fp-ramo');
+  if (ramoSel) {
+    ramoSel.addEventListener('change', function() {
+      if (typeof onRamoChange === 'function') onRamoChange();
+    });
+  }
+});
 
 init();
 </script>
