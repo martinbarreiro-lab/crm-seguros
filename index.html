@@ -3334,7 +3334,19 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     aseguradora: aseg,
     numero: numAseg,
     ramo: ramo,
-    cobertura: document.getElementById('fp-cobertura').value.trim(),
+    cobertura: (function(){
+      var cob = document.getElementById('fp-cobertura').value.trim();
+      if (cob === 'Otra...') {
+        var otra = document.getElementById('fp-cob-otra');
+        return otra ? otra.value.trim() : cob;
+      }
+      if (cob === 'Terceros completo con granizo con límite') {
+        var monto = document.getElementById('fp-cob-granizo-monto');
+        var m = monto ? monto.value.trim() : '';
+        return m ? cob + ' ($'+m+')' : cob;
+      }
+      return cob;
+    })(),
     fecha_emision: document.getElementById('fp-emision').value || null,
     fecha_inicio: inicio,
     periodo_meses: parseInt(periodo, 10),
@@ -5257,7 +5269,7 @@ function calcCuota() {
 }
 
 var COB_POR_RAMO = {
-  'Automotor':             ['Todo riesgo','Terceros completo','Terceros básico','RC obligatoria'],
+  'Automotor':             ['Todo riesgo','Terceros completo','RC obligatoria','RC + Robo e Incendio Total','RC + Robo/Incendio Total + Destrucción Total por accidente','Terceros completo con granizo sin límite','Terceros completo con granizo con límite','Otra...'],
   'Hogar':                 ['Incendio y robo','Incendio edificio','Integral hogar','Robo contenido'],
   'Comercio':              ['Integral de comercio','Incendio y robo','Multiriesgo comercial'],
   'ART':                   ['ART Ley 24.557'],
@@ -5281,6 +5293,8 @@ function onRamoChange() {
     cobSel.innerHTML = cobs.length
       ? cobs.map(function(c){ return '<option>'+c+'</option>'; }).join('')
       : '<option value="">—</option>';
+    cobSel.onchange = onCoberturaChange;
+    onCoberturaChange();
   }
 
   // Re-bind GNC toggle if automotor
@@ -5292,6 +5306,33 @@ function onRamoChange() {
   // Show/hide cedula verde section based on ramo
   const cvSection = document.getElementById('fp-cv-section');
   if (cvSection) cvSection.style.display = (ramo === 'Automotor') ? 'block' : 'none';
+}
+
+function onCoberturaChange() {
+  var cobSel = document.getElementById('fp-cobertura');
+  if (!cobSel) return;
+  var val = cobSel.value;
+  // Granizo con límite — mostrar campo de monto
+  var granRow = document.getElementById('fp-cob-granizo-monto-row');
+  if (!granRow) {
+    // Crear el row si no existe
+    granRow = document.createElement('div');
+    granRow.id = 'fp-cob-granizo-monto-row';
+    granRow.className = 'frow';
+    granRow.innerHTML = '<label>Monto límite de granizo *</label><div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" id="fp-cob-granizo-monto" placeholder="0" style="border:none;outline:none;padding:7px 8px;font-size:13px;flex:1;background:transparent;color:var(--text)"></div>';
+    cobSel.parentNode.insertAdjacentElement('afterend', granRow);
+  }
+  // Otra cobertura — mostrar campo de texto libre
+  var otraRow = document.getElementById('fp-cob-otra-row');
+  if (!otraRow) {
+    otraRow = document.createElement('div');
+    otraRow.id = 'fp-cob-otra-row';
+    otraRow.className = 'frow';
+    otraRow.innerHTML = '<label>Descripción de la cobertura *</label><input type="text" id="fp-cob-otra" placeholder="Describí la cobertura...">';
+    cobSel.parentNode.insertAdjacentElement('afterend', otraRow);
+  }
+  granRow.style.display = val === 'Terceros completo con granizo con límite' ? 'block' : 'none';
+  otraRow.style.display = val === 'Otra...' ? 'block' : 'none';
 }
 
 function renderRamoFields(ramo) {
