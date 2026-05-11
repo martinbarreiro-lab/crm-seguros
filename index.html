@@ -2299,7 +2299,7 @@ async function fichaSiniestros(c) {
     html.push('<div style="border:0.5px solid #E5E7EB;border-left:3px solid '+borderColor+';border-radius:10px;overflow:hidden;margin-bottom:10px'+(isCerrado?';opacity:.8':'')+'">');
 
     // Header colapsable
-    html.push('<div onclick="toggleSin(\''+sinId+'\',event)" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
+    html.push('<div onclick="toggleSin(\''+sinId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
     html.push('<div><div id="sin-header-'+sinId+'" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
     var polizaRef = s.polizas ? ' · Póliza ' + s.polizas.numero : (s.poliza_id ? '' : '');
     html.push('<span style="font-size:11px;color:#9CA3AF;font-weight:500">N° Siniestro:&nbsp;</span><span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'—')+'</span>');
@@ -2313,7 +2313,7 @@ async function fichaSiniestros(c) {
     html.push('</div>');
 
     // Body expandible
-    html.push('<div id="sin-body-'+sinId+'" style="display:none;border-top:0.5px solid #F3F4F6;background:#FAFAFA">');
+    html.push('<div id="sin-body-'+sinId+'" onclick="event.stopPropagation()" style="display:none;border-top:0.5px solid #F3F4F6;background:#FAFAFA">');
     html.push('<div style="padding:14px;display:flex;flex-direction:column;gap:14px">');
 
     // Timeline clickeable
@@ -2650,14 +2650,7 @@ function sinFileZone(s, campo, label) {
 
 
 
-function toggleSin(sinId, event) {
-  // No colapsar si el click fue en un input, textarea, button, select o link
-  if (event) {
-    var tag = event.target.tagName;
-    if (['INPUT','TEXTAREA','BUTTON','SELECT','A','LABEL'].indexOf(tag) > -1) return;
-    var closest = event.target.closest('button, a, input, textarea, select, label, [data-guardar-nota]');
-    if (closest) return;
-  }
+function toggleSin(sinId) {
   var body = document.getElementById('sin-body-'+sinId);
   var chev = document.getElementById('sin-chevron-'+sinId);
   if (!body) return;
