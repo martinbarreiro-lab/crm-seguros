@@ -5432,73 +5432,94 @@ function ramoAutomotor() {
   ].join('');
 }
 
+function makeCobRow(cid, label, isDefault, prefix) {
+  prefix = prefix || 'fp-hog';
+  var toggleFn = prefix === 'fp-hog' ? 'toggleHogCob' : 'toggleComCob';
+  var div = document.createElement('div');
+  div.className = prefix+'-cob-row';
+  div.style.cssText = 'display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid '+(isDefault?'var(--med)':'var(--border)')+';opacity:'+(isDefault?'1':'.6');
+  var cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = isDefault;
+  cb.setAttribute('onchange', toggleFn+'(this)');
+  cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--med)';
+  var lbl = document.createElement('span');
+  lbl.style.cssText = 'font-size:13px;font-weight:500;color:var(--text)';
+  lbl.textContent = label;
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;gap:4px';
+  var dollar = document.createElement('span');
+  dollar.style.cssText = 'font-size:13px;color:var(--muted)'; dollar.textContent = '$';
+  var inp = document.createElement('input');
+  inp.type = 'number'; inp.id = prefix+'-cob-'+cid; inp.placeholder = '0';
+  inp.disabled = !isDefault;
+  inp.style.cssText = 'width:130px;text-align:right;font-size:13px;padding:5px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);'+(isDefault?'':'background:var(--bg)');
+  wrap.appendChild(dollar); wrap.appendChild(inp);
+  div.appendChild(cb); div.appendChild(lbl); div.appendChild(wrap);
+  return div.outerHTML;
+}
+
 function ramoHogar() {
-  var coberturas = [
-    { id:'incendio',    label:'Incendio edificio',                  default:true  },
-    { id:'robo',        label:'Robo y/o hurto',                     default:true  },
-    { id:'electronico', label:'Todo riesgo objetos electrónicos',   default:true  },
-    { id:'rc',          label:'RC comprensiva',                     default:true  },
-    { id:'cristales',   label:'Cristales',                          default:false },
-    { id:'agua',        label:'Daños por agua',                     default:false },
-    { id:'alojamiento', label:'Gastos de alojamiento',              default:false },
+  var cobs = [
+    ['incendio',    'Incendio edificio',                 true ],
+    ['robo',        'Robo y/o hurto',                    true ],
+    ['electronico', 'Todo riesgo objetos electrónicos',  true ],
+    ['rc',          'RC comprensiva',                    true ],
+    ['cristales',   'Cristales',                         false],
+    ['agua',        'Daños por agua',                    false],
+    ['alojamiento', 'Gastos de alojamiento',             false],
   ];
-
-  var cobHtml = coberturas.map(function(c) {
-    var checked = c.default ? 'checked' : '';
-    var opacity = c.default ? '1' : '.6';
-    var border  = c.default ? 'var(--med)' : 'var(--border)';
-    var disabled= c.default ? '' : 'disabled';
-    var bgInp   = c.default ? '' : 'background:var(--bg);';
-    return '<div class="fp-hog-cob-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid '+border+';opacity:'+opacity+'">'
-      +'<input type="checkbox" '+checked+' onchange="toggleHogCob(this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--med)">'
-      +'<span style="font-size:13px;font-weight:500;color:var(--text)">'+c.label+'</span>'
-      +'<div style="display:flex;align-items:center;gap:4px">'
-      +'<span style="font-size:13px;color:var(--muted)">$</span>'
-      +'<input type="number" id="fp-hog-cob-'+c.id+'" placeholder="0" '+disabled+' style="width:130px;text-align:right;font-size:13px;padding:5px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);'+bgInp+'">'
-      +'</div></div>';
-  }).join('');
-
+  var cobHtml = cobs.map(function(c){ return makeCobRow(c[0],c[1],c[2],'fp-hog'); }).join('');
   return [
     '<div class="sec-label" style="margin-top:14px">Datos del riesgo</div>',
     '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-hog-dir"></div>',
     '<div class="fg3">',
-    '<div class="frow"><label>Tipo de vivienda *</label>',
-    '<select id="fp-hog-tipo"><option value="">Seleccionar...</option><option>Casa</option><option>Departamento</option></select></div>',
-    '<div class="frow"><label>Uso *</label>',
-    '<select id="fp-hog-uso"><option value="">Seleccionar...</option><option>Permanente</option><option>Alquiler</option><option>Temporario</option></select></div>',
+    '<div class="frow"><label>Tipo de vivienda *</label><select id="fp-hog-tipo"><option value="">Seleccionar...</option><option>Casa</option><option>Departamento</option></select></div>',
+    '<div class="frow"><label>Uso *</label><select id="fp-hog-uso"><option value="">Seleccionar...</option><option>Permanente</option><option>Alquiler</option><option>Temporario</option></select></div>',
     '<div class="frow"><label>Año de construcción</label><input type="number" id="fp-hog-anio" min="1900" max="2027"></div>',
     '</div>',
     '<div class="fg2">',
     '<div class="frow"><label>Superficie (m²)</label><input type="number" id="fp-hog-m2-total"></div>',
-    '<div class="frow"><label>Sistema de seguridad</label>',
-    '<select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Alarma + rejas</option><option>Vigilancia 24hs</option><option>Country/Barrio cerrado</option></select></div>',
+    '<div class="frow"><label>Sistema de seguridad</label><select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Alarma + rejas</option><option>Vigilancia 24hs</option><option>Country/Barrio cerrado</option></select></div>',
     '</div>',
     '<div class="sec-label" style="margin-top:12px">Coberturas incluidas</div>',
-    '<div style="display:flex;flex-direction:column;gap:6px">',
-    cobHtml,
-    '</div>',
+    '<div style="display:flex;flex-direction:column;gap:6px">'+cobHtml+'</div>',
   ].join('');
 }
 
 function toggleHogCob(cb) {
   var row = cb.closest('.fp-hog-cob-row');
-  var inp = row.querySelector('input[type="number"]');
+  var inp = row ? row.querySelector('input[type="number"]') : null;
   if (!inp) return;
-  if (cb.checked) {
-    row.style.opacity = '1';
-    row.style.borderColor = 'var(--med)';
-    inp.disabled = false;
-    inp.style.background = '';
-  } else {
-    row.style.opacity = '.6';
-    row.style.borderColor = 'var(--border)';
-    inp.disabled = true;
-    inp.value = '';
-    inp.style.background = 'var(--bg)';
-  }
+  row.style.opacity = cb.checked ? '1' : '.6';
+  row.style.borderColor = cb.checked ? 'var(--med)' : 'var(--border)';
+  inp.disabled = !cb.checked;
+  inp.style.background = cb.checked ? '' : 'var(--bg)';
+  if (!cb.checked) inp.value = '';
+}
+
+function toggleComCob(cb) {
+  var row = cb.closest('.fp-com-cob-row');
+  var inp = row ? row.querySelector('input[type="number"]') : null;
+  if (!inp) return;
+  row.style.opacity = cb.checked ? '1' : '.6';
+  row.style.borderColor = cb.checked ? 'var(--med)' : 'var(--border)';
+  inp.disabled = !cb.checked;
+  inp.style.background = cb.checked ? '' : 'var(--bg)';
+  if (!cb.checked) inp.value = '';
 }
 
 function ramoComercio() {
+  var cobs = [
+    ['incendio',    'Incendio edificio',                 true ],
+    ['mercaderia',  'Incendio mercadería',               true ],
+    ['robo',        'Robo y/o hurto',                    true ],
+    ['rc',          'RC comprensiva',                    true ],
+    ['rc_alimentos','RC alimentos',                      true ],
+    ['cristales',   'Cristales',                         false],
+    ['agua',        'Daños por agua',                    false],
+    ['dinero',      'Robo de dinero en efectivo',        false],
+  ];
+  var cobHtml = cobs.map(function(c){ return makeCobRow(c[0],c[1],c[2],'fp-com'); }).join('');
   return [
     '<div class="sec-label" style="margin-top:14px">Datos del comercio</div>',
     '<div class="fg2">',
@@ -5512,10 +5533,8 @@ function ramoComercio() {
     '<div class="frow"><label>Cantidad empleados</label><input type="number" id="fp-com-emp"></div>',
     '<div class="frow"><label>Horario</label><input type="text" id="fp-com-horario" placeholder="Ej: Lun-Vie 9-18"></div>',
     '</div>',
-    '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada contenido *</label>' + moneyInput('fp-com-suma-cont') + '</div>',
-    '<div class="frow"><label>Suma asegurada edificio</label>' + moneyInput('fp-com-suma-edif') + '</div>',
-    '</div>'
+    '<div class="sec-label" style="margin-top:12px">Coberturas incluidas</div>',
+    '<div style="display:flex;flex-direction:column;gap:6px">'+cobHtml+'</div>',
   ].join('');
 }
 
@@ -5748,8 +5767,17 @@ function recolectarDatosRamo(ramo) {
     datos.m2 = v('fp-com-m2');
     datos.empleados = v('fp-com-emp');
     datos.horario = v('fp-com-horario');
-    datos.suma_contenido = parseFloat(v('fp-com-suma-cont')) || 0;
-    datos.suma_edificio = parseFloat(v('fp-com-suma-edif')) || 0;
+    var cobIdsCom = ['incendio','mercaderia','robo','rc','rc_alimentos','cristales','agua','dinero'];
+    var cobLabelsCom = {incendio:'Incendio edificio',mercaderia:'Incendio mercadería',robo:'Robo y/o hurto',rc:'RC comprensiva',rc_alimentos:'RC alimentos',cristales:'Cristales',agua:'Daños por agua',dinero:'Robo de dinero en efectivo'};
+    var cobsCom = [];
+    cobIdsCom.forEach(function(cid) {
+      var inp = document.getElementById('fp-com-cob-'+cid);
+      var row = inp ? inp.closest('.fp-com-cob-row') : null;
+      var checkbox = row ? row.querySelector('input[type="checkbox"]') : null;
+      if (checkbox && checkbox.checked) cobsCom.push({nombre:cobLabelsCom[cid], suma:parseFloat(inp?inp.value:0)||0});
+    });
+    datos.coberturas_detalle = cobsCom;
+    datos.suma_contenido = cobsCom.reduce(function(acc,c){return acc+c.suma;},0);
   } else if (ramo === 'Accidentes Personales') {
     datos.actividad = v('fp-ap-actividad');
     datos.cantidad_personas = parseInt(v('fp-ap-cant'), 10) || 1;
