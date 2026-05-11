@@ -5433,6 +5433,31 @@ function ramoAutomotor() {
 }
 
 function ramoHogar() {
+  var coberturas = [
+    { id:'incendio',    label:'Incendio edificio',                  default:true  },
+    { id:'robo',        label:'Robo y/o hurto',                     default:true  },
+    { id:'electronico', label:'Todo riesgo objetos electrónicos',   default:true  },
+    { id:'rc',          label:'RC comprensiva',                     default:true  },
+    { id:'cristales',   label:'Cristales',                          default:false },
+    { id:'agua',        label:'Daños por agua',                     default:false },
+    { id:'alojamiento', label:'Gastos de alojamiento',              default:false },
+  ];
+
+  var cobHtml = coberturas.map(function(c) {
+    var checked = c.default ? 'checked' : '';
+    var opacity = c.default ? '1' : '.6';
+    var border  = c.default ? 'var(--med)' : 'var(--border)';
+    var disabled= c.default ? '' : 'disabled';
+    var bgInp   = c.default ? '' : 'background:var(--bg);';
+    return '<div class="fp-hog-cob-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid '+border+';opacity:'+opacity+'">'
+      +'<input type="checkbox" '+checked+' onchange="toggleHogCob(this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--med)">'
+      +'<span style="font-size:13px;font-weight:500;color:var(--text)">'+c.label+'</span>'
+      +'<div style="display:flex;align-items:center;gap:4px">'
+      +'<span style="font-size:13px;color:var(--muted)">$</span>'
+      +'<input type="number" id="fp-hog-cob-'+c.id+'" placeholder="0" '+disabled+' style="width:130px;text-align:right;font-size:13px;padding:5px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);'+bgInp+'">'
+      +'</div></div>';
+  }).join('');
+
   return [
     '<div class="sec-label" style="margin-top:14px">Datos del riesgo</div>',
     '<div class="frow"><label>Dirección del riesgo *</label><input type="text" id="fp-hog-dir"></div>',
@@ -5443,17 +5468,34 @@ function ramoHogar() {
     '<select id="fp-hog-uso"><option value="">Seleccionar...</option><option>Permanente</option><option>Alquiler</option><option>Temporario</option></select></div>',
     '<div class="frow"><label>Año de construcción</label><input type="number" id="fp-hog-anio" min="1900" max="2027"></div>',
     '</div>',
-    '<div class="fg3">',
-    '<div class="frow"><label>Superficie total (m²)</label><input type="number" id="fp-hog-m2-total"></div>',
-    '<div class="frow"><label>Superficie construida (m²)</label><input type="number" id="fp-hog-m2-cub"></div>',
-    '<div class="frow"><label>Sistema de seguridad</label>',
-    '<select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Vigilancia 24hs</option><option>Alarma + rejas</option><option>Country/Barrio cerrado</option></select></div>',
-    '</div>',
     '<div class="fg2">',
-    '<div class="frow"><label>Suma asegurada edificio *</label>' + moneyInput('fp-hog-suma-edif') + '</div>',
-    '<div class="frow"><label>Suma asegurada contenido</label>' + moneyInput('fp-hog-suma-cont') + '</div>',
-    '</div>'
+    '<div class="frow"><label>Superficie (m²)</label><input type="number" id="fp-hog-m2-total"></div>',
+    '<div class="frow"><label>Sistema de seguridad</label>',
+    '<select id="fp-hog-seg"><option value="">Ninguno</option><option>Alarma</option><option>Rejas</option><option>Alarma + rejas</option><option>Vigilancia 24hs</option><option>Country/Barrio cerrado</option></select></div>',
+    '</div>',
+    '<div class="sec-label" style="margin-top:12px">Coberturas incluidas</div>',
+    '<div style="display:flex;flex-direction:column;gap:6px">',
+    cobHtml,
+    '</div>',
   ].join('');
+}
+
+function toggleHogCob(cb) {
+  var row = cb.closest('.fp-hog-cob-row');
+  var inp = row.querySelector('input[type="number"]');
+  if (!inp) return;
+  if (cb.checked) {
+    row.style.opacity = '1';
+    row.style.borderColor = 'var(--med)';
+    inp.disabled = false;
+    inp.style.background = '';
+  } else {
+    row.style.opacity = '.6';
+    row.style.borderColor = 'var(--border)';
+    inp.disabled = true;
+    inp.value = '';
+    inp.style.background = 'var(--bg)';
+  }
 }
 
 function ramoComercio() {
@@ -5678,10 +5720,26 @@ function recolectarDatosRamo(ramo) {
     datos.uso = v('fp-hog-uso');
     datos.anio_construccion = v('fp-hog-anio');
     datos.m2_total = v('fp-hog-m2-total');
-    datos.m2_cubierta = v('fp-hog-m2-cub');
     datos.seguridad = v('fp-hog-seg');
-    datos.suma_edificio = parseFloat(v('fp-hog-suma-edif')) || 0;
-    datos.suma_contenido = parseFloat(v('fp-hog-suma-cont')) || 0;
+    // Coberturas con sumas
+    var cobIds = ['incendio','robo','electronico','rc','cristales','agua','alojamiento'];
+    var cobLabels = {
+      incendio:'Incendio edificio', robo:'Robo y/o hurto',
+      electronico:'Todo riesgo objetos electrónicos', rc:'RC comprensiva',
+      cristales:'Cristales', agua:'Daños por agua', alojamiento:'Gastos de alojamiento'
+    };
+    var coberturas = [];
+    cobIds.forEach(function(cid) {
+      var cb = document.querySelector('#fp-hog-cob-'+cid);
+      var cbCheck = cb ? cb.closest('.fp-hog-cob-row') : null;
+      var checkbox = cbCheck ? cbCheck.querySelector('input[type="checkbox"]') : null;
+      if (checkbox && checkbox.checked) {
+        coberturas.push({ nombre: cobLabels[cid], suma: parseFloat(cb ? cb.value : 0) || 0 });
+      }
+    });
+    datos.coberturas_detalle = coberturas;
+    // Suma total para compatibilidad
+    datos.suma_edificio = coberturas.reduce(function(acc,c){ return acc + c.suma; }, 0);
   } else if (ramo === 'Comercio') {
     datos.nombre = v('fp-com-nombre');
     datos.cuit = v('fp-com-cuit');
