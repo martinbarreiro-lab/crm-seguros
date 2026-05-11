@@ -5634,12 +5634,44 @@ function ramoART() {
     '<div class="frow"><label>Razón social *</label><input type="text" id="fp-art-razon"></div>',
     '<div class="frow"><label>CUIT *</label><input type="text" id="fp-art-cuit"></div>',
     '</div>',
-    '<div class="fg3">',
+    '<div class="fg2">',
     '<div class="frow"><label>Actividad principal *</label><input type="text" id="fp-art-actividad"></div>',
     '<div class="frow"><label>Cantidad empleados *</label><input type="number" id="fp-art-emp"></div>',
-    '<div class="frow"><label>Masa salarial mensual *</label>' + moneyInput('fp-art-masa') + '</div>',
-    '</div>'
+    '</div>',
+    '<div class="sec-label" style="margin-top:12px">Cálculo del premio</div>',
+    '<div class="fg3">',
+    '<div class="frow"><label>Masa salarial mensual *</label>' + moneyInput('fp-art-masa', '0', {oninput:'calcART()'}) + '</div>',
+    '<div class="frow"><label>Alícuota *</label>',
+    '<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">',
+    '<input type="number" id="fp-art-alicuota" step="0.1" placeholder="0" oninput="calcART()" style="border:none;outline:none;padding:7px 8px;font-size:13px;flex:1;background:transparent;color:var(--text);text-align:right">',
+    '<span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-left:0.5px solid var(--border)">%</span>',
+    '</div></div>',
+    '<div class="frow"><label>Premio mensual estimado</label>',
+    '<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden;background:var(--bg)">',
+    '<span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span>',
+    '<input type="text" id="fp-art-premio" readonly placeholder="—" style="border:none;outline:none;padding:7px 8px;font-size:13px;flex:1;background:transparent;color:var(--muted);font-weight:500">',
+    '</div></div>',
+    '</div>',
+    '<div id="fp-art-info" style="display:none;margin-top:6px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);font-size:12px;color:var(--med)"></div>',
   ].join('');
+}
+
+function calcART() {
+  var masa = parseFloat((document.getElementById('fp-art-masa')||{}).value) || 0;
+  var pct  = parseFloat((document.getElementById('fp-art-alicuota')||{}).value) || 0;
+  var mensual = Math.round(masa * pct / 100);
+  var anual = mensual * 12;
+  var premioEl = document.getElementById('fp-art-premio');
+  var infoEl = document.getElementById('fp-art-info');
+  if (premioEl) premioEl.value = mensual ? mensual.toLocaleString('es-AR') : '';
+  if (infoEl) {
+    if (masa && pct) {
+      infoEl.style.display = 'block';
+      infoEl.innerHTML = '$'+masa.toLocaleString('es-AR')+' × '+pct+'% = <strong>$'+mensual.toLocaleString('es-AR')+' por mes</strong> · $'+anual.toLocaleString('es-AR')+' anuales';
+    } else {
+      infoEl.style.display = 'none';
+    }
+  }
 }
 
 function ramoCombinado() {
@@ -5828,6 +5860,8 @@ function recolectarDatosRamo(ramo) {
     datos.actividad = v('fp-art-actividad');
     datos.empleados = v('fp-art-emp');
     datos.masa_salarial = parseFloat(v('fp-art-masa')) || 0;
+    datos.alicuota = parseFloat(v('fp-art-alicuota')) || 0;
+    datos.premio_mensual = datos.masa_salarial && datos.alicuota ? Math.round(datos.masa_salarial * datos.alicuota / 100) : 0;
   } else if (ramo === 'Combinado') {
     datos.direccion = v('fp-cf-dir');
     datos.tipo_vivienda = v('fp-cf-tipo');
@@ -6075,7 +6109,7 @@ async function abrirEditarPoliza(polId) {
     sv('fp-vc-razon', dr.razon_social); sv('fp-vc-cant', dr.cantidad); sv('fp-vc-capital', dr.capital); sv('fp-vc-plan', dr.plan);
   } else if (p.ramo === 'ART') {
     sv('fp-art-razon', dr.razon_social); sv('fp-art-cuit', dr.cuit); sv('fp-art-actividad', dr.actividad);
-    sv('fp-art-emp', dr.empleados); sv('fp-art-masa', dr.masa_salarial);
+    sv('fp-art-emp', dr.empleados); sv('fp-art-masa', dr.masa_salarial); sv('fp-art-alicuota', dr.alicuota); if(typeof calcART==='function') setTimeout(calcART,50);
   } else if (p.ramo === 'Empresas') {
     sv('fp-emp-razon', dr.razon_social); sv('fp-emp-cuit', dr.cuit); sv('fp-emp-actividad', dr.actividad);
     sv('fp-emp-dir', dr.direccion); sv('fp-emp-emp', dr.empleados); sv('fp-emp-suma', dr.suma);
