@@ -2299,7 +2299,7 @@ async function fichaSiniestros(c) {
     html.push('<div style="border:0.5px solid #E5E7EB;border-left:3px solid '+borderColor+';border-radius:10px;overflow:hidden;margin-bottom:10px'+(isCerrado?';opacity:.8':'')+'">');
 
     // Header colapsable
-    html.push('<div onclick="toggleSin(\''+sinId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
+    html.push('<div onclick="toggleSin(\''+sinId+'\',event)" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
     html.push('<div><div id="sin-header-'+sinId+'" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
     var polizaRef = s.polizas ? ' · Póliza ' + s.polizas.numero : (s.poliza_id ? '' : '');
     html.push('<span style="font-size:11px;color:#9CA3AF;font-weight:500">N° Siniestro:&nbsp;</span><span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'—')+'</span>');
@@ -2650,7 +2650,14 @@ function sinFileZone(s, campo, label) {
 
 
 
-function toggleSin(sinId) {
+function toggleSin(sinId, event) {
+  // No colapsar si el click fue en un input, textarea, button, select o link
+  if (event) {
+    var tag = event.target.tagName;
+    if (['INPUT','TEXTAREA','BUTTON','SELECT','A','LABEL'].indexOf(tag) > -1) return;
+    var closest = event.target.closest('button, a, input, textarea, select, label, [data-guardar-nota]');
+    if (closest) return;
+  }
   var body = document.getElementById('sin-body-'+sinId);
   var chev = document.getElementById('sin-chevron-'+sinId);
   if (!body) return;
@@ -6619,25 +6626,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Event delegation for siniestro nota textareas and guardar buttons
 document.addEventListener('click', function(e) {
-  // Stop propagation for any click inside sin-body
-  var body = e.target.closest('[id^="sin-body-"]');
-  if (body) e.stopPropagation();
-
-  // Guardar nota button
   var btn = e.target.closest('[data-guardar-nota]');
   if (btn) {
-    e.stopPropagation();
     var parts = btn.getAttribute('data-guardar-nota').split('|');
     guardarNotaEtapa(parts[0], parts[1]);
   }
-}, true); // useCapture=true to intercept before bubbling
-
-document.addEventListener('mousedown', function(e) {
-  var body = e.target.closest('[id^="sin-body-"]');
-  if (body) e.stopPropagation();
-}, true);
+});
 
 init();
 </script>
