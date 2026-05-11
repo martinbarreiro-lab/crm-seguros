@@ -5323,10 +5323,7 @@ function ramoAutomotor() {
     '<input type="text" id="fp-auto-marca-otra" placeholder="Escribir marca" style="display:none;margin-top:4px">',
     '</div>',
     '<div class="frow"><label>Modelo *</label>',
-    '<select id="fp-auto-modelo" onchange="onModeloChange()" disabled>',
-    '<option value="">Seleccionar marca primero</option>',
-    '</select>',
-    '<input type="text" id="fp-auto-modelo-otro" placeholder="Escribir modelo" style="display:none;margin-top:4px">',
+    '<input type="text" id="fp-auto-modelo" placeholder="Escribir modelo" style="width:100%">',
     '</div>',
     '<div class="frow"><label>Año *</label>',
     '<select id="fp-auto-anio">',
@@ -5612,8 +5609,7 @@ function recolectarDatosRamo(ramo) {
     var marcaOtra = v('fp-auto-marca-otra');
     datos.marca = marcaSel === '__otra__' ? marcaOtra : marcaSel;
     var modeloSel = v('fp-auto-modelo');
-    var modeloOtro = v('fp-auto-modelo-otro');
-    datos.modelo = modeloSel === '__otro__' ? modeloOtro : modeloSel;
+    datos.modelo = modeloSel;
     datos.anio = v('fp-auto-anio');
     datos.patente = v('fp-auto-patente').toUpperCase();
     datos.chasis = v('fp-auto-chasis');
@@ -5761,51 +5757,15 @@ var MODELOS_POR_MARCA = {
 function onMarcaChange() {
   const sel = document.getElementById('fp-auto-marca');
   const otraInput = document.getElementById('fp-auto-marca-otra');
-  const modeloSel = document.getElementById('fp-auto-modelo');
-  const modeloOtro = document.getElementById('fp-auto-modelo-otro');
-  if (!sel || !modeloSel) return;
-
-  const marca = sel.value;
-
-  // Manejar opción "Otra"
-  if (marca === '__otra__') {
+  if (!sel) return;
+  if (sel.value === '__otra__') {
     if (otraInput) otraInput.style.display = 'block';
-    modeloSel.disabled = false;
-    modeloSel.innerHTML = '<option value="__otro__">Otro...</option>';
-    if (modeloOtro) modeloOtro.style.display = 'block';
-    return;
   } else {
     if (otraInput) { otraInput.style.display = 'none'; otraInput.value = ''; }
   }
-
-  // Cargar modelos
-  if (modeloOtro) { modeloOtro.style.display = 'none'; modeloOtro.value = ''; }
-
-  if (!marca) {
-    modeloSel.innerHTML = '<option value="">Seleccionar marca primero</option>';
-    modeloSel.disabled = true;
-    return;
-  }
-
-  const modelos = MODELOS_POR_MARCA[marca] || [];
-  let html = '<option value="">Seleccionar modelo...</option>';
-  modelos.forEach(function(m) { html += '<option value="' + m + '">' + m + '</option>'; });
-  html.push('<option value="__otro__">Otro...</option>');
-  modeloSel.innerHTML = html;
-  modeloSel.disabled = false;
 }
 
-function onModeloChange() {
-  const sel = document.getElementById('fp-auto-modelo');
-  const otroInput = document.getElementById('fp-auto-modelo-otro');
-  if (!sel || !otroInput) return;
-  if (sel.value === '__otro__') {
-    otroInput.style.display = 'block';
-  } else {
-    otroInput.style.display = 'none';
-    otroInput.value = '';
-  }
-}
+function onModeloChange() { /* modelo is now a free text input */ }
 
 // ===== RESET MODAL POLIZA =====
 function resetModalPoliza() {
