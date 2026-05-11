@@ -2593,12 +2593,12 @@ function renderSinEtapaPanel(s, etapa) {
   }
 
   // ── NOTAS DE ETAPA (todas) ────────────────────────────
-  html.push('<div onclick="event.stopPropagation()">');
+  html.push('<div>');
   html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">');
   html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em">Notas de esta etapa</div>');
-  html.push('<button type="button" onclick="event.stopPropagation();guardarNotaEtapa(\''+s.id+'\',\''+etapa+'\')" style="font-size:11px;padding:3px 10px;border-radius:5px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--med)">Guardar</button>');
+  html.push('<button type="button" data-guardar-nota="'+s.id+'|'+etapa+'" style="font-size:11px;padding:3px 10px;border-radius:5px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--med)">Guardar</button>');
   html.push('</div>');
-  html.push('<textarea id="sin-nota-'+s.id+'-'+etapa+'" onclick="event.stopPropagation()" placeholder="Escribí notas sobre esta etapa..." style="width:100%;min-height:72px;resize:vertical;font-size:12px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#FAFAFA;color:#374151;font-family:inherit;box-sizing:border-box">'+notas+'</textarea>');
+  html.push('<textarea data-nota-sin="'+s.id+'|'+etapa+'" placeholder="Escribí notas sobre esta etapa..." style="width:100%;min-height:72px;resize:vertical;font-size:12px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#FAFAFA;color:#374151;font-family:inherit;box-sizing:border-box;display:block">'+notas+'</textarea>');
   html.push('</div>');
 
   html.push('</div>');
@@ -2610,7 +2610,7 @@ function sinSeccion(label) {
 }
 
 async function guardarNotaEtapa(sinId, etapa) {
-  var ta = document.getElementById('sin-nota-'+sinId+'-'+etapa);
+  var ta = document.querySelector('[data-nota-sin="'+sinId+'|'+etapa+'"]');
   if (!ta) return;
   var texto = ta.value;
   var { data: s } = await sb.from('siniestros').select('notas_etapa').eq('id', sinId).single();
@@ -6618,6 +6618,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// Event delegation for siniestro nota textareas and guardar buttons
+document.addEventListener('click', function(e) {
+  // Stop propagation for any click inside sin-body
+  var body = e.target.closest('[id^="sin-body-"]');
+  if (body) e.stopPropagation();
+
+  // Guardar nota button
+  var btn = e.target.closest('[data-guardar-nota]');
+  if (btn) {
+    e.stopPropagation();
+    var parts = btn.getAttribute('data-guardar-nota').split('|');
+    guardarNotaEtapa(parts[0], parts[1]);
+  }
+}, true); // useCapture=true to intercept before bubbling
+
+document.addEventListener('mousedown', function(e) {
+  var body = e.target.closest('[id^="sin-body-"]');
+  if (body) e.stopPropagation();
+}, true);
 
 init();
 </script>
