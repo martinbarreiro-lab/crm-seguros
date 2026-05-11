@@ -1632,149 +1632,402 @@ async function fichaResumen(c) {
   return html.join('');
 }
 function fichaDatos(c) {
-  const html = [];
-  html.push('<div class="card">');
-  html.push('<div id="datos-view-' + c.id + '">');
-  html.push('<div style="display:flex;justify-content:flex-end;margin-bottom:12px">');
-  html.push('<button type="button" class="btn btn-sm btn-p" onclick="mostrarFormEditCliente(\'' + c.id + '\')">Editar datos</button>');
-  html.push('</div>');
-
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Datos personales</div>');
-  html.push('<div class="g2">');
-  html.push(ir('Nombre', c.nombre + ' ' + c.apellido));
-  html.push(ir('DNI', c.dni));
-  html.push(ir('Nacimiento', c.fecha_nacimiento));
-  html.push(ir('Estado', c.estado));
-  html.push('</div>');
-
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Contacto</div>');
-  html.push('<div class="g2">');
-  html.push(ir('Teléfono 1', c.telefono_principal));
-  html.push(ir('Teléfono 2', c.telefono_secundario));
-  html.push(ir('Email 1', c.email_principal));
-  html.push(ir('Email 2', c.email_secundario));
-  html.push('</div>');
-
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Domicilio</div>');
-  html.push('<div class="g2">');
-  html.push(ir('Dirección', c.direccion));
-  html.push(ir('Localidad', c.localidad));
-  html.push(ir('Código postal', c.zona_geografica));
-  html.push('</div>');
-
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Vehículo</div>');
-  html.push('<div class="g2">');
-  html.push(ir('Marca', c.marca_vehiculo));
-  html.push(ir('Modelo', c.modelo_vehiculo));
-  html.push(ir('Año', c.anio_vehiculo));
-  html.push(ir('Patente', c.patente));
-  html.push(ir('Color', c.color_vehiculo));
-  html.push('</div>');
-
-  if (c.notas) {
-    html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Notas</div>');
-    html.push('<div style="font-size:13px;color:var(--text)">' + c.notas + '</div>');
+  var isEmpresa = c.tipo_cliente === 'empresa';
+  var ops = c.contactos_operativos || [];
+  var html = [];
+  var sl = 'font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)';
+  var card = 'background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px';
+  var row3 = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:0';
+  var row2 = 'display:grid;grid-template-columns:1fr 1fr;gap:0';
+  function cell(lbl,val,last) {
+    return '<div style="padding:8px '+(last?'0':'12px')+' 8px '+(last&&lbl?'12px':'0')+'"><div style="font-size:11px;color:var(--muted);margin-bottom:2px">'+lbl+'</div><div style="font-size:13px;font-weight:500;color:var(--text)">'+(val||'—')+'</div></div>';
+  }
+  function cellBadge(lbl,val) {
+    return '<div style="padding:8px 0"><div style="font-size:11px;color:var(--muted);margin-bottom:3px">'+lbl+'</div>'+(val?'<span style="background:var(--bg);padding:2px 9px;border-radius:20px;font-size:12px;font-weight:500;color:var(--text)">'+val+'</span>':'<span style="color:var(--lt)">—</span>')+'</div>';
   }
 
-  html.push('</div>'); // datos-view
-  html.push('</div>'); // card
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">');
+  html.push('<div style="display:flex;gap:6px">');
+  html.push('<span style="padding:5px 12px;border-radius:var(--rsm);font-size:12px;font-weight:500;background:'+(isEmpresa?'var(--bg)':'var(--light)')+';color:'+(isEmpresa?'var(--muted)':'var(--med)')+';border:0.5px solid '+(isEmpresa?'var(--border)':'var(--med)')+'">👤 Persona física</span>');
+  html.push('<span style="padding:5px 12px;border-radius:var(--rsm);font-size:12px;font-weight:500;background:'+(isEmpresa?'var(--light)':'var(--bg)')+';color:'+(isEmpresa?'var(--med)':'var(--muted)')+';border:0.5px solid '+(isEmpresa?'var(--med)':'var(--border)')+'">🏢 Empresa</span>');
+  html.push('</div>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="mostrarFormEditCliente(\''+c.id+'\')">✏ Editar datos</button>');
+  html.push('</div>');
+
+  if (!isEmpresa) {
+    // PERSONA FÍSICA
+    html.push('<div style="'+card+'">');
+    html.push('<div style="'+sl+'">Datos personales</div>');
+    html.push('<div style="'+row3+'">');
+    html.push(cell('Nombre completo',(c.apellido&&c.nombre?c.apellido+', '+c.nombre:c.nombre||c.apellido||'—'),''));
+    html.push(cell('DNI',c.dni,''));
+    html.push(cell('Fecha de nacimiento',(c.fecha_nacimiento?(c.fecha_nacimiento+' · '+Math.floor((new Date()-new Date(c.fecha_nacimiento))/3156e6)+' años'):'—'),true));
+    html.push('</div><div style="'+row3+';border-top:0.5px solid var(--border)">');
+    html.push(cell('Estado civil',c.estado_civil,''));
+    html.push(cell('Profesión / Actividad',c.profesion,''));
+    html.push(cellBadge('Condición fiscal',c.condicion_fiscal ? c.condicion_fiscal.replace('_',' ').replace(/\b\w/g,function(l){return l.toUpperCase();}) : ''));
+    html.push('</div><div style="'+row2+';border-top:0.5px solid var(--border)">');
+    html.push(cellBadge('Estado del cliente', c.estado ? c.estado.charAt(0).toUpperCase()+c.estado.slice(1) : ''));
+    html.push(cell('Grupo de afinidad',c.grupo_afinidad,true));
+    html.push('</div>');
+    html.push('</div>');
+  } else {
+    // EMPRESA
+    html.push('<div style="'+card+'">');
+    html.push('<div style="'+sl+'">Datos de la empresa</div>');
+    html.push('<div style="'+row3+'">');
+    html.push(cell('Razón social',c.razon_social||c.nombre,''));
+    html.push(cell('CUIT',c.cuit,''));
+    html.push(cell('Actividad',c.actividad,true));
+    html.push('</div><div style="'+row2+';border-top:0.5px solid var(--border)">');
+    html.push(cellBadge('Condición fiscal',c.condicion_fiscal ? c.condicion_fiscal.replace(/_/g,' ').replace(/\b\w/g,function(l){return l.toUpperCase();}) : ''));
+    html.push(cell('Grupo de afinidad',c.grupo_afinidad,true));
+    html.push('</div>');
+    html.push('</div>');
+  }
+
+  // TITULAR
+  html.push('<div style="'+card+'">');
+  html.push('<div style="'+sl+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Titular de la póliza</div>');
+  html.push('<div style="'+row2+'">');
+  html.push(cell('Nombre',c.telefono_principal?c.nombre+' '+c.apellido:(c.nombre||'—'),''));
+  html.push(cell('Teléfono principal',c.telefono_principal,true));
+  html.push('</div><div style="'+row2+';border-top:0.5px solid var(--border)">');
+  html.push(cell('Teléfono secundario',c.telefono_secundario,''));
+  html.push(cell('Email',c.email_principal,true));
+  html.push('</div>');
+  html.push('</div>');
+
+  // CONTACTOS OPERATIVOS
+  html.push('<div style="'+card+'">');
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)">');
+  html.push('<div style="'+sl.replace('margin:0 0 10px;','')+';margin:0">👥 Contactos operativos</div>');
+  html.push('</div>');
+  if (!ops.length) {
+    html.push('<div style="font-size:13px;color:var(--lt);padding:10px 0">Sin contactos operativos cargados.</div>');
+  } else {
+    ops.forEach(function(op) {
+      var isPpal = op.es_principal;
+      html.push('<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--rsm);margin-bottom:8px;position:relative'+(isPpal?';border:0.5px solid #C0DD97':'')+'">');
+      if (isPpal) html.push('<div style="position:absolute;top:-1px;left:10px;font-size:10px;font-weight:600;background:#EAF3DE;color:#27500A;padding:1px 7px;border-radius:0 0 5px 5px">⭐ Contacto principal</div>');
+      var ini = ((op.nombre||'?')[0]).toUpperCase();
+      html.push('<div style="width:32px;height:32px;border-radius:50%;background:var(--light);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--med);flex-shrink:0'+(isPpal?';margin-top:8px':'')+'">'+ini+'</div>');
+      html.push('<div style="flex:1'+(isPpal?';margin-top:8px':'')+'">');
+      html.push('<div style="font-size:13px;font-weight:500;color:var(--text)">'+op.nombre+'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">· '+(op.rol||'')+'</span></div>');
+      html.push('<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(op.telefono||'')+(op.telefono&&op.email?' · ':'')+( op.email||'')+'</div>');
+      html.push('</div>');
+      if (op.telefono) html.push('<a href="https://wa.me/'+normalizarTelefono(op.telefono)+'" target="_blank" style="color:#22C55E;text-decoration:none;font-size:18px" title="WhatsApp">💬</a>');
+      html.push('</div>');
+    });
+  }
+  html.push('</div>');
+
+  // DOMICILIO
+  html.push('<div style="'+card+'">');
+  html.push('<div style="'+sl+'">Domicilio</div>');
+  html.push('<div style="'+row3+'">');
+  html.push(cell('Dirección',c.direccion,''));
+  html.push(cell('Localidad',c.localidad,''));
+  html.push(cell('Código postal',c.zona_geografica,true));
+  html.push('</div>');
+  html.push('</div>');
+
+  // DOCUMENTACIÓN
+  html.push('<div style="'+card+'">');
+  html.push('<div style="'+sl+'">Documentación</div>');
+  html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+  var docs = [
+    {lbl:'DNI frente', url:c.dni_frente_url},
+    {lbl:'DNI dorso', url:c.dni_dorso_url},
+    {lbl:'Carnet de conducir frente', url:c.carnet_frente_url},
+    {lbl:'Carnet de conducir dorso', url:c.carnet_dorso_url},
+  ];
+  docs.forEach(function(d) {
+    if (d.url) {
+      html.push('<div style="padding:10px 12px;border:0.5px solid #C0DD97;border-radius:var(--rsm);background:#F0FDF4;display:flex;align-items:center;justify-content:space-between">');
+      html.push('<div><div style="font-size:12px;font-weight:500;color:#27500A">'+d.lbl+'</div><div style="font-size:11px;color:#3B6D11;margin-top:1px">✓ Cargado</div></div>');
+      html.push('<button type="button" class="btn btn-sm" onclick="window.open(\''+d.url+'\',\'_blank\')" style="font-size:11px;padding:3px 8px">Ver ↗</button>');
+      html.push('</div>');
+    } else {
+      html.push('<div style="padding:10px 12px;border:1.5px dashed var(--border);border-radius:var(--rsm);background:var(--white);display:flex;align-items:center;justify-content:space-between">');
+      html.push('<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+d.lbl+'</div><div style="font-size:11px;color:var(--lt);margin-top:1px">Sin cargar</div></div>');
+      html.push('<button type="button" class="btn btn-sm" onclick="mostrarFormEditCliente(\''+c.id+'\')" style="font-size:11px;padding:3px 8px">Subir</button>');
+      html.push('</div>');
+    }
+  });
+  html.push('</div>');
+  if (c.notas) { html.push('<div style="margin-top:12px;font-size:12px;color:var(--muted);padding-top:10px;border-top:0.5px solid var(--border)"><span style="font-weight:600">Notas: </span>'+c.notas+'</div>'); }
+  html.push('</div>');
+
   return html.join('');
 }
 
 function mostrarFormEditCliente(id) {
-  const cl = allCl.find(function(x) { return x.id === id; });
+  var cl = allCl.find(function(x) { return x.id === id; });
   if (!cl) return;
-  const cont = document.getElementById('ficha-content');
-  const html = [];
+  var cont = document.getElementById('ficha-content');
+  var isEmpresa = cl.tipo_cliente === 'empresa';
+  var ops = cl.contactos_operativos || [];
+  var sl = 'font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)';
+  var html = [];
+
   html.push('<div class="card">');
-  html.push('<div style="font-size:14px;font-weight:600;margin-bottom:16px">Editar datos del cliente</div>');
+  html.push('<div style="font-size:14px;font-weight:600;margin-bottom:14px">Editar datos del cliente</div>');
 
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Datos personales</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Nombre</label><input type="text" id="ed-nombre" value="' + (cl.nombre||'') + '"></div>');
-  html.push('<div class="frow"><label>Apellido</label><input type="text" id="ed-apellido" value="' + (cl.apellido||'') + '"></div>');
-  html.push('</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>DNI</label><input type="text" id="ed-dni" value="' + (cl.dni||'') + '"></div>');
-  html.push('<div class="frow"><label>Fecha de nacimiento</label><input type="date" id="ed-nac" value="' + (cl.fecha_nacimiento||'') + '"></div>');
-  html.push('</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Estado</label><select id="ed-estado"><option value="prospecto"' + (cl.estado==='prospecto'?' selected':'') + '>Prospecto</option><option value="activo"' + (cl.estado==='activo'?' selected':'') + '>Activo</option><option value="renovacion"' + (cl.estado==='renovacion'?' selected':'') + '>En renovación</option><option value="siniestrado"' + (cl.estado==='siniestrado'?' selected':'') + '>Siniestrado</option><option value="inactivo"' + (cl.estado==='inactivo'?' selected':'') + '>Inactivo</option></select></div>');
-  html.push('<div class="frow"><label>Canal de origen</label><input type="text" id="ed-canal" value="' + (cl.canal_origen||'') + '"></div>');
+  // Tipo cliente
+  html.push('<div style="display:flex;gap:6px;margin-bottom:14px">');
+  html.push('<button type="button" id="ed-btn-persona" onclick="edSetTipo(\'persona\')" style="padding:6px 14px;border-radius:var(--rsm);font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid '+(isEmpresa?'var(--border)':'var(--med)')+';background:'+(isEmpresa?'var(--bg)':'var(--light)')+';color:'+(isEmpresa?'var(--muted)':'var(--med)')+'">👤 Persona física</button>');
+  html.push('<button type="button" id="ed-btn-empresa" onclick="edSetTipo(\'empresa\')" style="padding:6px 14px;border-radius:var(--rsm);font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid '+(isEmpresa?'var(--med)':'var(--border)')+';background:'+(isEmpresa?'var(--light)':'var(--bg)')+';color:'+(isEmpresa?'var(--med)':'var(--muted)')+'">🏢 Empresa</button>');
+  html.push('<input type="hidden" id="ed-tipo-cl" value="'+(isEmpresa?'empresa':'persona')+'">');
   html.push('</div>');
 
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Contacto</div>');
+  // === PERSONA ===
+  html.push('<div id="ed-sec-persona" style="display:'+(isEmpresa?'none':'block')+'">');
+  html.push('<div style="'+sl.replace('margin:14px','margin:0')+'">Datos personales</div>');
+  html.push('<div class="fg2"><div class="frow"><label>Nombre *</label><input type="text" id="ed-nombre" value="'+(cl.nombre||'')+'"></div>');
+  html.push('<div class="frow"><label>Apellido *</label><input type="text" id="ed-apellido" value="'+(cl.apellido||'')+'"></div></div>');
+  html.push('<div class="fg2"><div class="frow"><label>DNI</label><input type="text" id="ed-dni" value="'+(cl.dni||'')+'"></div>');
+  html.push('<div class="frow"><label>Fecha de nacimiento</label><input type="date" id="ed-nac" value="'+(cl.fecha_nacimiento||'')+'"></div></div>');
   html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Teléfono principal</label><input type="text" id="ed-tel1" value="' + (cl.telefono_principal||'') + '"></div>');
-  html.push('<div class="frow"><label>Teléfono secundario</label><input type="text" id="ed-tel2" value="' + (cl.telefono_secundario||'') + '"></div>');
-  html.push('</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Email principal</label><input type="email" id="ed-email1" value="' + (cl.email_principal||'') + '"></div>');
-  html.push('<div class="frow"><label>Email secundario</label><input type="email" id="ed-email2" value="' + (cl.email_secundario||'') + '"></div>');
-  html.push('</div>');
-
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Domicilio</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Dirección</label><input type="text" id="ed-dir" value="' + (cl.direccion||'') + '"></div>');
-  html.push('<div class="frow"><label>Localidad</label><input type="text" id="ed-loc" value="' + (cl.localidad||'') + '"></div>');
+  html.push('<div class="frow"><label>Estado civil</label><select id="ed-estado-civil">'+
+    ['','Soltero/a','Casado/a','Divorciado/a','Viudo/a','Unión convivencial'].map(function(v){return '<option value="'+v+'"'+(cl.estado_civil===v?' selected':'')+'>'+( v||'Seleccionar...')+'</option>';}).join('')+'</select></div>');
+  html.push('<div class="frow"><label>Profesión / Actividad</label><input type="text" id="ed-profesion" value="'+(cl.profesion||'')+'"></div></div>');
   html.push('</div>');
 
-  html.push('<div class="sec-label" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">Vehículo</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Marca</label><input type="text" id="ed-marca" value="' + (cl.marca_vehiculo||'') + '"></div>');
-  html.push('<div class="frow"><label>Modelo</label><input type="text" id="ed-modelo" value="' + (cl.modelo_vehiculo||'') + '"></div>');
-  html.push('</div>');
-  html.push('<div class="fg2">');
-  html.push('<div class="frow"><label>Año</label><input type="text" id="ed-anio" value="' + (cl.anio_vehiculo||'') + '"></div>');
-  html.push('<div class="frow"><label>Patente</label><input type="text" id="ed-patente" value="' + (cl.patente||'') + '"></div>');
+  // === EMPRESA ===
+  html.push('<div id="ed-sec-empresa" style="display:'+(isEmpresa?'block':'none')+'">');
+  html.push('<div style="'+sl.replace('margin:14px','margin:0')+'">Datos de la empresa</div>');
+  html.push('<div class="fg2"><div class="frow"><label>Razón social *</label><input type="text" id="ed-razon-social" value="'+(cl.razon_social||cl.nombre||'')+'"></div>');
+  html.push('<div class="frow"><label>CUIT *</label><input type="text" id="ed-cuit" value="'+(cl.cuit||cl.dni||'')+'"></div></div>');
+  html.push('<div class="frow"><label>Actividad</label><input type="text" id="ed-actividad" value="'+(cl.actividad||'')+'"></div>');
   html.push('</div>');
 
-  html.push('<div class="frow" style="margin-top:8px"><label>Notas internas</label><textarea id="ed-notas" style="min-height:60px">' + (cl.notas||'') + '</textarea></div>');
+  // === COMÚN ===
+  html.push('<div style="'+sl+'">Perfil fiscal y estado</div>');
+  html.push('<div class="fg2">');
+  html.push('<div class="frow"><label>Condición fiscal</label><select id="ed-cond">'+
+    [['','Seleccionar...'],['consumidor_final','Consumidor final'],['monotributista','Monotributista'],['responsable_inscripto','Responsable inscripto'],['exento','Exento'],['no_categorizado','No categorizado'],['sujeto_no_alcanzado','Sujeto no alcanzado']].map(function(v){return '<option value="'+v[0]+'"'+(cl.condicion_fiscal===v[0]?' selected':'')+'>'+ v[1]+'</option>';}).join('')+'</select></div>');
+  html.push('<div class="frow"><label>Estado</label><select id="ed-estado">'+
+    [['prospecto','Prospecto'],['activo','Activo'],['renovacion','En renovación'],['siniestrado','Siniestrado'],['inactivo','Inactivo']].map(function(v){return '<option value="'+v[0]+'"'+(cl.estado===v[0]?' selected':'')+'>'+ v[1]+'</option>';}).join('')+'</select></div>');
+  html.push('</div>');
+  html.push('<div class="frow"><label>Grupo de afinidad <span style="font-weight:400;color:var(--muted)">(opcional)</span></label><input type="text" id="ed-grupo-afinidad" value="'+(cl.grupo_afinidad||'')+'" placeholder="Ej: Colegio de Médicos, Sindicato..."></div>');
 
-  html.push('<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">');
+  // === TITULAR ===
+  html.push('<div style="'+sl+'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Titular de la póliza</div>');
+  html.push('<div class="fg2"><div class="frow"><label>Teléfono principal *</label><input type="text" id="ed-tel1" value="'+(cl.telefono_principal||'')+'"></div>');
+  html.push('<div class="frow"><label>Teléfono secundario</label><input type="text" id="ed-tel2" value="'+(cl.telefono_secundario||'')+'"></div></div>');
+  html.push('<div class="frow"><label>Email</label><input type="email" id="ed-email1" value="'+(cl.email_principal||'')+'"></div>');
+
+  // === CONTACTOS OPERATIVOS ===
+  html.push('<div style="'+sl+'">👥 Contactos operativos</div>');
+  html.push('<div style="margin-bottom:6px"><button type="button" onclick="edReplicarTitular()" style="font-size:11px;padding:4px 10px;border-radius:var(--rsm);border:0.5px solid var(--med);background:var(--light);color:var(--med);cursor:pointer;display:inline-flex;align-items:center;gap:4px">📋 Usar titular como contacto principal</button></div>');
+  html.push('<div id="ed-ops-list" style="display:flex;flex-direction:column;gap:8px">');
+  ops.forEach(function(op, idx) {
+    html.push(edOpRow(op, idx));
+  });
+  html.push('</div>');
+  html.push('<button type="button" onclick="edAddOp()" style="margin-top:6px;font-size:12px;color:var(--muted);background:none;border:0.5px dashed var(--border);border-radius:var(--rsm);padding:8px;cursor:pointer;width:100%;text-align:center">+ Agregar contacto operativo</button>');
+
+  // === DOMICILIO ===
+  html.push('<div style="'+sl+'">Domicilio</div>');
+  html.push('<div class="fg2"><div class="frow"><label>Calle</label><input type="text" id="ed-calle" value="'+(cl.calle||( cl.direccion?cl.direccion.split(' ')[0]:''))+'"></div>');
+  html.push('<div class="frow"><label>Número</label><input type="text" id="ed-num-dom" value="'+(cl.numero_dom||(cl.direccion?cl.direccion.split(' ')[1]:''))+'"></div></div>');
+  html.push('<div class="fg2"><div class="frow"><label>Piso</label><input type="text" id="ed-piso" value="'+(cl.piso||'')+'"></div>');
+  html.push('<div class="frow"><label>Departamento</label><input type="text" id="ed-dpto" value="'+(cl.departamento||'')+'"></div></div>');
+  html.push('<div class="fg2"><div class="frow"><label>Localidad</label><input type="text" id="ed-loc" value="'+(cl.localidad||'')+'"></div>');
+  html.push('<div class="frow"><label>Código postal</label><input type="text" id="ed-cp" value="'+(cl.zona_geografica||'')+'"></div></div>');
+
+  // === DOCUMENTACIÓN ===
+  html.push('<div style="'+sl+'">Documentación</div>');
+  html.push('<div class="fg2">');
+  html.push('<div class="frow"><label>DNI frente</label><input type="file" id="ed-dni-frente" accept="image/*,application/pdf"><div id="lbl-ed-dni-frente" style="font-size:11px;color:var(--muted);margin-top:3px">'+(cl.dni_frente_url?'✓ Ya cargado':'')+'</div></div>');
+  html.push('<div class="frow"><label>DNI dorso</label><input type="file" id="ed-dni-dorso" accept="image/*,application/pdf"><div id="lbl-ed-dni-dorso" style="font-size:11px;color:var(--muted);margin-top:3px">'+(cl.dni_dorso_url?'✓ Ya cargado':'')+'</div></div>');
+  html.push('<div class="frow"><label>Carnet de conducir frente</label><input type="file" id="ed-carnet-frente" accept="image/*,application/pdf"><div id="lbl-ed-carnet-frente" style="font-size:11px;color:var(--muted);margin-top:3px">'+(cl.carnet_frente_url?'✓ Ya cargado':'')+'</div></div>');
+  html.push('<div class="frow"><label>Carnet de conducir dorso</label><input type="file" id="ed-carnet-dorso" accept="image/*,application/pdf"><div id="lbl-ed-carnet-dorso" style="font-size:11px;color:var(--muted);margin-top:3px">'+(cl.carnet_dorso_url?'✓ Ya cargado':'')+'</div></div>');
+  html.push('</div>');
+
+  // === NOTAS ===
+  html.push('<div class="frow" style="margin-top:8px"><label>Notas internas</label><textarea id="ed-notas" style="min-height:60px">'+(cl.notas||'')+'</textarea></div>');
+
+  html.push('<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:0.5px solid var(--border)">');
   html.push('<button type="button" class="btn btn-sm" onclick="setFichaTab(\'datos\')">Cancelar</button>');
-  html.push('<button type="button" class="btn btn-sm btn-p" onclick="guardarEdicionCliente(\'' + id + '\')">Guardar cambios</button>');
-  html.push('</div>');
-  html.push('</div>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="guardarEdicionCliente(\''+id+'\')">Guardar cambios</button>');
+  html.push('</div></div>');
   cont.innerHTML = html.join('');
 }
 
+function edOpRow(op, idx) {
+  var idx2 = idx !== undefined ? idx : Date.now();
+  var isPpal = op && op.es_principal;
+  var roles = ['Titular','Administrativa/o','Contador/a','Gerente','Cónyuge','Hijo/a','Otro'];
+  return '<div class="ed-op-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid var(--border)'+(isPpal?';border-color:#C0DD97':'')+'">'+
+    '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Nombre</label><input type="text" class="op-nombre" value="'+(op&&op.nombre||'')+'" placeholder="Nombre completo" style="width:100%;font-size:13px;padding:6px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)"></div>'+
+    '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Rol</label><select class="op-rol" style="width:100%;font-size:13px;padding:6px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">'+roles.map(function(r){return '<option'+(op&&op.rol===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select></div>'+
+    '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Teléfono</label><input type="text" class="op-tel" value="'+(op&&op.telefono||'')+'" placeholder="Teléfono" style="width:100%;font-size:13px;padding:6px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)"></div>'+
+    '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Email</label><input type="email" class="op-email" value="'+(op&&op.email||'')+'" placeholder="Email" style="width:100%;font-size:13px;padding:6px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)"></div>'+
+    '<div style="display:flex;flex-direction:column;gap:4px">'+
+    '<button type="button" onclick="edTogglePpal(this)" title="Marcar como principal" style="padding:5px 7px;border-radius:var(--rsm);border:0.5px solid '+(isPpal?'#C0DD97':'var(--border)')+';background:'+(isPpal?'var(--gl)':'var(--white)')+';cursor:pointer;color:'+(isPpal?'#27500A':'var(--muted)')+';font-size:13px">⭐</button>'+
+    '<button type="button" onclick="this.closest(\'.ed-op-row\').remove()" title="Eliminar" style="padding:5px 7px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--muted);font-size:13px">✕</button>'+
+    '</div></div>';
+}
+
+function edAddOp() {
+  var list = document.getElementById('ed-ops-list');
+  var div = document.createElement('div');
+  div.innerHTML = edOpRow({}, null);
+  list.appendChild(div.firstElementChild);
+}
+
+function edTogglePpal(btn) {
+  // Quitar principal de todos
+  document.querySelectorAll('#ed-ops-list .ed-op-row').forEach(function(row) {
+    var b = row.querySelector('button[title="Marcar como principal"]');
+    if (b) { b.style.borderColor='var(--border)'; b.style.background='var(--white)'; b.style.color='var(--muted)'; }
+    row.style.borderColor='var(--border)';
+  });
+  // Marcar este
+  btn.style.borderColor='#C0DD97'; btn.style.background='var(--gl)'; btn.style.color='#27500A';
+  var row = btn.closest('.ed-op-row');
+  if (row) row.style.borderColor='#C0DD97';
+}
+
+function edReplicarTitular() {
+  var nombre = (document.getElementById('ed-apellido')&&document.getElementById('ed-nombre')) ?
+    (document.getElementById('ed-apellido').value+', '+document.getElementById('ed-nombre').value).trim() :
+    (document.getElementById('ed-razon-social')?document.getElementById('ed-razon-social').value:'');
+  var tel = document.getElementById('ed-tel1') ? document.getElementById('ed-tel1').value : '';
+  var email = document.getElementById('ed-email1') ? document.getElementById('ed-email1').value : '';
+
+  // Quitar principal actual
+  document.querySelectorAll('#ed-ops-list .ed-op-row').forEach(function(row) {
+    var b = row.querySelector('button[title="Marcar como principal"]');
+    if (b) { b.style.borderColor='var(--border)'; b.style.background='var(--white)'; b.style.color='var(--muted)'; }
+    row.style.borderColor='var(--border)';
+  });
+
+  var div = document.createElement('div');
+  div.innerHTML = edOpRow({nombre:nombre, rol:'Titular', telefono:tel, email:email, es_principal:true}, null);
+  var list = document.getElementById('ed-ops-list');
+  list.insertBefore(div.firstElementChild, list.firstChild);
+  mostrarAlerta('✅ Datos del titular copiados como contacto principal');
+}
+
+function edSetTipo(tipo) {
+  var isEmpresa = tipo === 'empresa';
+  document.getElementById('ed-tipo-cl').value = tipo;
+  document.getElementById('ed-sec-persona').style.display = isEmpresa ? 'none' : 'block';
+  document.getElementById('ed-sec-empresa').style.display = isEmpresa ? 'block' : 'none';
+  var btnP = document.getElementById('ed-btn-persona');
+  var btnE = document.getElementById('ed-btn-empresa');
+  btnP.style.borderColor = isEmpresa?'var(--border)':'var(--med)';
+  btnP.style.background = isEmpresa?'var(--bg)':'var(--light)';
+  btnP.style.color = isEmpresa?'var(--muted)':'var(--med)';
+  btnE.style.borderColor = isEmpresa?'var(--med)':'var(--border)';
+  btnE.style.background = isEmpresa?'var(--light)':'var(--bg)';
+  btnE.style.color = isEmpresa?'var(--med)':'var(--muted)';
+}
+
 async function guardarEdicionCliente(id) {
-  const updates = {
-    nombre: document.getElementById('ed-nombre').value.trim(),
-    apellido: document.getElementById('ed-apellido').value.trim(),
-    dni: document.getElementById('ed-dni').value.trim(),
-    fecha_nacimiento: document.getElementById('ed-nac').value || null,
-    estado: document.getElementById('ed-estado').value,
-    canal_origen: document.getElementById('ed-canal').value.trim(),
-    telefono_principal: document.getElementById('ed-tel1').value.trim(),
-    telefono_secundario: document.getElementById('ed-tel2').value.trim(),
-    email_principal: document.getElementById('ed-email1').value.trim(),
-    email_secundario: document.getElementById('ed-email2').value.trim(),
-    direccion: document.getElementById('ed-dir').value.trim(),
-    localidad: document.getElementById('ed-loc').value.trim(),
-    marca_vehiculo: document.getElementById('ed-marca').value.trim(),
-    modelo_vehiculo: document.getElementById('ed-modelo').value.trim(),
-    anio_vehiculo: document.getElementById('ed-anio').value || null,
-    patente: document.getElementById('ed-patente').value.trim().toUpperCase(),
-    notas: document.getElementById('ed-notas').value.trim(),
+  var gv = function(eid){ var e=document.getElementById(eid); return e?e.value.trim():''; };
+  var tipo = gv('ed-tipo-cl') || 'persona';
+  var isEmpresa = tipo === 'empresa';
+
+  // Recolectar contactos operativos
+  var ops = [];
+  var hasPpal = false;
+  document.querySelectorAll('#ed-ops-list .ed-op-row').forEach(function(row) {
+    var nombre = row.querySelector('.op-nombre') ? row.querySelector('.op-nombre').value.trim() : '';
+    if (!nombre) return;
+    var btnPpal = row.querySelector('button[title="Marcar como principal"]');
+    var isPpal = btnPpal && (btnPpal.style.background.includes('gl') || btnPpal.style.background.includes('EAF3') || btnPpal.style.borderColor.includes('C0DD'));
+    if (isPpal) hasPpal = true;
+    ops.push({
+      nombre: nombre,
+      rol: row.querySelector('.op-rol') ? row.querySelector('.op-rol').value : '',
+      telefono: row.querySelector('.op-tel') ? row.querySelector('.op-tel').value.trim() : '',
+      email: row.querySelector('.op-email') ? row.querySelector('.op-email').value.trim() : '',
+      es_principal: isPpal,
+    });
+  });
+
+  var updates = {
+    tipo_cliente: tipo,
+    estado: gv('ed-estado'),
+    condicion_fiscal: gv('ed-cond') || null,
+    grupo_afinidad: gv('ed-grupo-afinidad') || null,
+    telefono_principal: normalizarTelefono(gv('ed-tel1')),
+    telefono_secundario: normalizarTelefono(gv('ed-tel2')),
+    email_principal: normalizarEmail(gv('ed-email1')),
+    localidad: gv('ed-loc'),
+    zona_geografica: gv('ed-cp'),
+    notas: gv('ed-notas'),
+    contactos_operativos: ops,
   };
-  updates.telefono_principal = normalizarTelefono(updates.telefono_principal);
-  updates.telefono_secundario = normalizarTelefono(updates.telefono_secundario);
-  updates.email_principal = normalizarEmail(updates.email_principal);
-  updates.email_secundario = normalizarEmail(updates.email_secundario);
-  if (!updates.nombre || !updates.apellido) { alert('Nombre y apellido son obligatorios'); return; }
-  const { error } = await sb.from('clientes').update(updates).eq('id', id);
+
+  // Armar dirección
+  var calle = gv('ed-calle'); var num = gv('ed-num-dom'); var piso = gv('ed-piso'); var dpto = gv('ed-dpto');
+  var dir = [calle, num].filter(Boolean).join(' ');
+  if (piso) dir += ', Piso '+piso;
+  if (dpto) dir += ', Dpto '+dpto;
+  updates.direccion = dir || gv('ed-dir');
+  updates.calle = calle; updates.numero_dom = num; updates.piso = piso; updates.departamento = dpto;
+
+  if (isEmpresa) {
+    updates.razon_social = gv('ed-razon-social');
+    updates.nombre = gv('ed-razon-social').split(' ')[0] || gv('ed-razon-social');
+    updates.apellido = '';
+    updates.cuit = gv('ed-cuit');
+    updates.actividad = gv('ed-actividad');
+    if (!updates.razon_social) { alert('La razón social es obligatoria'); return; }
+  } else {
+    updates.nombre = gv('ed-nombre');
+    updates.apellido = gv('ed-apellido');
+    updates.dni = gv('ed-dni');
+    updates.fecha_nacimiento = gv('ed-nac') || null;
+    updates.estado_civil = gv('ed-estado-civil') || null;
+    updates.profesion = gv('ed-profesion') || null;
+    if (!updates.nombre || !updates.apellido) { alert('Nombre y apellido son obligatorios'); return; }
+  }
+
+  var { error } = await sb.from('clientes').update(updates).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
+
+  // Subir documentos si hay
+  var docUploads = [
+    {input:'ed-dni-frente', col:'dni_frente_url', folder:'dni'},
+    {input:'ed-dni-dorso', col:'dni_dorso_url', folder:'dni'},
+    {input:'ed-carnet-frente', col:'carnet_frente_url', folder:'carnet'},
+    {input:'ed-carnet-dorso', col:'carnet_dorso_url', folder:'carnet'},
+  ];
+  var docUpdates = {};
+  for (var i=0; i<docUploads.length; i++) {
+    var d = docUploads[i];
+    var el = document.getElementById(d.input);
+    var file = el && el.files[0];
+    if (file) {
+      try {
+        var path = d.folder+'/'+id+'/'+Date.now()+'_'+d.input+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        await sb.storage.from('archivos').upload(path, file);
+        var { data: u } = sb.storage.from('archivos').getPublicUrl(path);
+        docUpdates[d.col] = u.publicUrl;
+      } catch(err) { console.warn('Doc upload:', d.input, err); }
+    }
+  }
+  if (Object.keys(docUpdates).length > 0) {
+    await sb.from('clientes').update(docUpdates).eq('id', id);
+  }
+
   mostrarAlerta('✅ Datos actualizados correctamente');
   await cargarClientes();
   fichaId = id;
   fichaTab = 'datos';
   await renderFicha();
 }
+
 function ir(label, val) {
   return '<div class="info-row"><span>' + label + '</span><span>' + (val || '—') + '</span></div>';
 }
+
 
 async function fichaPolizas(c) {
   const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
