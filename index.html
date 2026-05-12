@@ -2374,10 +2374,6 @@ async function fichaSiniestros(c) {
     // Acciones
     html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">');
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
-    if (!isCerrado) {
-      html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+sinId+'\',\''+etapa+'\')">Avanzar estado →</button>');
-      if (etapa === 'cierre') html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" style="margin-left:auto" onclick="cerrarSiniestro(\''+sinId+'\')">✓ Cerrar siniestro</button>');
-    }
     html.push('<button type="button" title="Eliminar siniestro sin dejar registro" onclick="eliminarSiniestro(\''+sinId+'\')" style="margin-left:auto;padding:5px 9px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--lt)">🗑</button>');
     html.push('</div>');
 
@@ -2606,6 +2602,17 @@ function renderSinEtapaPanel(s, etapa) {
   html.push('</div>');
   html.push('<textarea data-nota-sin="'+s.id+'|'+etapa+'" placeholder="Escribí notas sobre esta etapa..." style="width:100%;min-height:60px;resize:vertical;font-size:13px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;font-family:inherit;box-sizing:border-box;position:relative;z-index:1">'+notas+'</textarea>');
   html.push('</div>');
+
+  // ── ACCIONES DE ETAPA ────────────────────────────
+  if (s.estado !== 'cerrado') {
+    html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:4px;border-top:0.5px solid #F3F4F6">');
+    if (etapa !== 'cierre') {
+      html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+s.id+'\',\''+etapa+'\')">Avanzar estado →</button>');
+    } else {
+      html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" onclick="cerrarSiniestro(\''+s.id+'\')">✓ Cerrar siniestro</button>');
+    }
+    html.push('</div>');
+  }
 
   html.push('</div>');
   return html.join('');
