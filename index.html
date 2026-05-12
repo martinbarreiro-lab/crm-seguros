@@ -2598,10 +2598,6 @@ function renderSinEtapaPanel(s, etapa) {
     html.push(sinField('Fecha de cierre', fmtDate(s.fecha_cierre)||''));
     html.push(sinField('Resultado', s.resultado_cierre||''));
     html.push('</div>');
-    if (s.notas_cierre) {
-      html.push(sinSeccion('Notas de cierre'));
-      html.push('<div style="background:#F9FAFB;border-radius:6px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.5">'+s.notas_cierre+'</div>');
-    }
   }
 
   // ── DESCRIPCIÓN EDITABLE ────────────────────────────
