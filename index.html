@@ -2371,14 +2371,6 @@ async function fichaSiniestros(c) {
     });
     html.push('</div></div>');
 
-    // Notas
-    if (s.descripcion) {
-      html.push('<div>');
-      html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Notas</div>');
-      html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-radius:6px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.5">'+s.descripcion+'</div>');
-      html.push('</div>');
-    }
-
     // Acciones
     html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">');
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
@@ -2448,9 +2440,6 @@ function renderSinEtapaPanel(s, etapa) {
       html.push(sinField('Área/sector afectado', s.area_afectada||''));
     }
     html.push('</div>');
-    // Descripción
-    html.push(sinSeccion('Descripción del siniestro'));
-    html.push('<div style="background:#F9FAFB;border:0.5px solid #E5E7EB;border-radius:6px;padding:10px 12px;font-size:12px;color:'+(s.descripcion?'#374151':'#D1D5DB')+';line-height:1.6;min-height:54px;font-style:'+(s.descripcion?'normal':'italic')+'">'+(s.descripcion||'Sin descripción cargada')+'</div>');
     // PDF Denuncia
     html.push(sinSeccion('Denuncia administrativa'));
     html.push(sinFileZone(s, 'denuncia_url', 'Denuncia administrativa'));
