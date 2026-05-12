@@ -3010,6 +3010,8 @@ async function cerrarSiniestro(sinId) {
       if (btnCerrar) btnCerrar.style.display = 'none';
     }
     mostrarAlerta('✅ Siniestro cerrado correctamente');
+    if (fichaId && typeof renderFicha === 'function') await renderFicha();
+    cargarDashboard();
   });
 }
 
