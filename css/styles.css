@@ -449,3 +449,28 @@ tr:hover td{background:var(--bg)}
 }
 
 /* Layout de pólizas en ficha 360° — controlado 100% por inline styles en JS */
+
+/* ── Panel Siniestros rediseñado ── */
+.sin-panel-wrap{background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sin-panel-filter-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sin-panel-filter-card input[type=text]{flex:2;min-width:180px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;font-size:13px;color:var(--text);outline:none}
+.sin-panel-filter-card select{flex:1;min-width:110px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;font-size:12px;color:var(--text)}
+.sin-panel-head{display:grid;grid-template-columns:130px 2fr 1.2fr 1fr 1fr 0.8fr 90px;padding:9px 16px;background:var(--bg);border-bottom:0.5px solid var(--border)}
+.sin-panel-th{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;gap:3px;user-select:none}
+.sin-panel-th:hover{color:var(--text)}
+.sin-panel-row{display:grid;grid-template-columns:130px 2fr 1.2fr 1fr 1fr 0.8fr 90px;padding:11px 16px;border-bottom:0.5px solid var(--border);align-items:center;cursor:pointer;transition:background .1s}
+.sin-panel-row:last-child{border-bottom:none}
+.sin-panel-row:hover{background:var(--bg)}
+.sin-panel-row.cerrado{opacity:.7}
+.sin-num{font-size:12px;font-weight:500;color:var(--muted);font-family:monospace}
+.sin-cell-name{font-size:13px;font-weight:500;color:var(--text)}
+.sin-cell-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sin-cell{font-size:12px;color:var(--muted);display:flex;align-items:center}
+.sin-etapa-pill{font-size:11px;padding:2px 9px;border-radius:4px}
+.sin-etapa-pill.activa{background:#E6F1FB;color:#0C447C}
+.sin-etapa-pill.alerta{background:#FEF3C7;color:#854F0B}
+.sin-etapa-pill.cierre{background:#EAF3DE;color:#27500A}
+.sin-dias-pill{font-size:10px;padding:1px 6px;border-radius:20px;background:#FCEBEB;color:#A32D2D;margin-left:4px}
+.sin-estado-pill{font-size:11px;padding:2px 9px;border-radius:20px}
+.sin-estado-pill.abierto{background:#DBEAFE;color:#1E40AF}
+.sin-estado-pill.cerrado{background:#EAF3DE;color:#27500A}
