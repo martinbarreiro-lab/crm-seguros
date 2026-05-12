@@ -321,18 +321,21 @@
 
       <!-- SINIESTROS -->
       <div id="sec-siniestros" class="sec">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:600;color:var(--text)">Siniestros</div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-sm" onclick="exportarSiniestrosCSV()">↓ Exportar CSV</button>
+            <button type="button" class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
+          </div>
+        </div>
         <div class="g4">
-          <div class="metric"><div class="lbl">Total siniestros</div><div class="val" id="sin-total">—</div></div>
+          <div class="metric"><div class="lbl">Total</div><div class="val" id="sin-total">—</div></div>
           <div class="metric"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div></div>
           <div class="metric"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div></div>
           <div class="metric"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div></div>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-          <input class="srch" id="sin-srch" type="text" placeholder="Buscar cliente, expediente..." oninput="filtrarSiniestros()" style="flex:1">
-          <button type="button" class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
-          <button type="button" class="btn btn-sm" onclick="exportarSiniestrosCSV()">Exportar CSV</button>
-        </div>
-        <div class="sin-filtros">
+        <div class="sin-panel-filter-card">
+          <input type="text" id="sin-srch" placeholder="Buscar cliente, N° siniestro..." oninput="filtrarSiniestros()">
           <select id="sin-fil-estado" onchange="filtrarSiniestros()">
             <option value="">Todos los estados</option>
             <option value="abierto">Abiertos</option>
@@ -362,14 +365,15 @@
             <option value="">Todas las compañías</option>
           </select>
         </div>
-        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden">
-          <div class="sin-panel-header">
-            <div>Cliente</div>
-            <div>Tipo / Ramo</div>
-            <div>Aseguradora</div>
-            <div>Etapa</div>
-            <div>Fecha</div>
-            <div>Estado</div>
+        <div class="sin-panel-wrap">
+          <div class="sin-panel-head">
+            <div class="sin-panel-th" onclick="sinSortBy('num')">N° Siniestro <span id="sin-sort-num"></span></div>
+            <div class="sin-panel-th" onclick="sinSortBy('cliente')">Cliente <span id="sin-sort-cliente"></span></div>
+            <div class="sin-panel-th">Tipo · Ramo</div>
+            <div class="sin-panel-th">Compañía</div>
+            <div class="sin-panel-th" onclick="sinSortBy('etapa')">Etapa <span id="sin-sort-etapa"></span></div>
+            <div class="sin-panel-th" onclick="sinSortBy('fecha')">Fecha <span id="sin-sort-fecha">↓</span></div>
+            <div class="sin-panel-th">Estado</div>
           </div>
           <div id="sin-panel-list"></div>
         </div>
@@ -775,8 +779,8 @@
     </div>
     <div class="fg3">
       <div class="frow">
-        <label>N° de expediente</label>
-        <input type="text" id="fs-exp" placeholder="SIN-2025-XXX">
+        <label>N° de siniestro</label>
+        <input type="text" id="fs-exp" placeholder="N° de siniestro">
       </div>
       <div class="frow" id="fs-tipo-wrap">
         <label>Tipo de siniestro *</label>
@@ -2461,7 +2465,7 @@ function renderSinEtapaPanel(s, etapa) {
     html.push(sinSeccion('Datos del siniestro'));
     html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
     html.push(sinField('Fecha de denuncia', fmtDate(s.fecha_denuncia)||fmtDate(s.fecha_hecho)||''));
-    html.push(sinField('N° de expediente', s.numero_expediente||''));
+    html.push(sinField('N° de siniestro', s.numero_expediente||''));
     html.push(sinField('Tipo de siniestro', s.tipo_siniestro||''));
     html.push(sinField('Aseguradora', s.aseguradora||''));
     if (!isArt && !isVida) html.push(sinField('Lugar del hecho', s.lugar_hecho||''));
@@ -2561,7 +2565,7 @@ function renderSinEtapaPanel(s, etapa) {
   else if (etapa==='tramite') {
     html.push(sinSeccion('Trámite SRT'));
     html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
-    html.push(sinField('N° expediente SRT', s.srt_expediente||''));
+    html.push(sinField('N° siniestro SRT', s.srt_expediente||''));
     html.push(sinField('Estado SRT', s.srt_estado||''));
     html.push(sinField('Alta médica estimada', fmtDate(s.alta_medica_fecha)||''));
     html.push(sinField('% incapacidad estimada', s.porcentaje_incapacidad||''));
@@ -2857,7 +2861,7 @@ var SIN_COLORES = {
   pending: {bg:'#F9FAFB', color:'#9CA3AF'}
 };
 var SIN_FIELD_LABELS = {
-  numero_expediente:'N° de expediente', fecha_denuncia:'Fecha de denuncia',
+  numero_expediente:'N° de siniestro', fecha_denuncia:'Fecha de denuncia',
   descripcion:'Descripción del siniestro', lugar_hecho:'Lugar del hecho',
   denuncia_url:'Denuncia administrativa (PDF)',
   fecha_inspeccion:'Fecha de inspección/peritaje', resultado_inspeccion:'Resultado',
@@ -4796,6 +4800,17 @@ async function cargarSiniestros() {
   filtrarSiniestros();
 }
 
+var _sinSortCol = 'fecha', _sinSortDir = -1;
+
+function sinSortBy(col) {
+  if (_sinSortCol === col) { _sinSortDir *= -1; } else { _sinSortCol = col; _sinSortDir = 1; }
+  ['num','cliente','etapa','fecha'].forEach(function(c) {
+    var el = document.getElementById('sin-sort-'+c);
+    if (el) el.textContent = c === col ? (_sinSortDir === 1 ? '↑' : '↓') : '';
+  });
+  filtrarSiniestros();
+}
+
 function filtrarSiniestros() {
   var q = (document.getElementById('sin-srch')||{}).value||'';
   var filEst = (document.getElementById('sin-fil-estado')||{}).value||'';
@@ -4806,14 +4821,22 @@ function filtrarSiniestros() {
 
   var filtered = _sinPanelData.filter(function(s) {
     var nombre = s.clientes ? (s.clientes.nombre+' '+s.clientes.apellido).toLowerCase() : '';
-    var exp = (s.numero_expediente||'').toLowerCase();
-    if (ql && !nombre.includes(ql) && !exp.includes(ql)) return false;
+    var numSin = (s.numero_expediente||'').toLowerCase();
+    if (ql && !nombre.includes(ql) && !numSin.includes(ql)) return false;
     if (filEst && s.estado !== filEst) return false;
-    // tipo_ramo stores the group key ('auto','hogar', etc.)
     if (filRamo && (s.tipo_ramo||'') !== filRamo) return false;
     if (filEtapa && s.etapa_actual !== filEtapa) return false;
     if (filAseg && s.aseguradora !== filAseg) return false;
     return true;
+  });
+
+  filtered.sort(function(a, b) {
+    var va, vb;
+    if (_sinSortCol === 'num') { va = a.numero_expediente||''; vb = b.numero_expediente||''; }
+    else if (_sinSortCol === 'cliente') { va = (a.clientes?a.clientes.apellido:''); vb = (b.clientes?b.clientes.apellido:''); }
+    else if (_sinSortCol === 'etapa') { va = a.etapa_actual||''; vb = b.etapa_actual||''; }
+    else { va = a.fecha_hecho||a.created_at||''; vb = b.fecha_hecho||b.created_at||''; }
+    return va < vb ? -_sinSortDir : va > vb ? _sinSortDir : 0;
   });
 
   var hoy = new Date();
@@ -4834,14 +4857,18 @@ function filtrarSiniestros() {
     var dias = Math.round((hoy - new Date(s.created_at))/864e5);
     var alerta = s.estado !== 'cerrado' && dias > 30;
     var etapa = etapaLabels[s.etapa_actual] || (s.etapa_actual ? s.etapa_actual.charAt(0).toUpperCase()+s.etapa_actual.slice(1) : '—');
+    var etapaClass = s.etapa_actual === 'cierre' ? 'cierre' : alerta ? 'alerta' : 'activa';
     var ramoLabel = ramoLabels[s.tipo_ramo] || (s.tipo_ramo ? s.tipo_ramo.charAt(0).toUpperCase()+s.tipo_ramo.slice(1) : '—');
-    return '<div class="sin-panel-row" onclick="irAFichaConSin(\''+s.cliente_id+'\',\''+s.id+'\')">'+
-      '<div><div class="sin-nombre">'+nombre+'</div><div class="sin-sub">'+(s.tipo_siniestro||'—')+'</div></div>'+
+    var cerrado = s.estado === 'cerrado';
+    var clsRow = "sin-panel-row"+(cerrado?" cerrado":"");
+    return '<div class="'+clsRow+'" onclick="irAFichaConSin(\''+s.cliente_id+'\',\''+s.id+'\')">' +
+      '<div class="sin-num">'+(s.numero_expediente||'—')+'</div>'+
+      '<div><div class="sin-cell-name">'+nombre+'</div><div class="sin-cell-sub">'+(s.tipo_siniestro||'—')+'</div></div>'+
       '<div class="sin-cell">'+ramoLabel+'</div>'+
       '<div class="sin-cell">'+(s.aseguradora||'—')+'</div>'+
-      '<div class="sin-cell"><span class="sin-etapa-badge'+(alerta?' alerta':'')+'">'+etapa+'</span>'+(alerta?'<span class="sin-dias-badge">'+dias+'d</span>':'')+'</div>'+
+      '<div class="sin-cell"><span class="sin-etapa-pill '+etapaClass+'">'+etapa+'</span>'+(alerta?'<span class="sin-dias-pill">'+dias+'d</span>':'')+'</div>'+
       '<div class="sin-cell">'+fmtDate(s.fecha_hecho||s.created_at)+'</div>'+
-      '<div class="sin-cell"><span class="sin-estado-badge '+(s.estado||'abierto')+'">'+( s.estado==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></div>'+
+      '<div class="sin-cell"><span class="sin-estado-pill '+(cerrado?'cerrado':'abierto')+'">'+(cerrado?'✓ Cerrado':'● Abierto')+'</span></div>'+
     '</div>';
   }).join('');
 
@@ -4858,7 +4885,7 @@ function irAFichaConSin(clienteId, sinId) {
 }
 
 function exportarSiniestrosCSV() {
-  var rows = [['Cliente','Expediente','Tipo','Ramo','Aseguradora','Etapa','Fecha','Estado','Días']];
+  var rows = [['Cliente','N° Siniestro','Tipo','Ramo','Aseguradora','Etapa','Fecha','Estado','Días']];
   _sinPanelData.forEach(function(s) {
     var nombre = s.clientes ? s.clientes.apellido+', '+s.clientes.nombre : '';
     var dias = Math.round((new Date()-new Date(s.created_at))/864e5);
