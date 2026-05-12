@@ -321,16 +321,70 @@
 
       <!-- SINIESTROS -->
       <div id="sec-siniestros" class="sec">
-        <div class="toprow">
-          <input class="srch" type="text" placeholder="Buscar siniestro...">
+        <!-- Métricas -->
+        <div class="g4" style="margin-bottom:16px">
+          <div class="metric"><div class="lbl">Total siniestros</div><div class="val" id="sin-total">—</div></div>
+          <div class="metric"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div></div>
+          <div class="metric"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div></div>
+          <div class="metric"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div></div>
+        </div>
+        <!-- Buscador + nuevo -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+          <input class="srch" id="sin-srch" type="text" placeholder="Buscar cliente, expediente..." oninput="filtrarSiniestros()" style="flex:1">
           <button type="button" class="btn btn-sm btn-p" id="btn-nsin">+ Nuevo siniestro</button>
+          <button type="button" class="btn btn-sm" onclick="exportarSiniestrosCSV()">Exportar CSV</button>
         </div>
-        <div class="tbl">
-          <table>
-            <thead><tr><th>Expediente</th><th>Cliente</th><th>Tipo</th><th>Aseguradora</th><th>Fecha denuncia</th><th>Estado</th><th>Días abierto</th></tr></thead>
-            <tbody id="tbody-sin"></tbody>
-          </table>
+        <!-- Filtros -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <select id="sin-fil-estado" onchange="filtrarSiniestros()" style="flex:1;font-size:12px">
+            <option value="">Todos los estados</option>
+            <option value="abierto">Abiertos</option>
+            <option value="cerrado">Cerrados</option>
+          </select>
+          <select id="sin-fil-ramo" onchange="filtrarSiniestros()" style="flex:1;font-size:12px">
+            <option value="">Todos los ramos</option>
+            <option>Automotor</option>
+            <option>Hogar</option>
+            <option>Comercio</option>
+            <option>ART</option>
+            <option>Accidentes Personales</option>
+            <option>Responsabilidad Civil</option>
+            <option>Vida Individual</option>
+            <option>Vida Colectiva</option>
+          </select>
+          <select id="sin-fil-etapa" onchange="filtrarSiniestros()" style="flex:1;font-size:12px">
+            <option value="">Todas las etapas</option>
+            <option value="denuncia">Denuncia</option>
+            <option value="inspeccion">Inspección</option>
+            <option value="taller">Taller</option>
+            <option value="peritaje">Peritaje</option>
+            <option value="presupuesto">Presupuesto</option>
+            <option value="liquidacion">Liquidación</option>
+            <option value="atencion">Atención médica</option>
+            <option value="tramite">Trámite SRT</option>
+            <option value="gestion">Gestión</option>
+            <option value="documentacion">Documentación</option>
+            <option value="evaluacion">Evaluación</option>
+            <option value="resolucion">Resolución</option>
+            <option value="cierre">Cierre</option>
+          </select>
+          <select id="sin-fil-aseg" onchange="filtrarSiniestros()" style="flex:1;font-size:12px">
+            <option value="">Todas las compañías</option>
+          </select>
         </div>
+        <!-- Tabla -->
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 90px;padding:9px 14px;background:var(--bg);border-bottom:0.5px solid var(--border)">
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Cliente</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Tipo / Ramo</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Aseguradora</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Etapa</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Fecha</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted)">Estado</div>
+          </div>
+          <div id="sin-panel-list"></div>
+        </div>
+        <div id="sin-panel-footer" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:right"></div>
       </div>
 
       <!-- COBRANZAS -->
@@ -4723,22 +4777,112 @@ async function cargarCotizaciones() {
 }
 
 // ---- SINIESTROS ----
+var _sinPanelData = [];
+
 async function cargarSiniestros() {
-  const tbody = document.getElementById('tbody-sin');
   const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
-  const eb = { abierto: 'br', proceso: 'ba', documentacion: 'ba', taller: 'bb', liquidado: 'bb', cerrado: 'bv' };
-  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin siniestros.</div></td></tr>'; return; }
-  tbody.innerHTML = data.map(function(s) {
-    const dias = Math.round((new Date() - new Date(s.created_at)) / 864e5);
-    const diasColor = dias > 15 ? 'color:var(--red);font-weight:600' : '';
-    return '<tr><td style="font-weight:500">' + (s.numero_expediente || '—') + '</td>'
-      + '<td>' + (s.clientes ? s.clientes.nombre + ' ' + s.clientes.apellido : '—') + '</td>'
-      + '<td>' + (s.tipo_siniestro || '—') + '</td>'
-      + '<td>' + (s.aseguradora || '—') + '</td>'
-      + '<td>' + (fmtDate(s.fecha_denuncia) || '—') + '</td>'
-      + '<td><span class="badge ' + (eb[s.estado] || 'bgr') + '">' + s.estado + '</span></td>'
-      + '<td><span style="' + diasColor + '">' + (s.estado !== 'cerrado' ? dias + 'd' : '—') + '</span></td></tr>';
+  _sinPanelData = data || [];
+
+  // Métricas
+  var total = _sinPanelData.length;
+  var abiertos = _sinPanelData.filter(function(s){ return s.estado !== 'cerrado'; }).length;
+  var cerrados = _sinPanelData.filter(function(s){ return s.estado === 'cerrado'; }).length;
+  var hoy = new Date();
+  var sinMov = _sinPanelData.filter(function(s){
+    return s.estado !== 'cerrado' && Math.round((hoy - new Date(s.created_at))/864e5) > 30;
+  }).length;
+  var el = function(id){ return document.getElementById(id); };
+  if(el('sin-total')) el('sin-total').textContent = total;
+  if(el('sin-abiertos')) el('sin-abiertos').textContent = abiertos;
+  if(el('sin-cerrados')) el('sin-cerrados').textContent = cerrados;
+  if(el('sin-sin-mov')) el('sin-sin-mov').textContent = sinMov;
+
+  // Poblar select de aseguradoras
+  var asegSel = el('sin-fil-aseg');
+  if (asegSel) {
+    var aseguradoras = [...new Set(_sinPanelData.map(function(s){ return s.aseguradora; }).filter(Boolean))].sort();
+    asegSel.innerHTML = '<option value="">Todas las compañías</option>' + aseguradoras.map(function(a){ return '<option>'+a+'</option>'; }).join('');
+  }
+
+  filtrarSiniestros();
+}
+
+function filtrarSiniestros() {
+  var q = (document.getElementById('sin-srch')||{}).value||'';
+  var filEst = (document.getElementById('sin-fil-estado')||{}).value||'';
+  var filRamo = (document.getElementById('sin-fil-ramo')||{}).value||'';
+  var filEtapa = (document.getElementById('sin-fil-etapa')||{}).value||'';
+  var filAseg = (document.getElementById('sin-fil-aseg')||{}).value||'';
+  var ql = q.toLowerCase();
+
+  var filtered = _sinPanelData.filter(function(s) {
+    var nombre = s.clientes ? (s.clientes.nombre+' '+s.clientes.apellido).toLowerCase() : '';
+    var exp = (s.numero_expediente||'').toLowerCase();
+    if (ql && !nombre.includes(ql) && !exp.includes(ql)) return false;
+    if (filEst && s.estado !== filEst) return false;
+    if (filRamo && (s.tipo_ramo||s.ramo_poliza||'').toLowerCase().indexOf(filRamo.toLowerCase()) === -1) return false;
+    if (filEtapa && s.etapa_actual !== filEtapa) return false;
+    if (filAseg && s.aseguradora !== filAseg) return false;
+    return true;
+  });
+
+  var hoy = new Date();
+  var etapaLabels = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación',resolucion:'Resolución'};
+
+  var cont = document.getElementById('sin-panel-list');
+  if (!cont) return;
+
+  if (!filtered.length) {
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">Sin siniestros con esos filtros</div>';
+    return;
+  }
+
+  cont.innerHTML = filtered.map(function(s, i) {
+    var nombre = s.clientes ? s.clientes.apellido+', '+s.clientes.nombre : '—';
+    var dias = Math.round((hoy - new Date(s.created_at))/864e5);
+    var alerta = s.estado !== 'cerrado' && dias > 30;
+    var etapa = etapaLabels[s.etapa_actual] || (s.etapa_actual ? s.etapa_actual.charAt(0).toUpperCase()+s.etapa_actual.slice(1) : '—');
+    var estadoBg = s.estado==='cerrado' ? '#EAF3DE' : '#DBEAFE';
+    var estadoColor = s.estado==='cerrado' ? '#27500A' : '#1E40AF';
+    var estadoLabel = s.estado==='cerrado' ? '✓ Cerrado' : '● Abierto';
+    var etapaBg = alerta ? '#FEF3C7' : '#F3F4F6';
+    var etapaColor = alerta ? '#854F0B' : '#374151';
+    var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+    var ramoLabel = s.tipo_ramo ? (s.tipo_ramo.charAt(0).toUpperCase()+s.tipo_ramo.slice(1)) : '—';
+    return '<div onclick="irAFichaConSin(\''+s.cliente_id+'\',\''+s.id+'\')" style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 90px;padding:11px 14px;cursor:pointer;'+border+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+(s.tipo_siniestro||'—')+'</div></div>'
+      +'<div style="display:flex;align-items:center"><span style="font-size:12px;color:var(--muted)">'+ramoLabel+'</span></div>'
+      +'<div style="display:flex;align-items:center"><span style="font-size:12px;color:var(--muted)">'+(s.aseguradora||'—')+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:'+etapaBg+';color:'+etapaColor+'">'+etapa+'</span>'+(alerta?'<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FEF2F2;color:#991B1B">'+dias+'d</span>':'')+'</div>'
+      +'<div style="display:flex;align-items:center"><span style="font-size:12px;color:var(--muted)">'+fmtDate(s.fecha_hecho||s.created_at)+'</span></div>'
+      +'<div style="display:flex;align-items:center"><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
+      +'</div>';
   }).join('');
+
+  var footer = document.getElementById('sin-panel-footer');
+  if (footer) footer.textContent = filtered.length + ' siniestro' + (filtered.length!==1?'s':'');
+}
+
+function irAFichaConSin(clienteId, sinId) {
+  fichaId = clienteId;
+  fichaTab = 'siniestros';
+  window._sinExpandir = sinId;
+  mostrarSec('clientes');
+  setTimeout(function(){ if(fichaId) renderFicha(); }, 100);
+}
+
+function exportarSiniestrosCSV() {
+  var rows = [['Cliente','Expediente','Tipo','Ramo','Aseguradora','Etapa','Fecha','Estado','Días']];
+  _sinPanelData.forEach(function(s) {
+    var nombre = s.clientes ? s.clientes.apellido+', '+s.clientes.nombre : '';
+    var dias = Math.round((new Date()-new Date(s.created_at))/864e5);
+    rows.push([nombre, s.numero_expediente||'', s.tipo_siniestro||'', s.tipo_ramo||'', s.aseguradora||'', s.etapa_actual||'', fmtDate(s.fecha_hecho||s.created_at), s.estado||'', s.estado!=='cerrado'?dias:'']);
+  });
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+(c||'').toString().replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download = 'siniestros_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
 }
 
 // ---- COBRANZAS ----
