@@ -2313,7 +2313,7 @@ async function fichaSiniestros(c) {
     html.push('</div>');
 
     // Body expandible
-    html.push('<div id="sin-body-'+sinId+'" onclick="event.stopPropagation()" style="display:none;border-top:0.5px solid #F3F4F6;background:#FAFAFA">');
+    html.push('<div id="sin-body-'+sinId+'" style="display:none;border-top:0.5px solid #F3F4F6;background:#FAFAFA">');
     html.push('<div style="padding:14px;display:flex;flex-direction:column;gap:14px">');
 
     // Timeline clickeable
@@ -2333,8 +2333,11 @@ async function fichaSiniestros(c) {
       var isCur = i === etapaIdx;
       var bg = isDone?'#EAF3DE':isCur?'#4A90D9':'#F9FAFB';
       var color = isDone?'#27500A':isCur?'#fff':'#9CA3AF';
+      var fw = isCur ? '700' : '600';
       var border = i < pasos.length-1 ? 'border-right:0.5px solid rgba(0,0,0,.07);' : '';
-      html.push('<div id="sin-step-'+sinId+'-'+p+'" onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+(labels[p]||p.charAt(0).toUpperCase()+p.slice(1))+'</div>');
+      var icon = isDone ? '✓ ' : isCur ? '▶ ' : '';
+      var shadow = isCur ? 'box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);' : '';
+      html.push('<div id="sin-step-'+sinId+'-'+p+'" onclick="sinSetEtapa(\''+sinId+'\',\''+p+'\')" style="flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:'+fw+';text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:'+bg+';color:'+color+';'+border+shadow+'transition:opacity .15s" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+icon+(labels[p]||p.charAt(0).toUpperCase()+p.slice(1))+'</div>');
     });
     html.push('</div>');
     html.push('</div>');
@@ -2410,8 +2413,17 @@ function renderSinEtapaPanel(s, etapa) {
   var isVida = group === 'vida';
   var notas = (s.notas_etapa && s.notas_etapa[etapa]) || '';
   var tercero = s.tercero_datos || {};
+  var allLabels = Object.assign(
+    {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',
+     peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',
+     resolucion:'Resolución',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación'},
+    getSinLabels(s) || {}
+  );
+  var etapaLabel = allLabels[etapa] || etapa;
   var html = [];
-  html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:14px">');
+  html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-top:3px solid #4A90D9;border-radius:0 0 8px 8px;padding:14px;display:flex;flex-direction:column;gap:14px">');
+  // Indicador etapa activa
+  html.push('<div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:#4A90D9;flex-shrink:0"></div><span style="font-size:11px;font-weight:600;color:#4A90D9;text-transform:uppercase;letter-spacing:.06em">Etapa: '+etapaLabel+'</span></div>');
 
   // ── DENUNCIA ─────────────────────────────────────────
   if (etapa === 'denuncia') {
@@ -2592,13 +2604,22 @@ function renderSinEtapaPanel(s, etapa) {
     }
   }
 
-  // ── NOTAS DE ETAPA (todas) ────────────────────────────
+  // ── DESCRIPCIÓN EDITABLE ────────────────────────────
   html.push('<div>');
   html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">');
-  html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em">Notas de esta etapa</div>');
-  html.push('<button type="button" data-guardar-nota="'+s.id+'|'+etapa+'" style="font-size:11px;padding:3px 10px;border-radius:5px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--med)">Guardar</button>');
+  html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em">Descripción del siniestro</div>');
+  html.push('<button type="button" data-guardar-desc="'+s.id+'" style="font-size:11px;padding:3px 10px;border-radius:5px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--med)">Guardar</button>');
   html.push('</div>');
-  html.push('<textarea data-nota-sin="'+s.id+'|'+etapa+'" placeholder="Escribí notas sobre esta etapa..." style="width:100%;min-height:72px;resize:vertical;font-size:12px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#FAFAFA;color:#374151;font-family:inherit;box-sizing:border-box;display:block">'+notas+'</textarea>');
+  html.push('<textarea data-desc-sin="'+s.id+'" style="width:100%;min-height:60px;resize:vertical;font-size:13px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;font-family:inherit;box-sizing:border-box;position:relative;z-index:1">'+(s.descripcion||'')+'</textarea>');
+  html.push('</div>');
+
+  // ── NOTAS DE ETAPA ────────────────────────────
+  html.push('<div>');
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">');
+  html.push('<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em">Notas — '+etapaLabel+'</div>');
+  html.push('<button type="button" data-guardar-nota="'+s.id+'|'+etapa+'" style="font-size:11px;padding:3px 10px;border-radius:5px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--med)">Guardar nota</button>');
+  html.push('</div>');
+  html.push('<textarea data-nota-sin="'+s.id+'|'+etapa+'" placeholder="Escribí notas sobre esta etapa..." style="width:100%;min-height:60px;resize:vertical;font-size:13px;line-height:1.5;padding:9px 11px;border:0.5px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;font-family:inherit;box-sizing:border-box;position:relative;z-index:1">'+notas+'</textarea>');
   html.push('</div>');
 
   html.push('</div>');
@@ -6624,8 +6645,24 @@ document.addEventListener('click', function(e) {
   if (btn) {
     var parts = btn.getAttribute('data-guardar-nota').split('|');
     guardarNotaEtapa(parts[0], parts[1]);
+    return;
+  }
+  var btn2 = e.target.closest('[data-guardar-desc]');
+  if (btn2) {
+    guardarDescripcionSin(btn2.getAttribute('data-guardar-desc'));
   }
 });
+
+async function guardarDescripcionSin(sinId) {
+  var ta = document.querySelector('[data-desc-sin="'+sinId+'"]');
+  if (!ta) return;
+  var texto = ta.value;
+  var { error } = await sb.from('siniestros').update({ descripcion: texto }).eq('id', sinId);
+  if (error) { mostrarAlerta('❌ Error al guardar'); return; }
+  ta.style.borderColor = '#22C55E'; ta.style.background = '#F0FDF4';
+  setTimeout(function(){ if(ta){ ta.style.borderColor='#E5E7EB'; ta.style.background='#fff'; } }, 1500);
+  mostrarAlerta('✅ Descripción guardada');
+}
 
 init();
 </script>
