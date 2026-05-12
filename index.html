@@ -2428,7 +2428,22 @@ async function fichaSiniestros(c) {
     html.push('</div>'); // fin card
   });
 
-  return html.join('');
+  // Auto-expandir si viene desde el panel global
+  var htmlStr = html.join('');
+  if (window._sinExpandir) {
+    var sinIdToExpand = window._sinExpandir;
+    window._sinExpandir = null;
+    setTimeout(function() {
+      var body = document.getElementById('sin-body-'+sinIdToExpand);
+      var chev = document.getElementById('sin-chevron-'+sinIdToExpand);
+      if (body) {
+        body.style.display = 'block';
+        if (chev) chev.style.transform = 'rotate(180deg)';
+        body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+  }
+  return htmlStr;
 }
 
 function sinMetric(label, val, color) {
