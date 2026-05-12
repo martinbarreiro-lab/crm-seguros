@@ -302,21 +302,52 @@
 
       <!-- COTIZACIONES -->
       <div id="sec-cotizaciones" class="sec">
-        <div class="toprow">
-          <input class="srch" type="text" placeholder="Buscar cotización...">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:600;color:var(--text)">Cotizaciones</div>
           <button type="button" class="btn btn-sm btn-p" id="btn-ncotz">+ Nueva cotización</button>
         </div>
-        <div class="g3" style="margin-bottom:14px">
-          <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="cotz-env">—</div></div>
+        <div class="g4">
+          <div class="metric"><div class="lbl">Total</div><div class="val" id="cotz-total">—</div></div>
+          <div class="metric"><div class="lbl">Pendientes</div><div class="val" id="cotz-pend" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Presentadas</div><div class="val" id="cotz-pres" style="color:var(--med)">—</div></div>
           <div class="metric"><div class="lbl">Aceptadas</div><div class="val" id="cotz-acep" style="color:var(--green)">—</div></div>
-          <div class="metric"><div class="lbl">Tasa de cierre</div><div class="val" id="cotz-tasa">—</div></div>
         </div>
-        <div class="tbl">
-          <table>
-            <thead><tr><th>N°</th><th>Cliente</th><th>Ramo</th><th>Aseguradora</th><th>Prima</th><th>Válida hasta</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="tbody-cotz"></tbody>
-          </table>
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center">
+          <div style="display:flex;align-items:center;gap:6px;flex:2;background:var(--bg);border-radius:var(--rsm);padding:7px 10px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="cotz-srch" placeholder="Buscar cliente o ramo..." oninput="filtrarCotizaciones()" style="border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text)">
+          </div>
+          <select id="cotz-fil-estado" onchange="filtrarCotizaciones()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_proceso">En proceso</option>
+            <option value="presentada">Presentada</option>
+            <option value="aceptada">Aceptada</option>
+            <option value="rechazada">Rechazada</option>
+          </select>
+          <select id="cotz-fil-ramo" onchange="filtrarCotizaciones()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
+            <option value="">Todos los ramos</option>
+            <option value="auto">Automotor</option>
+            <option value="hogar">Hogar</option>
+            <option value="comercio">Integral de comercio</option>
+            <option value="art">ART</option>
+            <option value="ap">Accidentes Personales</option>
+            <option value="rc">Responsabilidad Civil</option>
+            <option value="vida">Vida</option>
+            <option value="otros">Otros</option>
+          </select>
         </div>
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 100px;padding:9px 16px;background:var(--bg);border-bottom:0.5px solid var(--border)">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Cliente</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Ramo</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Fecha</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Cotizaciones</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Estado</div>
+          </div>
+          <div id="cotz-panel-list"></div>
+        </div>
+        <div id="cotz-panel-footer" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:right"></div>
       </div>
 
       <!-- SINIESTROS -->
@@ -724,6 +755,38 @@
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button type="button" class="btn" onclick="cerrarModal('modal-cotz')">Cancelar</button>
       <button type="button" class="btn btn-p" id="btn-guardar-cotz">Guardar cotización</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COTIZACIÓN -->
+<div class="modal-ov" id="modal-cotz">
+  <div class="modal-box" style="max-width:700px">
+    <div class="modal-t">Nueva cotización <button type="button" class="modal-x" onclick="cerrarModal('modal-cotz')">✕</button></div>
+    <div class="sec-label" style="margin:0 0 10px">Datos generales</div>
+    <div class="fg2">
+      <div class="frow"><label>Cliente *</label><select id="fc-cl"><option value="">Seleccionar...</option></select></div>
+      <div class="frow"><label>Ramo *</label>
+        <select id="fc-ramo" onchange="cotSetRamo(this.value)">
+          <option value="">Seleccionar...</option>
+          <option value="auto">Automotor</option>
+          <option value="hogar">Hogar</option>
+          <option value="comercio">Integral de comercio</option>
+          <option value="art">ART</option>
+          <option value="ap">Accidentes Personales</option>
+          <option value="rc">Responsabilidad Civil</option>
+          <option value="vida">Vida Individual / Colectiva</option>
+          <option value="otros">Otros</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow"><label>Notas / pedido del cliente</label><textarea id="fc-notas" placeholder="Ej: Quiere todo riesgo, prefiere compañía con taller en Rosario..." style="min-height:55px;resize:none"></textarea></div>
+    <div id="fc-riesgo-section" style="display:none;margin-top:12px">
+      <div id="fc-riesgo-fields"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--border)">
+      <button type="button" class="btn" onclick="cerrarModal('modal-cotz')">Cancelar</button>
+      <button type="button" class="btn btn-p" id="btn-guardar-cotz">Guardar y crear tarea</button>
     </div>
   </div>
 </div>
@@ -4762,27 +4825,345 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+
+
 // ---- COTIZACIONES ----
+var _cotzData = [];
+var RAMO_LABELS_COT = {auto:'Automotor',hogar:'Hogar',comercio:'Integral de comercio',art:'ART',ap:'Accidentes Personales',rc:'Responsabilidad Civil',vida:'Vida',otros:'Otros'};
+var ESTADO_COT = {
+  pendiente:   {bg:'#FAEEDA',color:'#633806',label:'Pendiente'},
+  en_proceso:  {bg:'#EEEDFE',color:'#3C3489',label:'En proceso'},
+  presentada:  {bg:'#E6F1FB',color:'#0C447C',label:'Presentada'},
+  aceptada:    {bg:'#EAF3DE',color:'#27500A',label:'✓ Aceptada'},
+  rechazada:   {bg:'#FCEBEB',color:'#791F1F',label:'Rechazada'},
+};
+
 async function cargarCotizaciones() {
-  const tbody = document.getElementById('tbody-cotz');
-  const { data } = await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
-  const total = data ? data.length : 0;
-  const acep = data ? data.filter(function(c) { return c.estado === 'aceptada'; }).length : 0;
-  document.getElementById('cotz-env').textContent = total;
-  document.getElementById('cotz-acep').textContent = acep;
-  document.getElementById('cotz-tasa').textContent = total > 0 ? Math.round(acep / total * 100) + '%' : '—';
-  const eb = { enviada: 'bb', aceptada: 'bv', rechazada: 'br', vencida: 'bgr' };
-  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Sin cotizaciones.</div></td></tr>'; return; }
-  tbody.innerHTML = data.map(function(c) {
-    return '<tr><td>' + (c.numero || '—') + '</td>'
-      + '<td>' + (c.clientes ? c.clientes.nombre + ' ' + c.clientes.apellido : '—') + '</td>'
-      + '<td>' + c.ramo + '</td><td>' + c.aseguradora + '</td>'
-      + '<td>$' + (c.prima_cotizada || 0).toLocaleString('es-AR') + '</td>'
-      + '<td>' + (c.fecha_validez || '—') + '</td>'
-      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
-      + '<td>' + (c.estado === 'enviada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + c.id + '\',\'aceptada\')">Aceptar</button>' : '—') + '</td></tr>';
-  }).join('');
+  const { data } = await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', {ascending:false});
+  _cotzData = data || [];
+  var total = _cotzData.length;
+  var pend  = _cotzData.filter(function(c){ return c.estado==='pendiente'||c.estado==='en_proceso'; }).length;
+  var pres  = _cotzData.filter(function(c){ return c.estado==='presentada'; }).length;
+  var acep  = _cotzData.filter(function(c){ return c.estado==='aceptada'; }).length;
+  var el = function(id){ return document.getElementById(id); };
+  if(el('cotz-total')) el('cotz-total').textContent = total;
+  if(el('cotz-pend'))  el('cotz-pend').textContent  = pend;
+  if(el('cotz-pres'))  el('cotz-pres').textContent  = pres;
+  if(el('cotz-acep'))  el('cotz-acep').textContent  = acep;
+  filtrarCotizaciones();
 }
+
+function filtrarCotizaciones() {
+  var q      = (document.getElementById('cotz-srch')||{}).value||'';
+  var filEst = (document.getElementById('cotz-fil-estado')||{}).value||'';
+  var filRamo= (document.getElementById('cotz-fil-ramo')||{}).value||'';
+  var ql = q.toLowerCase();
+  var filtered = _cotzData.filter(function(c) {
+    var nombre = c.clientes ? (c.clientes.nombre+' '+c.clientes.apellido).toLowerCase() : '';
+    if (ql && !nombre.includes(ql)) return false;
+    if (filEst && c.estado !== filEst) return false;
+    if (filRamo && c.ramo !== filRamo) return false;
+    return true;
+  });
+  var cont = document.getElementById('cotz-panel-list');
+  if (!cont) return;
+  if (!filtered.length) {
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">Sin cotizaciones</div>';
+    return;
+  }
+  cont.innerHTML = filtered.map(function(c, i) {
+    var nombre = c.clientes ? c.clientes.apellido+', '+c.clientes.nombre : '—';
+    var est    = ESTADO_COT[c.estado] || ESTADO_COT.pendiente;
+    var ramo   = RAMO_LABELS_COT[c.ramo] || c.ramo || '—';
+    var nCots  = (c.ofertas && c.ofertas.length) || 0;
+    var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+    var clsRow = 'style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 100px;padding:11px 16px;cursor:pointer;'+border+'"';
+    return '<div '+clsRow+' onclick="abrirDetalleCotizacion(\''+c.id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+(c.notas||'')+'</div></div>'
+      +'<div style="display:flex;align-items:center;font-size:12px;color:var(--muted)">'+ramo+'</div>'
+      +'<div style="display:flex;align-items:center;font-size:12px;color:var(--muted)">'+fmtDate(c.created_at)+'</div>'
+      +'<div style="display:flex;align-items:center">'+(nCots>0?'<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:#EEEDFE;color:#3C3489">'+nCots+' cargada'+(nCots!==1?'s':'')+'</span>':'<span style="font-size:11px;color:var(--lt)">Sin cargar</span>')+'</div>'
+      +'<div style="display:flex;align-items:center"><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span></div>'
+      +'</div>';
+  }).join('');
+  var footer = document.getElementById('cotz-panel-footer');
+  if (footer) footer.textContent = filtered.length + ' cotizacion' + (filtered.length!==1?'es':'');
+}
+
+function abrirDetalleCotizacion(cotId) {
+  var cot = _cotzData.find(function(c){ return c.id === cotId; });
+  if (!cot) return;
+  var nombre = cot.clientes ? cot.clientes.apellido+', '+cot.clientes.nombre : '—';
+  var ramo   = RAMO_LABELS_COT[cot.ramo] || cot.ramo || '—';
+  var ofertas = cot.ofertas || [];
+  var est    = ESTADO_COT[cot.estado] || ESTADO_COT.pendiente;
+  var cont = document.getElementById('cotz-panel-list');
+  var footer = document.getElementById('cotz-panel-footer');
+
+  // Build detail view
+  var html = [];
+  html.push('<div style="padding:14px 16px">');
+  html.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">');
+  html.push('<button type="button" class="btn btn-sm" onclick="cargarCotizaciones()">← Volver</button>');
+  html.push('<div style="font-size:14px;font-weight:500;color:var(--text)">'+nombre+' · '+ramo+'</div>');
+  html.push('<span style="font-size:11px;padding:2px 10px;border-radius:20px;background:'+est.bg+';color:'+est.color+';margin-left:auto">'+est.label+'</span>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirCargarOfertas(\''+cotId+'\')">+ Cargar cotización</button>');
+  html.push('</div>');
+
+  // Info riesgo
+  html.push('<div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:14px">');
+  html.push('<div style="background:var(--bg);border-radius:var(--rsm);padding:12px">');
+  html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datos del riesgo</div>');
+  var dr = cot.datos_riesgo || {};
+  var campos = [['Cliente',nombre],['Ramo',ramo],['Fecha solicitud',fmtDate(cot.created_at)]];
+  if (cot.ramo==='auto') { campos.push(['Vehículo',(dr.marca||'')+(dr.modelo?' '+dr.modelo:'')+(dr.anio?' '+dr.anio:'')||'—']); campos.push(['Patente',dr.patente||'—']); campos.push(['Uso',dr.uso||'—']); campos.push(['Suma aseg.',(dr.suma_asegurada?'$'+Number(dr.suma_asegurada).toLocaleString('es-AR'):'—')]); }
+  if (cot.ramo==='hogar') { campos.push(['Dirección',dr.direccion||'—']); campos.push(['Tipo',dr.tipo_vivienda||'—']); campos.push(['Uso',dr.uso||'—']); }
+  if (cot.ramo==='comercio') { campos.push(['Comercio',dr.nombre_comercio||'—']); campos.push(['Actividad',dr.actividad||'—']); campos.push(['Dirección',dr.direccion||'—']); }
+  if (cot.ramo==='art') { campos.push(['Razón social',dr.razon_social||'—']); campos.push(['Empleados',dr.empleados||'—']); campos.push(['Masa salarial',dr.masa_salarial?'$'+Number(dr.masa_salarial).toLocaleString('es-AR'):'—']); }
+  campos.forEach(function(f){ html.push('<div style="margin-bottom:5px"><div style="font-size:11px;color:var(--muted)">'+f[0]+'</div><div style="font-size:13px;color:var(--text)">'+f[1]+'</div></div>'); });
+  html.push('</div>');
+  html.push('<div style="background:var(--bg);border-radius:var(--rsm);padding:12px">');
+  html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Notas del cliente</div>');
+  html.push('<div style="font-size:13px;color:var(--muted);line-height:1.6">'+(cot.notas||'Sin notas')+'</div>');
+  html.push('</div></div>');
+
+  // Comparativa
+  if (ofertas.length) {
+    var minPremio = Math.min.apply(null, ofertas.map(function(o){ return o.premio_mensual||Infinity; }));
+    html.push('<div style="background:var(--bg);border-radius:var(--rsm);padding:12px;margin-bottom:14px">');
+    html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">');
+    html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Comparativa de cotizaciones</div>');
+    html.push('<button type="button" class="btn btn-sm btn-p" onclick="marcarCotzPresentada(\''+cotId+'\')">✉ Marcar como presentada</button>');
+    html.push('</div>');
+    html.push('<table style="width:100%;border-collapse:collapse;font-size:13px">');
+    html.push('<thead><tr style="background:var(--white)"><th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:0.5px solid var(--border)">Compañía</th><th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:0.5px solid var(--border)">Cobertura</th><th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:0.5px solid var(--border)">Franquicia</th><th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:0.5px solid var(--border)">Premio mensual</th><th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:0.5px solid var(--border)">Premio anual</th><th style="padding:8px 10px;border-bottom:0.5px solid var(--border)"></th></tr></thead><tbody>');
+    ofertas.forEach(function(o, oi) {
+      var isMejor = o.premio_mensual && o.premio_mensual === minPremio;
+      var anual = (o.premio_mensual||0) * 12;
+      var border = oi < ofertas.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+      var bg = isMejor ? 'background:#EAF3DE;' : '';
+      var franq = o.tipo_franquicia==='sin' ? 'Sin franquicia' : o.tipo_franquicia==='pct' ? (o.franquicia_valor||0)+'%' : '$'+(o.franquicia_valor||0).toLocaleString('es-AR');
+      html.push('<tr style="'+bg+border+'">');
+      html.push('<td style="padding:10px 10px;font-weight:500;color:var(--text)">'+o.compania+(isMejor?'<span style="margin-left:6px;font-size:10px;padding:1px 6px;border-radius:20px;background:#C0DD97;color:#173404">Menor precio</span>':'')+'</td>');
+      html.push('<td style="padding:10px 10px;color:var(--muted)">'+o.cobertura+'</td>');
+      html.push('<td style="padding:10px 10px;color:var(--muted)">'+franq+'</td>');
+      html.push('<td style="padding:10px 10px;text-align:right;font-weight:500;color:var(--text)">'+(o.premio_mensual?'$'+Number(o.premio_mensual).toLocaleString('es-AR'):'—')+'</td>');
+      html.push('<td style="padding:10px 10px;text-align:right;color:var(--muted)">'+(anual?'$'+anual.toLocaleString('es-AR'):'—')+'</td>');
+      html.push('<td style="padding:10px 10px;text-align:right"><button type="button" class="btn btn-sm btn-p" onclick="elegirOferta(\''+cotId+'\','+oi+')">Elegir ↗</button></td>');
+      html.push('</tr>');
+    });
+    html.push('</tbody></table></div>');
+  } else {
+    html.push('<div style="padding:20px;text-align:center;color:var(--lt);font-size:13px">Aún no se cargaron cotizaciones de compañías. Hacé click en "+ Cargar cotización".</div>');
+  }
+  html.push('</div>');
+
+  // Replace panel content
+  var wrap = cont.closest('[style*="background:var(--white)"]') || cont.parentElement;
+  if (wrap) wrap.innerHTML = html.join('');
+  if (footer) footer.textContent = '';
+}
+
+async function marcarCotzPresentada(cotId) {
+  await sb.from('cotizaciones').update({estado:'presentada'}).eq('id',cotId);
+  mostrarAlerta('✅ Cotización marcada como presentada');
+  var cot = _cotzData.find(function(c){ return c.id===cotId; });
+  if (cot) { cot.estado='presentada'; abrirDetalleCotizacion(cotId); }
+}
+
+async function elegirOferta(cotId, ofertaIdx) {
+  confirmarAccion({icon:'✓',titulo:'Marcar como aceptada',msg:'¿El cliente aceptó esta cotización?',btnOk:'Sí, aceptar',btnOkStyle:'background:#22C55E;color:#fff;border-color:#22C55E;padding:7px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit'},async function(){
+    await sb.from('cotizaciones').update({estado:'aceptada',oferta_elegida:ofertaIdx}).eq('id',cotId);
+    mostrarAlerta('✅ Cotización aceptada');
+    await cargarCotizaciones();
+  });
+}
+
+function abrirCargarOfertas(cotId) {
+  var cot = _cotzData.find(function(c){ return c.id===cotId; });
+  if (!cot) return;
+  window._cotIdCargando = cotId;
+  var ramo = cot.ramo;
+  // Build modal with ofertas cards
+  var mHTML = '<div style="padding:0"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px">Cargar cotizaciones — '+(RAMO_LABELS_COT[ramo]||ramo)+'</div>';
+  mHTML += '<div id="ofertas-list" style="display:flex;flex-direction:column;gap:8px"></div>';
+  mHTML += '<button type="button" onclick="ofertaAddRow()" style="width:100%;margin-top:8px;padding:9px;font-size:13px;border:0.5px dashed var(--border);border-radius:var(--rsm);background:transparent;cursor:pointer;color:var(--muted)">+ Agregar compañía</button>';
+  mHTML += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--border)"><button type="button" class="btn" onclick="cerrarModal(\'modal-cargar-ofertas\')">Cancelar</button><button type="button" class="btn btn-p" onclick="guardarOfertas()">Guardar cotizaciones</button></div>';
+  mHTML += '</div>';
+  var mo = document.getElementById('modal-cargar-ofertas');
+  if (!mo) {
+    mo = document.createElement('div');
+    mo.className = 'modal-ov';
+    mo.id = 'modal-cargar-ofertas';
+    mo.innerHTML = '<div class="modal-box" style="max-width:680px"><div class="modal-t">Cargar cotizaciones <button type="button" class="modal-x" onclick="cerrarModal(\'modal-cargar-ofertas\')">✕</button></div><div id="modal-cargar-ofertas-body"></div></div>';
+    document.body.appendChild(mo);
+  }
+  document.getElementById('modal-cargar-ofertas-body').innerHTML = mHTML;
+  mo.classList.add('open');
+  ofertaAddRow(); ofertaAddRow(); // start with 2 rows
+}
+
+function ofertaAddRow() {
+  var list = document.getElementById('ofertas-list');
+  if (!list) return;
+  var idx = list.children.length + 1;
+  var div = document.createElement('div');
+  div.className = 'oferta-row';
+  div.style.cssText = 'background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rsm);padding:12px';
+  div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase">Compañía '+idx+'</span><button type="button" onclick="this.closest(\'.oferta-row\').remove()" style="font-size:11px;padding:2px 6px;border:none;background:none;cursor:pointer;color:var(--lt)">✕</button></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    +'<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Compañía *</label><select class="oferta-compania" style="width:100%;font-size:13px"><option value="">Seleccionar...</option><option>Federación Patronal</option><option>Sancor Seguros</option><option>La Segunda</option><option>RUS</option><option>Zurich Argentina</option><option>Mapfre Argentina</option><option>San Cristóbal</option><option>Provincia Seguros</option><option>Integrity Seguros</option><option>Otra...</option></select></div>'
+    +'<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Cobertura *</label><select class="oferta-cobertura" style="width:100%;font-size:13px"><option>Todo riesgo</option><option>Terceros completo</option><option>RC obligatoria</option><option>RC + Robo e Incendio Total</option><option>Otra...</option></select></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+    +'<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Tipo franquicia</label><select class="oferta-fran-tipo" onchange="ofertaFranChange(this)" style="width:100%;font-size:13px"><option value="sin">Sin franquicia</option><option value="pct" selected>Porcentaje</option><option value="fija">Valor fijo</option></select></div>'
+    +'<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Franquicia</label><div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><input type="number" class="oferta-fran-val" placeholder="0" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;text-align:right"><span class="oferta-fran-unit" style="background:var(--bg);color:var(--muted);padding:0 7px;display:flex;align-items:center;font-size:13px;border-left:0.5px solid var(--border)">%</span></div></div>'
+    +'<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Premio mensual *</label><div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 7px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" class="oferta-premio" placeholder="0" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;"></div></div>'
+    +'</div>'
+    +'<div style="margin-top:8px"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Observaciones</label><input type="text" class="oferta-obs" placeholder="Ej: Incluye taller propio..." style="width:100%;font-size:13px;padding:6px 8px;border:0.5px solid var(--border);border-radius:var(--rsm)"></div>';
+  list.appendChild(div);
+}
+
+function ofertaFranChange(sel) {
+  var row = sel.closest('.oferta-row');
+  var val = row.querySelector('.oferta-fran-val');
+  var unit = row.querySelector('.oferta-fran-unit');
+  if (sel.value === 'sin') { val.disabled=true; val.value=''; unit.textContent=''; }
+  else if (sel.value === 'pct') { val.disabled=false; unit.textContent='%'; }
+  else { val.disabled=false; unit.textContent='$'; }
+}
+
+async function guardarOfertas() {
+  var cotId = window._cotIdCargando;
+  var rows = document.querySelectorAll('.oferta-row');
+  var ofertas = [];
+  rows.forEach(function(row) {
+    var comp = row.querySelector('.oferta-compania').value;
+    if (!comp) return;
+    ofertas.push({
+      compania: comp,
+      cobertura: row.querySelector('.oferta-cobertura').value,
+      tipo_franquicia: row.querySelector('.oferta-fran-tipo').value,
+      franquicia_valor: parseFloat(row.querySelector('.oferta-fran-val').value)||0,
+      premio_mensual: parseFloat(row.querySelector('.oferta-premio').value)||0,
+      observaciones: row.querySelector('.oferta-obs').value.trim(),
+    });
+  });
+  if (!ofertas.length) { alert('Agregá al menos una compañía'); return; }
+  var { error } = await sb.from('cotizaciones').update({ofertas:ofertas, estado:'en_proceso'}).eq('id',cotId);
+  if (error) { alert('Error: '+error.message); return; }
+  mostrarAlerta('✅ Cotizaciones guardadas');
+  cerrarModal('modal-cargar-ofertas');
+  var idx = _cotzData.findIndex(function(c){ return c.id===cotId; });
+  if (idx > -1) { _cotzData[idx].ofertas = ofertas; _cotzData[idx].estado='en_proceso'; }
+  abrirDetalleCotizacion(cotId);
+}
+
+// ---- NUEVA COTIZACIÓN ----
+function cotSetRamo(ramo) {
+  var sec = document.getElementById('fc-riesgo-section');
+  var fields = document.getElementById('fc-riesgo-fields');
+  if (!ramo || !fields) { if(sec) sec.style.display='none'; return; }
+  var COBS_HOG = [['incendio','Incendio edificio',true],['robo','Robo y/o hurto',true],['electronico','Todo riesgo objetos electrónicos',true],['rc','RC comprensiva',true],['cristales','Cristales',false],['agua','Daños por agua',false],['alojamiento','Gastos de alojamiento',false]];
+  var COBS_COM = [['incendio','Incendio edificio',true],['mercaderia','Incendio mercadería',true],['robo','Robo y/o hurto',true],['rc','RC comprensiva',true],['rc_alimentos','RC alimentos',true],['cristales','Cristales',false],['agua','Daños por agua',false],['dinero','Robo de dinero en efectivo',false]];
+  var secLbl = function(t){ return '<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)">'+t+'</div>'; };
+  var cotLbl = function(t){ return '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">'+t+'</label>'; };
+  var cotInp = function(t,p,id){ return '<input type="'+t+'" '+(id?'id="'+id+'" ':'')+' placeholder="'+p+'" style="width:100%;font-size:13px">'; };
+  var cotSel = function(opts,id){ return '<select '+(id?'id="'+id+'" ':'')+' style="width:100%;font-size:13px">'+opts.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'; };
+  var cotMon = function(id){ return '<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" '+(id?'id="'+id+'" ':'')+'placeholder="0" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;"></div>'; };
+  var g2 = function(l1,f1,l2,f2){ return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div>'+cotLbl(l1)+f1+'</div><div>'+cotLbl(l2)+f2+'</div></div>'; };
+  var g3 = function(l1,f1,l2,f2,l3,f3){ return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px"><div>'+cotLbl(l1)+f1+'</div><div>'+cotLbl(l2)+f2+'</div><div>'+cotLbl(l3)+f3+'</div></div>'; };
+  var cobRow = function(id,label,def,pfx){ var ch=def?' checked':''; var op=def?'1':'.6'; var bd=def?'var(--med)':'var(--border)'; var dis=def?'':'disabled'; var bg=def?'':'background:var(--bg);';
+    return '<div class="cot-cob-row-'+pfx+'" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid '+bd+';opacity:'+op+'"><input type="checkbox"'+ch+' onchange="cotToggleCob(this,\''+pfx+'\')" style="width:15px;height:15px;cursor:pointer;accent-color:var(--med)"><span style="font-size:13px;color:var(--text)">'+label+'</span><div style="display:flex;align-items:center;gap:4px"><span style="font-size:13px;color:var(--muted)">$</span><input type="number" placeholder="0" '+dis+' class="cot-cob-inp" style="width:110px;text-align:right;font-size:13px;padding:4px 6px;border:0.5px solid var(--border);border-radius:var(--rsm);'+bg+'"></div></div>';
+  };
+  var html = '';
+  if (ramo==='auto') {
+    var marcas = ['Chevrolet','Citroën','Fiat','Ford','Honda','Hyundai','Kia','Nissan','Peugeot','Renault','Toyota','Volkswagen','Otra...'];
+    var anios = []; for(var y=2026;y>=1960;y--) anios.push(y.toString());
+    html += secLbl('🚗 Datos del vehículo')
+      + g2('Marca *',cotSel(marcas,'fc-auto-marca'),'Modelo *',cotInp('text','Escribir modelo','fc-auto-modelo'))
+      + g3('Año *',cotSel(anios,'fc-auto-anio'),'Patente *',cotInp('text','AB123CD','fc-auto-patente'),'Uso *',cotSel(['Particular','Comercial','Taxi','Remis'],'fc-auto-uso'))
+      + g2('Suma asegurada *',cotMon('fc-auto-suma'),'Cobertura solicitada',cotSel(['Todo riesgo','Terceros completo','RC obligatoria'],'fc-auto-cob'));
+  } else if (ramo==='hogar') {
+    html += secLbl('🏠 Datos del riesgo')
+      + '<div style="margin-bottom:8px">'+cotLbl('Dirección del riesgo *')+cotInp('text','Calle, número, localidad','fc-hog-dir')+'</div>'
+      + g3('Tipo *',cotSel(['Casa','Departamento'],'fc-hog-tipo'),'Uso *',cotSel(['Permanente','Alquiler','Temporario'],'fc-hog-uso'),'Año construcción',cotInp('number','','fc-hog-anio'))
+      + secLbl('Coberturas solicitadas')
+      + '<div style="display:flex;flex-direction:column;gap:5px">'+COBS_HOG.map(function(c){ return cobRow(c[0],c[1],c[2],'hog'); }).join('')+'</div>';
+  } else if (ramo==='comercio') {
+    html += secLbl('🏪 Datos del comercio')
+      + g2('Nombre del comercio *',cotInp('text','','fc-com-nombre'),'CUIT',cotInp('text','','fc-com-cuit'))
+      + '<div style="margin-bottom:8px">'+cotLbl('Actividad *')+cotInp('text','Ej: Almacén, kiosco...','fc-com-act')+'</div>'
+      + '<div style="margin-bottom:8px">'+cotLbl('Dirección del riesgo *')+cotInp('text','','fc-com-dir')+'</div>'
+      + g2('Superficie (m²)',cotInp('number','','fc-com-m2'),'Empleados',cotInp('number','','fc-com-emp'))
+      + secLbl('Coberturas solicitadas')
+      + '<div style="display:flex;flex-direction:column;gap:5px">'+COBS_COM.map(function(c){ return cobRow(c[0],c[1],c[2],'com'); }).join('')+'</div>';
+  } else if (ramo==='art') {
+    html += secLbl('👷 Datos ART')
+      + g2('Razón social *',cotInp('text','','fc-art-rs'),'CUIT *',cotInp('text','','fc-art-cuit'))
+      + g3('Actividad *',cotInp('text','','fc-art-act'),'Empleados *',cotInp('number','','fc-art-emp'),'Masa salarial mensual *',cotMon('fc-art-masa'));
+  } else if (ramo==='ap') {
+    html += secLbl('🏥 Accidentes Personales')
+      + g2('Nombre del asegurado *',cotInp('text','','fc-ap-nombre'),'Fecha de nacimiento *',cotInp('date','','fc-ap-nac'))
+      + g2('Actividad laboral *',cotInp('text','','fc-ap-act'),'Capital solicitado',cotMon('fc-ap-capital'));
+  } else if (ramo==='rc') {
+    html += secLbl('⚖️ Responsabilidad Civil')
+      + '<div style="margin-bottom:8px">'+cotLbl('Actividad asegurada *')+cotInp('text','','fc-rc-act')+'</div>'
+      + g2('Suma asegurada *',cotMon('fc-rc-suma'),'Ámbito',cotSel(['Argentina','Mercosur','Mundial'],'fc-rc-ambito'));
+  } else if (ramo==='vida') {
+    html += secLbl('❤️ Vida / AP')
+      + g2('Nombre del asegurado *',cotInp('text','','fc-vid-nombre'),'Fecha de nacimiento *',cotInp('date','','fc-vid-nac'))
+      + g3('Capital asegurado *',cotMon('fc-vid-cap'),'Plan',cotSel(['Vida temporario','Vida entera','Vida con ahorro','Obligatorio Ley'],'fc-vid-plan'),'Cantidad de asegurados',cotInp('number','1','fc-vid-cant'));
+  } else {
+    html += secLbl('📋 Descripción del riesgo')
+      + '<div style="margin-bottom:8px"><textarea id="fc-otros-desc" placeholder="Describí el riesgo a cotizar..." style="width:100%;min-height:70px;resize:none;font-size:13px"></textarea></div>'
+      + '<div>'+cotLbl('Suma asegurada estimada')+cotMon('fc-otros-suma')+'</div>';
+  }
+  fields.innerHTML = html;
+  sec.style.display = 'block';
+}
+
+function cotToggleCob(cb, pfx) {
+  var row = cb.closest('.cot-cob-row-'+pfx);
+  var inp = row ? row.querySelector('.cot-cob-inp') : null;
+  if (!inp) return;
+  row.style.opacity = cb.checked ? '1' : '.6';
+  row.style.borderColor = cb.checked ? 'var(--med)' : 'var(--border)';
+  inp.disabled = !cb.checked;
+  inp.style.background = cb.checked ? '' : 'var(--bg)';
+  if (!cb.checked) inp.value = '';
+}
+
+document.getElementById('btn-guardar-cotz').onclick = async function() {
+  var cid = document.getElementById('fc-cl').value;
+  var ramo = document.getElementById('fc-ramo').value;
+  var notas = document.getElementById('fc-notas').value.trim();
+  if (!cid) { alert('Seleccioná un cliente'); return; }
+  if (!ramo) { alert('Seleccioná un ramo'); return; }
+  var gv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
+  var datos_riesgo = {};
+  if (ramo==='auto') { datos_riesgo = {marca:gv('fc-auto-marca'),modelo:gv('fc-auto-modelo'),anio:gv('fc-auto-anio'),patente:gv('fc-auto-patente'),uso:gv('fc-auto-uso'),suma_asegurada:gv('fc-auto-suma'),cobertura:gv('fc-auto-cob')}; }
+  else if (ramo==='hogar') { datos_riesgo = {direccion:gv('fc-hog-dir'),tipo_vivienda:gv('fc-hog-tipo'),uso:gv('fc-hog-uso'),anio_construccion:gv('fc-hog-anio')}; }
+  else if (ramo==='comercio') { datos_riesgo = {nombre_comercio:gv('fc-com-nombre'),cuit:gv('fc-com-cuit'),actividad:gv('fc-com-act'),direccion:gv('fc-com-dir'),m2:gv('fc-com-m2'),empleados:gv('fc-com-emp')}; }
+  else if (ramo==='art') { datos_riesgo = {razon_social:gv('fc-art-rs'),cuit:gv('fc-art-cuit'),actividad:gv('fc-art-act'),empleados:gv('fc-art-emp'),masa_salarial:gv('fc-art-masa')}; }
+  var { data: cotNueva, error } = await sb.from('cotizaciones').insert({productor_id:user.id,cliente_id:cid,ramo:ramo,notas:notas,datos_riesgo:datos_riesgo,estado:'pendiente',ofertas:[]}).select().single();
+  if (error) { alert('Error: '+error.message); return; }
+  // Crear tarea automática
+  var cl = allCl.find(function(x){ return x.id===cid; });
+  var nombreCl = cl ? cl.apellido+', '+cl.nombre : '';
+  await sb.from('tareas').insert({productor_id:user.id,cliente_id:cid,titulo:'Cotizar '+RAMO_LABELS_COT[ramo]+' — '+nombreCl,tablero:'cotizaciones',estado:'pendiente'});
+  mostrarAlerta('✅ Cotización registrada y tarea creada');
+  cerrarModal('modal-cotz');
+  await cargarCotizaciones();
+};
+
+document.getElementById('btn-ncotz').onclick = function() {
+  actualizarSelectsClientes();
+  document.getElementById('fc-ramo').value = '';
+  document.getElementById('fc-notas').value = '';
+  document.getElementById('fc-riesgo-section').style.display = 'none';
+  document.getElementById('modal-cotz').classList.add('open');
+};
 
 // ---- SINIESTROS ----
 var _sinPanelData = [];
