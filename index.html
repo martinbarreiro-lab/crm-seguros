@@ -2423,7 +2423,7 @@ function renderSinEtapaPanel(s, etapa) {
   var html = [];
   html.push('<div style="background:#fff;border:0.5px solid #E5E7EB;border-top:3px solid #4A90D9;border-radius:0 0 8px 8px;padding:14px;display:flex;flex-direction:column;gap:14px">');
   // Indicador etapa activa
-  html.push('<div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:#4A90D9;flex-shrink:0"></div><span style="font-size:11px;font-weight:600;color:#4A90D9;text-transform:uppercase;letter-spacing:.06em">Etapa: '+etapaLabel+'</span></div>');
+  html.push('<div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:#4A90D9;flex-shrink:0"></div><span id="sin-etapa-label-'+s.id+'" style="font-size:11px;font-weight:600;color:#4A90D9;text-transform:uppercase;letter-spacing:.06em">Etapa: '+etapaLabel+'</span></div>');
 
   // ── DENUNCIA ─────────────────────────────────────────
   if (etapa === 'denuncia') {
@@ -2681,19 +2681,52 @@ function toggleSin(sinId) {
 }
 
 function sinSetEtapa(sinId, etapa) {
-  // Update panel content immediately
   var panelEl = document.getElementById('sin-etapa-panel-'+sinId);
   if (!panelEl) return;
-  // Find siniestro data from rendered data (re-fetch minimal)
   sb.from('siniestros').select('*').eq('id',sinId).single().then(function(res){
-    if (res.data) {
-      panelEl.innerHTML = renderSinEtapaPanel(res.data, etapa);
-      // Update DB
-      sb.from('siniestros').update({ etapa_actual: etapa }).eq('id',sinId);
-      // Update timeline visual
-      var pasos = getSinEtapas(res.data);
-      var etapaIdx = pasos.indexOf(etapa);
-      var labels = getSinLabels(res.data);
+    if (!res.data) return;
+    var s = res.data;
+    var etapaReal = s.etapa_actual || 'denuncia';
+    // Render panel for the clicked etapa (no DB update)
+    panelEl.innerHTML = renderSinEtapaPanel(s, etapa);
+    // Update timeline visuals with 3 states
+    var pasos = getSinEtapas(s);
+    var labels = getSinLabels(s) || {};
+    var allLabels = Object.assign(
+      {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',
+       peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',
+       resolucion:'Resolución',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación'},
+      labels
+    );
+    var etapaRealIdx = pasos.indexOf(etapaReal);
+    pasos.forEach(function(p, i) {
+      var el = document.getElementById('sin-step-'+sinId+'-'+p);
+      if (!el) return;
+      var isDone    = i < etapaRealIdx;
+      var isReal    = p === etapaReal;
+      var isViewing = p === etapa && p !== etapaReal;
+      var bg, color, fw, icon, shadow = '';
+      if (isReal) {
+        bg='#4A90D9'; color='#fff'; fw='700'; icon='▶ ';
+        shadow='box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);';
+      } else if (isViewing) {
+        bg='#DBEAFE'; color='#1E40AF'; fw='600'; icon='◀ ';
+        shadow='box-shadow:inset 0 -2px 0 #93C5FD;';
+      } else if (isDone) {
+        bg='#EAF3DE'; color='#27500A'; fw='600'; icon='✓ ';
+      } else {
+        bg='#F9FAFB'; color='#9CA3AF'; fw='500'; icon='';
+      }
+      el.style.background=bg; el.style.color=color; el.style.fontWeight=fw;
+      el.style.boxShadow=shadow||'none';
+      el.textContent=icon+(allLabels[p]||p.charAt(0).toUpperCase()+p.slice(1));
+    });
+    // Update etapa label
+    var labelEl = document.getElementById('sin-etapa-label-'+sinId);
+    if (labelEl) {
+      var isReal2 = etapa === etapaReal;
+      labelEl.textContent = 'Etapa: '+(allLabels[etapa]||etapa)+(isReal2?'':' · consultando');
+      labelEl.style.color = isReal2 ? '#4A90D9' : '#1E40AF';
     }
   });
 }
