@@ -5049,10 +5049,46 @@ function cotSetRamo(ramo) {
   if (ramo==='auto') {
     var marcas = ['Chevrolet','Citroën','Fiat','Ford','Honda','Hyundai','Kia','Nissan','Peugeot','Renault','Toyota','Volkswagen','Otra...'];
     var anios = []; for(var y=2026;y>=1960;y--) anios.push(y.toString());
+    var COBS_AUTO = ['Responsabilidad Civil','Robo total','Robo parcial','Incendio total','Incendio parcial','Destrucción total'];
+    var cobsAutoHtml = COBS_AUTO.map(function(c) {
+      return '<div class="cot-cob-auto" style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid var(--med)">'
+        +'<input type="checkbox" checked data-cob-auto="'+c+'" onchange="cotToggleAutoSimple(this)" style="width:15px;height:15px;cursor:pointer;accent-color:var(--med)">'
+        +'<span style="font-size:13px;color:var(--text)">'+c+'</span>'
+        +'</div>';
+    }).join('');
+    // Granizo
+    var granizoPct = '<option value="">Seleccionar...</option>';
+    for(var p=1;p<=10;p+=0.5) granizoPct += '<option value="'+p+'">'+p.toLocaleString('es-AR',{minimumFractionDigits:p%1?1:0})+'%</option>';
+    var franPct = '<option value="">Seleccionar...</option>';
+    for(var fp=1;fp<=10;fp+=0.5) franPct += '<option value="'+fp+'">'+fp.toLocaleString('es-AR',{minimumFractionDigits:fp%1?1:0})+'%</option>';
+
     html += secLbl('🚗 Datos del vehículo')
       + g2('Marca *',cotSel(marcas,'fc-auto-marca'),'Modelo *',cotInp('text','Escribir modelo','fc-auto-modelo'))
       + g3('Año *',cotSel(anios,'fc-auto-anio'),'Patente *',cotInp('text','AB123CD','fc-auto-patente'),'Uso *',cotSel(['Particular','Comercial','Taxi','Remis'],'fc-auto-uso'))
-      + g2('Suma asegurada *',cotMon('fc-auto-suma'),'Cobertura solicitada',cotSel(['Todo riesgo','Terceros completo','RC obligatoria'],'fc-auto-cob'));
+      + g2('Suma asegurada *','<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" id="fc-auto-suma" placeholder="0" oninput="cotCalcFranq()" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;"></div>','Cobertura solicitada','<select id="fc-auto-cob" onchange="cotOnCobChange(this.value)" style="width:100%;font-size:13px"><option value="todo_riesgo">Todo riesgo</option><option value="terceros">Terceros completo</option><option value="rc">RC obligatoria</option><option value="rc_robo">RC + Robo e Incendio Total</option><option value="rc_robo_dt">RC + Robo/Incendio Total + Destrucción Total</option><option value="ter_granizo_sl">Terceros con granizo sin límite</option><option value="ter_granizo_cl">Terceros con granizo con límite</option><option value="otra">Otra...</option></select>')
+      + secLbl('Coberturas incluidas')
+      + '<div style="display:flex;flex-direction:column;gap:5px">'+cobsAutoHtml+'</div>'
+      // Granizo
+      + '<div id="fc-auto-granizo-row" style="margin-top:5px;padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border:0.5px solid var(--med)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+      + '<div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="fc-auto-cb-granizo" checked onchange="cotToggleGranizo(this)" style="width:15px;height:15px;cursor:pointer;accent-color:var(--med)"><span style="font-size:13px;color:var(--text)">Granizo</span></div>'
+      + '<div style="display:flex;gap:12px">'
+      + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:var(--muted)"><input type="radio" name="fc-granizo-tipo" value="total" checked onchange="cotGranizoCambio(this.value)"> Hasta suma asegurada</label>'
+      + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:var(--muted)"><input type="radio" name="fc-granizo-tipo" value="limite" onchange="cotGranizoCambio(this.value)"> Monto límite</label>'
+      + '</div></div>'
+      + '<div id="fc-auto-granizo-monto" style="display:none;margin-top:8px;padding-left:24px;display:none"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)">Monto límite: <div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 7px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" id="fc-auto-granizo-val" placeholder="0" style="border:none;outline:none;padding:5px 8px;font-size:13px;width:120px;background:transparent;"></div></div></div>'
+      + '</div>'
+      // Franquicia (solo todo riesgo)
+      + '<div id="fc-auto-franq-sec" style="margin-top:10px">'
+      + secLbl('Franquicia')
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<div>'+cotLbl('Tipo de franquicia')+'<select id="fc-auto-franq-tipo" onchange="cotFranqCambio(this.value)" style="width:100%;font-size:13px"><option value="sin">Sin franquicia</option><option value="pct" selected>Porcentaje</option><option value="fija">Valor fijo</option></select></div>'
+      + '<div id="fc-auto-franq-pct-col">'+cotLbl('Porcentaje')+'<select id="fc-auto-franq-pct" onchange="cotCalcFranq()" style="width:100%;font-size:13px">'+franPct+'</select></div>'
+      + '<div id="fc-auto-franq-fija-col" style="display:none">'+cotLbl('Monto fijo *')+'<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden"><span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="number" id="fc-auto-franq-fija" placeholder="0" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;"></div></div>'
+      + '<div id="fc-auto-franq-monto-col">'+cotLbl('Monto calculado')+'<div style="display:flex;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden;background:var(--bg)"><span style="background:var(--bg);color:var(--muted);padding:0 8px;display:flex;align-items:center;font-size:13px;border-right:0.5px solid var(--border)">$</span><input type="text" id="fc-auto-franq-calc" readonly placeholder="—" style="border:none;outline:none;padding:6px 8px;font-size:13px;flex:1;background:transparent;color:var(--muted);"></div></div>'
+      + '</div>'
+      + '<div id="fc-auto-franq-info" style="display:none;margin-top:6px;padding:6px 10px;background:var(--light);border-radius:var(--rsm);font-size:12px;color:var(--med)"></div>'
+      + '</div>';
   } else if (ramo==='hogar') {
     html += secLbl('🏠 Datos del riesgo')
       + '<div style="margin-bottom:8px">'+cotLbl('Dirección del riesgo *')+cotInp('text','Calle, número, localidad','fc-hog-dir')+'</div>'
@@ -5092,6 +5128,58 @@ function cotSetRamo(ramo) {
   sec.style.display = 'block';
 }
 
+function cotToggleAutoSimple(cb) {
+  var row = cb.parentElement;
+  row.style.opacity = cb.checked ? '1' : '.6';
+  row.style.borderColor = cb.checked ? 'var(--med)' : 'var(--border)';
+}
+
+function cotOnCobChange(val) {
+  var franqSec = document.getElementById('fc-auto-franq-sec');
+  if (franqSec) franqSec.style.display = val === 'todo_riesgo' ? 'block' : 'none';
+}
+
+function cotToggleGranizo(cb) {
+  var row = document.getElementById('fc-auto-granizo-row');
+  if (row) { row.style.opacity = cb.checked ? '1' : '.6'; row.style.borderColor = cb.checked ? 'var(--med)' : 'var(--border)'; }
+  if (!cb.checked) { var w = document.getElementById('fc-auto-granizo-monto'); if(w) w.style.display='none'; }
+}
+
+function cotGranizoCambio(val) {
+  var w = document.getElementById('fc-auto-granizo-monto');
+  if (w) w.style.display = val === 'limite' ? 'block' : 'none';
+}
+
+function cotFranqCambio(val) {
+  var pctCol = document.getElementById('fc-auto-franq-pct-col');
+  var fijaCol = document.getElementById('fc-auto-franq-fija-col');
+  var montoCol = document.getElementById('fc-auto-franq-monto-col');
+  var info = document.getElementById('fc-auto-franq-info');
+  if (pctCol) pctCol.style.display = val==='pct' ? '' : 'none';
+  if (montoCol) montoCol.style.display = val==='pct' ? '' : 'none';
+  if (fijaCol) fijaCol.style.display = val==='fija' ? '' : 'none';
+  if (info) info.style.display = val==='pct' ? 'block' : 'none';
+  if (val==='pct') cotCalcFranq();
+}
+
+function cotCalcFranq() {
+  var pctEl = document.getElementById('fc-auto-franq-pct');
+  var sumaEl = document.getElementById('fc-auto-suma');
+  var calcEl = document.getElementById('fc-auto-franq-calc');
+  var infoEl = document.getElementById('fc-auto-franq-info');
+  if (!pctEl || !sumaEl) return;
+  var pct  = parseFloat(pctEl.value) || 0;
+  var suma = parseFloat(sumaEl.value) || 0;
+  var monto = Math.round(suma * pct / 100);
+  if (calcEl) calcEl.value = (pct && suma) ? '$'+monto.toLocaleString('es-AR') : '';
+  if (infoEl) {
+    if (pct && suma) {
+      infoEl.style.display = 'block';
+      infoEl.innerHTML = pct.toLocaleString('es-AR',{minimumFractionDigits:pct%1?1:0})+'% sobre $'+suma.toLocaleString('es-AR')+' = <strong>$'+monto.toLocaleString('es-AR')+'</strong>';
+    } else { infoEl.style.display = 'none'; }
+  }
+}
+
 function cotToggleCob(cb, pfx) {
   var row = cb.closest('.cot-cob-row-'+pfx);
   var inp = row ? row.querySelector('.cot-cob-inp') : null;
@@ -5111,7 +5199,23 @@ document.getElementById('btn-guardar-cotz').onclick = async function() {
   if (!ramo) { alert('Seleccioná un ramo'); return; }
   var gv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
   var datos_riesgo = {};
-  if (ramo==='auto') { datos_riesgo = {marca:gv('fc-auto-marca'),modelo:gv('fc-auto-modelo'),anio:gv('fc-auto-anio'),patente:gv('fc-auto-patente'),uso:gv('fc-auto-uso'),suma_asegurada:gv('fc-auto-suma'),cobertura:gv('fc-auto-cob')}; }
+  if (ramo==='auto') {
+    var cobsAuto = [];
+    document.querySelectorAll('[data-cob-auto]').forEach(function(cb){ if(cb.checked) cobsAuto.push(cb.getAttribute('data-cob-auto')); });
+    var cbGran = document.getElementById('fc-auto-cb-granizo');
+    var granTipo = document.querySelector('input[name="fc-granizo-tipo"]:checked');
+    var granVal = gv('fc-auto-granizo-val');
+    var franqTipo = gv('fc-auto-franq-tipo');
+    var franqPct = gv('fc-auto-franq-pct');
+    var franqFija = gv('fc-auto-franq-fija');
+    datos_riesgo = {
+      marca:gv('fc-auto-marca'), modelo:gv('fc-auto-modelo'), anio:gv('fc-auto-anio'),
+      patente:gv('fc-auto-patente'), uso:gv('fc-auto-uso'), suma_asegurada:gv('fc-auto-suma'),
+      cobertura:gv('fc-auto-cob'), coberturas:cobsAuto,
+      granizo: cbGran&&cbGran.checked ? {activo:true, tipo:granTipo?granTipo.value:'total', monto_limite:granTipo&&granTipo.value==='limite'?granVal:''} : {activo:false},
+      franquicia: {tipo:franqTipo, pct:franqPct, fija:franqFija}
+    };
+  }
   else if (ramo==='hogar') { datos_riesgo = {direccion:gv('fc-hog-dir'),tipo_vivienda:gv('fc-hog-tipo'),uso:gv('fc-hog-uso'),anio_construccion:gv('fc-hog-anio')}; }
   else if (ramo==='comercio') { datos_riesgo = {nombre_comercio:gv('fc-com-nombre'),cuit:gv('fc-com-cuit'),actividad:gv('fc-com-act'),direccion:gv('fc-com-dir'),m2:gv('fc-com-m2'),empleados:gv('fc-com-emp')}; }
   else if (ramo==='art') { datos_riesgo = {razon_social:gv('fc-art-rs'),cuit:gv('fc-art-cuit'),actividad:gv('fc-art-act'),empleados:gv('fc-art-emp'),masa_salarial:gv('fc-art-masa')}; }
