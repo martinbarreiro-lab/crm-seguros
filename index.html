@@ -3148,20 +3148,138 @@ function abrirEditarSiniestro(sinId) {
 }
 
 async function fichaCotizaciones(c) {
-  const { data } = await sb.from('cotizaciones').select('*').eq('cliente_id', c.id).order('created_at', { ascending: false });
-  const eb = { enviada: 'bb', aceptada: 'bv', rechazada: 'br', vencida: 'bgr' };
-  return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">'
-    + '<button type="button" class="btn btn-sm btn-p" onclick="abrirModalCotzParaCliente(\'' + c.id + '\')">+ Nueva cotización</button></div>'
-    + ((!data || !data.length) ? '<div class="empty">Sin cotizaciones.</div>'
-    : data.map(function(ct) {
-      return '<div class="card">'
-        + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
-        + '<div><div style="font-weight:600">' + ct.ramo + ' · ' + ct.aseguradora + '</div><div style="font-size:11px;color:var(--muted)">Enviada: ' + (ct.fecha_envio || '—') + ' · Válida: ' + (ct.fecha_validez || '—') + '</div></div>'
-        + '<div style="text-align:right"><span class="badge ' + (eb[ct.estado] || 'bgr') + '">' + ct.estado + '</span><div style="font-size:13px;font-weight:600;color:var(--green);margin-top:3px">$' + (ct.prima_cotizada || 0).toLocaleString('es-AR') + '</div></div>'
-        + '</div>'
-        + (ct.estado === 'enviada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="cambiarEstadoCotz(\'' + ct.id + '\',\'aceptada\')">Marcar aceptada</button>' : '')
-        + '</div>';
-    }).join(''));
+  const { data } = await sb.from('cotizaciones').select('*').eq('cliente_id', c.id).order('created_at', {ascending:false});
+  var RAMO_LBL = {auto:'Automotor',hogar:'Hogar',comercio:'Integral de comercio',art:'ART',ap:'Accidentes Personales',rc:'Responsabilidad Civil',vida:'Vida',otros:'Otros'};
+  var EST_MAP = {
+    pendiente:  {bg:'#FAEEDA',color:'#633806',label:'Pendiente'},
+    en_proceso: {bg:'#EEEDFE',color:'#3C3489',label:'En proceso'},
+    presentada: {bg:'#E6F1FB',color:'#0C447C',label:'Presentada'},
+    aceptada:   {bg:'#EAF3DE',color:'27500A',label:'✓ Aceptada'},
+    rechazada:  {bg:'#FCEBEB',color:'#791F1F',label:'Rechazada'},
+  };
+  var html = [];
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">');
+  html.push('<div style="font-size:13px;font-weight:500;color:var(--text)">Cotizaciones</div>');
+  html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirModalCotzParaCliente(\''+c.id+'\')">+ Nueva cotización</button>');
+  html.push('</div>');
+  if (!data || !data.length) {
+    html.push('<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Sin cotizaciones</div></div>');
+    return html.join('');
+  }
+  data.forEach(function(ct, idx) {
+    var dr = ct.datos_riesgo || {};
+    var ofertas = ct.ofertas || [];
+    var est = EST_MAP[ct.estado] || EST_MAP.pendiente;
+    var ramo = RAMO_LBL[ct.ramo] || ct.ramo || '—';
+    var subtitulo = ct.ramo==='auto' ? (dr.marca?(dr.marca+' '+(dr.modelo||'')+' '+(dr.anio||'')):'') :
+                    ct.ramo==='hogar' ? (dr.direccion||'') :
+                    ct.ramo==='comercio' ? (dr.nombre_comercio||'') :
+                    ct.ramo==='art' ? (dr.razon_social||'') : '';
+    var bodyId = 'cot-360-body-'+idx;
+    var chevId = 'cot-360-chev-'+idx;
+    var minPremio = ofertas.length ? Math.min.apply(null, ofertas.map(function(o){ return o.premio_mensual||Infinity; })) : 0;
+    html.push('<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px">');
+    // Header
+    html.push('<div onclick="toggleCot360(\''+bodyId+'\',\''+chevId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer">');
+    html.push('<div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:500;color:var(--text)">'+ramo+(subtitulo?' · '+subtitulo.trim():'')+'</span><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span></div>');
+    html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(ct.created_at)+'</span><span id="'+chevId+'" style="font-size:14px;color:var(--muted)">▼</span></div>');
+    html.push('</div>');
+    // Body
+    html.push('<div id="'+bodyId+'" style="display:none;border-top:0.5px solid var(--border);padding:14px;background:var(--bg)">');
+    // Info grid
+    html.push('<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px">');
+    // Datos riesgo
+    html.push('<div style="background:var(--white);border-radius:var(--rsm);padding:12px">');
+    html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border)">Datos del riesgo</div>');
+    html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">');
+    var campos = [];
+    if (ct.ramo==='auto') {
+      if(dr.marca||dr.modelo) campos.push(['Vehículo',(dr.marca||'')+(dr.modelo?' '+dr.modelo:'')+(dr.anio?' '+dr.anio:'')]);
+      if(dr.patente) campos.push(['Patente',dr.patente]);
+      if(dr.suma_asegurada) campos.push(['Suma asegurada','$'+Number(dr.suma_asegurada).toLocaleString('es-AR')]);
+      if(dr.cobertura) campos.push(['Cobertura',dr.cobertura.replace(/_/g,' ')]);
+      if(dr.franquicia&&dr.franquicia.tipo!=='sin') {
+        var fTxt = dr.franquicia.tipo==='pct' ? (dr.franquicia.pct+'%') : ('$'+Number(dr.franquicia.fija).toLocaleString('es-AR'));
+        campos.push(['Franquicia',fTxt]);
+      }
+      if(dr.granizo&&dr.granizo.activo) campos.push(['Granizo',dr.granizo.tipo==='limite'?('Límite $'+Number(dr.granizo.monto_limite).toLocaleString('es-AR')):'Hasta suma aseg.']);
+      if(dr.uso) campos.push(['Uso',dr.uso]);
+      if(dr.coberturas&&dr.coberturas.length) campos.push(['Coberturas incl.',dr.coberturas.join(' · ')]);
+    } else if (ct.ramo==='hogar') {
+      if(dr.direccion) campos.push(['Dirección',dr.direccion]);
+      if(dr.tipo_vivienda) campos.push(['Tipo',dr.tipo_vivienda]);
+      if(dr.uso) campos.push(['Uso',dr.uso]);
+    } else if (ct.ramo==='comercio') {
+      if(dr.nombre_comercio) campos.push(['Comercio',dr.nombre_comercio]);
+      if(dr.actividad) campos.push(['Actividad',dr.actividad]);
+      if(dr.direccion) campos.push(['Dirección',dr.direccion]);
+    } else if (ct.ramo==='art') {
+      if(dr.razon_social) campos.push(['Razón social',dr.razon_social]);
+      if(dr.empleados) campos.push(['Empleados',dr.empleados]);
+      if(dr.masa_salarial) campos.push(['Masa salarial','$'+Number(dr.masa_salarial).toLocaleString('es-AR')]);
+    }
+    if (!campos.length) campos.push(['Ramo',ramo]);
+    campos.forEach(function(f,fi){
+      var isLast = fi >= campos.length-2;
+      var border = isLast ? '' : 'border-bottom:0.5px solid var(--border);';
+      var pad = fi%2===0 ? 'padding:5px 8px 5px 0;' : 'padding:5px 0 5px 8px;';
+      html.push('<div style="'+pad+border+'"><div style="font-size:11px;color:var(--muted)">'+f[0]+'</div><div style="font-size:12px;font-weight:500;color:var(--text);margin-top:1px">'+f[1]+'</div></div>');
+    });
+    html.push('</div></div>');
+    // Notas
+    html.push('<div style="background:var(--white);border-radius:var(--rsm);padding:12px">');
+    html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Notas</div>');
+    html.push('<div style="font-size:12px;color:var(--muted);line-height:1.5">'+(ct.notas||'Sin notas')+'</div>');
+    html.push('</div></div>');
+    // Comparativa
+    if (ofertas.length) {
+      html.push('<div style="background:var(--white);border-radius:var(--rsm);overflow:hidden">');
+      html.push('<div style="padding:8px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg);border-bottom:0.5px solid var(--border)">Comparativa</div>');
+      html.push('<table style="width:100%;border-collapse:collapse;font-size:12px">');
+      ofertas.forEach(function(o,oi){
+        var isMejor = o.premio_mensual && o.premio_mensual===minPremio;
+        var isEleg = ct.oferta_elegida===oi;
+        var border = oi<ofertas.length-1?'border-bottom:0.5px solid var(--border)':'';
+        var bg = isEleg?'background:#EAF3DE;':'';
+        var franqTxt = o.tipo_franquicia==='sin'?'Sin franq.':(o.tipo_franquicia==='pct'?o.franquicia_valor+'% fran.':'$'+Number(o.franquicia_valor).toLocaleString('es-AR')+' fijo');
+        html.push('<tr style="'+bg+border+'">');
+        html.push('<td style="padding:9px 12px;font-weight:500;color:var(--text)">'+o.compania+(isMejor&&!isEleg?'<span style="margin-left:5px;font-size:10px;padding:1px 6px;border-radius:20px;background:#DBEAFE;color:#1E40AF">Menor precio</span>':'')+(isEleg?'<span style="margin-left:5px;font-size:10px;padding:1px 6px;border-radius:20px;background:#C0DD97;color:#173404">Elegida</span>':'')+'</td>');
+        html.push('<td style="padding:9px 12px;color:var(--muted)">'+o.cobertura+' · '+franqTxt+'</td>');
+        html.push('<td style="padding:9px 12px;text-align:right;font-weight:500;color:var(--text)">'+(o.premio_mensual?'$'+Number(o.premio_mensual).toLocaleString('es-AR')+'/mes':'—')+'</td>');
+        if(ct.estado!=='aceptada') html.push('<td style="padding:9px 12px;text-align:right"><button type="button" class="btn btn-sm btn-p" onclick="elegirOferta(\''+ct.id+'\','+oi+')">Elegir ↗</button></td>');
+        else html.push('<td></td>');
+        html.push('</tr>');
+      });
+      html.push('</table></div>');
+    } else {
+      html.push('<div style="padding:14px;text-align:center;color:var(--lt);font-size:13px">Sin cotizaciones cargadas · <button type="button" class="btn btn-sm btn-p" onclick="abrirCargarOfertas(\''+ct.id+'\')">+ Cargar</button></div>');
+    }
+    html.push('<div style="display:flex;gap:6px;margin-top:10px">');
+    html.push('<button type="button" class="btn btn-sm" onclick="abrirCargarOfertas(\''+ct.id+'\')">+ Cargar cotización</button>');
+    if(ct.estado==='en_proceso'||ct.estado==='pendiente') html.push('<button type="button" class="btn btn-sm btn-p" onclick="marcarCotzPresentada(\''+ct.id+'\')">✉ Presentada al cliente</button>');
+    html.push('</div>');
+    html.push('</div></div>');
+  });
+  return html.join('');
+}
+
+function toggleCot360(bodyId, chevId) {
+  var body = document.getElementById(bodyId);
+  var chev = document.getElementById(chevId);
+  if (!body) return;
+  var isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chev) chev.textContent = isOpen ? '▼' : '▲';
+}
+
+function abrirModalCotzParaCliente(clienteId) {
+  actualizarSelectsClientes();
+  var cl = document.getElementById('fc-cl');
+  if (cl) cl.value = clienteId;
+  document.getElementById('fc-ramo').value = '';
+  document.getElementById('fc-notas').value = '';
+  document.getElementById('fc-riesgo-section').style.display = 'none';
+  document.getElementById('modal-cotz').classList.add('open');
 }
 
 async function fichaTareas(c) {
@@ -3582,29 +3700,6 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
   }
 });
 // ---- GUARDAR COTIZACIÓN ----
-document.getElementById('btn-guardar-cotz').onclick = async function() {
-  const datos = {
-    productor_id: user.id,
-    cliente_id: document.getElementById('fc-cl').value || null,
-    ramo: document.getElementById('fc-ramo').value,
-    aseguradora: document.getElementById('fc-aseg').value,
-    prima_cotizada: parseFloat(document.getElementById('fc-prima').value) || 0,
-    fecha_validez: document.getElementById('fc-val').value || null,
-    notas: document.getElementById('fc-notas').value.trim(),
-  };
-  if (!datos.ramo || !datos.aseguradora) { alert('Completá ramo y aseguradora'); return; }
-  const { error } = await sb.from('cotizaciones').insert(datos);
-  if (error) { alert('Error: ' + error.message); return; }
-  cerrarModal('modal-cotz');
-  mostrarAlerta('Cotización guardada');
-  if (fichaId) renderFicha();
-};
-
-async function cambiarEstadoCotz(id, estado) {
-  await sb.from('cotizaciones').update({ estado }).eq('id', id);
-  mostrarAlerta('Estado actualizado');
-  if (fichaId) renderFicha();
-}
 
 // ---- GUARDAR SINIESTRO ----
 // ===== MODAL SINIESTRO =====
@@ -5224,7 +5319,7 @@ document.getElementById('btn-guardar-cotz').onclick = async function() {
   // Crear tarea automática
   var cl = allCl.find(function(x){ return x.id===cid; });
   var nombreCl = cl ? cl.apellido+', '+cl.nombre : '';
-  await sb.from('tareas').insert({productor_id:user.id,cliente_id:cid,titulo:'Cotizar '+RAMO_LABELS_COT[ramo]+' — '+nombreCl,tablero:'cotizaciones',estado:'pendiente'});
+  await sb.from('tareas').insert({productor_id:user.id,cliente_id:cid,titulo:'Cotizar '+RAMO_LABELS_COT[ramo]+' — '+nombreCl,tablero:'ventas',estado:'pendiente'});
   mostrarAlerta('✅ Cotización registrada y tarea creada');
   cerrarModal('modal-cotz');
   await cargarCotizaciones();
