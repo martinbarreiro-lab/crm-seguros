@@ -6630,21 +6630,24 @@ async function cargarNotificaciones() {
   vencidas.forEach(function(t) {
     var dias = Math.round((new Date(hoy) - new Date(t.fecha_limite)) / 864e5);
     var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
-    notifs.push({tipo:'vencida', titulo:t.titulo+nombre, sub:'Venció hace '+dias+'d · '+t.tablero, color:'var(--red)', textColor:'#A32D2D', accion:function(){ irASeccion('tareas'); }});
+    var cid = t.cliente_id;
+    notifs.push({tipo:'vencida', titulo:t.titulo+nombre, sub:'Venció hace '+dias+'d · '+t.tablero, color:'var(--red)', textColor:'#A32D2D', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('tareas'); }});
   });
 
   // Hoy
   var hoySin = todas.filter(function(t){ return t.fecha_limite === hoy; });
   hoySin.forEach(function(t) {
     var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
-    notifs.push({tipo:'hoy', titulo:t.titulo+nombre, sub:'Para hoy · '+t.tablero, color:'#F59E0B', textColor:'#854F0B', accion:function(){ irASeccion('tareas'); }});
+    var cid = t.cliente_id;
+    notifs.push({tipo:'hoy', titulo:t.titulo+nombre, sub:'Para hoy · '+t.tablero, color:'#F59E0B', textColor:'#854F0B', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('tareas'); }});
   });
 
   // Pólizas por vencer
   (polizas||[]).forEach(function(p) {
     var dias = Math.round((new Date(p.fecha_vencimiento) - new Date(hoy)) / 864e5);
     var nombre = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '';
-    notifs.push({tipo:'poliza', titulo:'Póliza por vencer — '+nombre, sub:p.ramo+' · en '+dias+'d', color:'var(--med)', textColor:'var(--med)', accion:function(){ irASeccion('polizas'); }});
+    var cid = p.cliente_id;
+    notifs.push({tipo:'poliza', titulo:'Póliza por vencer — '+nombre, sub:p.ramo+' · en '+dias+'d', color:'var(--med)', textColor:'var(--med)', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('polizas'); }});
   });
 
   // Badge
@@ -6677,7 +6680,45 @@ async function cargarNotificaciones() {
       +'</div>';
   }).join('');
   // Store actions
+  notifs.forEach(function(n, i) {
+    if (n.clienteId) {
+      n.accion = function(cid){ return function(){ toggleNotifPanel(); irAFichaCliente(cid); }; }(n.clienteId);
+    } else if (n.seccion) {
+      n.accion = function(s){ return function(){ toggleNotifPanel(); irASeccion(s); }; }(n.seccion);
+    }
+  });
   window._notifAcciones = notifs.map(function(n){ return n.accion; });
+}
+
+function verClientesCross(ids) {
+  // Ir a clientes y filtrar por esos IDs
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var secCl = document.getElementById('sec-clientes');
+  var navCl = document.querySelector('.nav-btn[data-sec="clientes"]');
+  if (secCl) secCl.classList.add('active');
+  if (navCl) navCl.classList.add('active');
+  // Guardar filtro temporal y aplicar
+  window._crossFiltroIds = ids;
+  if (!allCl.length) { cargarClientes().then(aplicarFiltroCross); } else { aplicarFiltroCross(); }
+}
+
+function aplicarFiltroCross() {
+  var ids = window._crossFiltroIds;
+  if (!ids) return;
+  // Filtrar tabla de clientes
+  var filtered = allCl.filter(function(c){ return ids.includes(c.id); });
+  renderTablaClientes(filtered);
+  // Mostrar indicador de filtro activo
+  var info = document.getElementById('cl-count');
+  if (info) info.textContent = filtered.length+' clientes (filtro: oportunidad cross-selling) — ';
+  var btnLimpiar = document.createElement('button');
+  btnLimpiar.type = 'button';
+  btnLimpiar.className = 'btn btn-sm';
+  btnLimpiar.textContent = 'Limpiar filtro';
+  btnLimpiar.onclick = function(){ window._crossFiltroIds=null; renderTablaClientes(allCl); if(info) info.textContent=allCl.length+' clientes'; };
+  if (info) info.appendChild(btnLimpiar);
+  window._crossFiltroIds = null;
 }
 
 function irASeccion(sec) {
@@ -6939,7 +6980,7 @@ async function cargarAnalisis() {
   (sinData.data||[]).forEach(function(s){ sinMap[s.cliente_id] = (sinMap[s.cliente_id]||0)+1; });
   var rankData = activas.reduce(function(acc, p){
     if (!p.cliente_id) return acc;
-    if (!acc[p.cliente_id]) acc[p.cliente_id] = {nombre: p.clientes?(p.clientes.apellido+', '+p.clientes.nombre):'—', premio:0, sins:sinMap[p.cliente_id]||0};
+    if (!acc[p.cliente_id]) acc[p.cliente_id] = {id: p.cliente_id, nombre: p.clientes?(p.clientes.apellido+', '+p.clientes.nombre):'—', premio:0, sins:sinMap[p.cliente_id]||0};
     acc[p.cliente_id].premio += parseFloat(p.prima_anual)||0;
     return acc;
   }, {});
@@ -6949,7 +6990,7 @@ async function cargarAnalisis() {
   if(el('an-ranking')) el('an-ranking').innerHTML = ranking.length ? ranking.map(function(c,i){
     var valor = c.premio > 500000 && c.sins === 0 ? 'alto' : c.sins > 2 ? 'bajo' : 'medio';
     var border = i<ranking.length-1?'border-bottom:0.5px solid var(--border);':'';
-    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 55px;padding:8px;align-items:center;'+border+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 55px;padding:8px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+c.id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div style="font-size:12px;color:var(--text)">'+c.nombre+'</div>'
       +'<div style="font-size:12px;font-weight:500;color:var(--text)">$'+(c.premio/1000).toFixed(0)+'K</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+c.sins+'</div>'
@@ -6967,22 +7008,27 @@ async function cargarAnalisis() {
   var idsAuto = [...new Set((tienenAuto||[]).map(function(p){return p.cliente_id;}))];
   var idsHogar = new Set((tienenHogar||[]).map(function(p){return p.cliente_id;}));
   var autoSinHogar = idsAuto.filter(function(id){return !idsHogar.has(id);}).length;
-  if (autoSinHogar > 0) crossOps.push({t:'Auto sin Hogar', cant:autoSinHogar, premio:autoSinHogar*premioPromedioHog, bg:'#E6F1FB', c:'#185FA5'});
+  if (autoSinHogar > 0) crossOps.push({t:'Auto sin Hogar', cant:autoSinHogar, premio:autoSinHogar*premioPromedioHog, bg:'#E6F1FB', c:'#185FA5', ids:idsAuto.filter(function(id){return !idsHogar.has(id);})});
   // Sin vida
   var {data: tienenVida} = await sb.from('polizas').select('cliente_id').eq('productor_id',uid).eq('estado','activa').ilike('ramo','%vida%');
   var idsVida = new Set((tienenVida||[]).map(function(p){return p.cliente_id;}));
-  var sinVida = clienteIds.filter(function(id){return !idsVida.has(id);}).length;
-  if (sinVida > 0) crossOps.push({t:'Sin Vida Individual', cant:sinVida, premio:sinVida*premioPromedioVida, bg:'#FAEEDA', c:'#854F0B'});
+  var idsSinVida = clienteIds.filter(function(id){return !idsVida.has(id);});
+  var sinVida = idsSinVida.length;
+  if (sinVida > 0) crossOps.push({t:'Sin Vida Individual', cant:sinVida, premio:sinVida*premioPromedioVida, bg:'#FAEEDA', c:'#854F0B', ids:idsSinVida});
   // Solo un ramo
   var ramosPorCliente = {};
   activas.forEach(function(p){ if(!ramosPorCliente[p.cliente_id]) ramosPorCliente[p.cliente_id]=new Set(); ramosPorCliente[p.cliente_id].add(p.ramo); });
-  var soloUno = Object.values(ramosPorCliente).filter(function(r){return r.size===1;}).length;
-  if (soloUno > 0) crossOps.push({t:'Solo un ramo', cant:soloUno, premio:soloUno*premioPromedioAuto, bg:'#EAF3DE', c:'#3B6D11'});
+  var idsSoloUno = Object.keys(ramosPorCliente).filter(function(id){return ramosPorCliente[id].size===1;});
+  var soloUno = idsSoloUno.length;
+  if (soloUno > 0) crossOps.push({t:'Solo un ramo', cant:soloUno, premio:soloUno*premioPromedioAuto, bg:'#EAF3DE', c:'#3B6D11', ids:idsSoloUno});
   var totalCross = crossOps.reduce(function(a,c){return a+c.premio;},0);
   if(el('an-cross')) el('an-cross').innerHTML = crossOps.length ? crossOps.map(function(x){
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:'+x.bg+';border-radius:var(--rsm)">'
       +'<div><div style="font-size:12px;font-weight:500;color:'+x.c+'">'+x.t+'</div><div style="font-size:11px;color:'+x.c+';opacity:.8;margin-top:1px">'+x.cant+' clientes</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
       +'<div style="text-align:right"><div style="font-size:13px;font-weight:500;color:'+x.c+'">≈ $'+Math.round(x.premio).toLocaleString('es-AR')+'</div><div style="font-size:10px;color:'+x.c+';opacity:.8">por año</div></div>'
+      +'<button type="button" class="btn btn-sm" onclick="verClientesCross('+JSON.stringify(x.ids)+')" style="font-size:11px;white-space:nowrap">Ver →</button>'
+      +'</div>'
       +'</div>';
   }).join('') : '<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin oportunidades detectadas</div>';
   if(el('an-cross-total')) el('an-cross-total').textContent = totalCross ? '≈ $'+Math.round(totalCross).toLocaleString('es-AR')+'/año' : '—';
