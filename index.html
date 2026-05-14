@@ -243,86 +243,52 @@
 
       <!-- PÓLIZAS -->
       <div id="sec-polizas" class="sec">
-        <!-- Header del panel -->
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-          <div style="width:48px;height:48px;border-radius:10px;background:#EFF6FF;display:flex;align-items:center;justify-content:center">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div>
-            <div style="font-size:20px;font-weight:700;color:#111827">Pólizas</div>
-            <div style="font-size:12px;color:#6B7280" id="pol-subtitle">Panel de control · cartera y vencimientos</div>
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:600;color:var(--text)">Pólizas</div>
+          <button type="button" class="btn btn-sm btn-p" id="btn-npol">+ Nueva póliza</button>
         </div>
-
-        <!-- 4 Cards info cartera -->
-        <div id="pol-cards-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.6fr;gap:12px;margin-bottom:18px"></div>
-
-        <!-- Sección 1 - Requieren atención -->
-        <div id="pol-attention-section" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:#111827">⚠ Pólizas que requieren atención</div>
-              <div style="font-size:11px;color:#6B7280;margin-top:2px">Agrupadas por aseguradora — gestioná de a un grupo</div>
-            </div>
-          </div>
-          <!-- Tabs -->
-          <div id="pol-attention-tabs" style="display:flex;gap:4px;border-bottom:1px solid #E5E7EB;margin-bottom:14px"></div>
-          <!-- Lista agrupada -->
-          <div id="pol-attention-list"></div>
-          <!-- Info auto-tareas -->
-          <div style="margin-top:16px;padding:10px 14px;background:#F0F9FF;border:1px solid #BAE0FD;border-radius:6px;font-size:11px;color:#075985;display:flex;align-items:center;gap:8px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>Las pólizas Urgentes y Vencidas generan tareas automáticas con etiqueta 🤖 Auto. Las acciones (Renovar/Refacturar/Cancelar/No renueva) completan la tarea y registran historial.</span>
-          </div>
+        <div class="g4">
+          <div class="metric"><div class="lbl">Total pólizas</div><div class="val" id="pol-total">—</div></div>
+          <div class="metric"><div class="lbl">Premio anual cartera</div><div class="val" style="font-size:16px" id="pol-premio">—</div></div>
+          <div class="metric"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div></div>
         </div>
-
-        <!-- Sección 2 - Listado completo -->
-        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:#111827">📋 Listado completo de pólizas</div>
-              <div style="font-size:11px;color:#6B7280;margin-top:2px" id="pol-list-info">Mostrando todas las pólizas</div>
-            </div>
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;flex:2;min-width:200px;background:var(--bg);border-radius:var(--rsm);padding:7px 10px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="srch-pol" placeholder="Buscar cliente, N° póliza..." oninput="filtrarPolizasPanel()" style="border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text)">
           </div>
-          <!-- Filtros + buscador -->
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:10px;background:#F9FAFB;border-radius:6px">
-            <div style="flex:1;min-width:240px;position:relative">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="srch-pol" placeholder="Buscar por póliza, cliente, DNI, dominio..." style="width:100%;padding:8px 12px 8px 34px;border:1px solid #E5E7EB;border-radius:5px;font-size:12px;box-sizing:border-box;background:#fff">
-            </div>
-            <select id="fil-pol-aseg" style="padding:8px 10px;border:1px solid #E5E7EB;border-radius:5px;font-size:12px;background:#fff;cursor:pointer;min-width:160px">
-              <option value="">Aseguradora: Todas</option>
-            </select>
-            <select id="fil-pol-ramo" style="padding:8px 10px;border:1px solid #E5E7EB;border-radius:5px;font-size:12px;background:#fff;cursor:pointer;min-width:130px">
-              <option value="">Ramo: Todos</option>
-              <option>Automotor</option>
-              <option>Vida Individual</option>
-              <option>Vida Colectiva</option>
-              <option>Hogar</option>
-              <option>ART</option>
-              <option>Combinado</option>
-              <option>Empresas</option>
-              <option>Comercio</option>
-              <option>Accidentes Personales</option>
-              <option>Responsabilidad Civil</option>
-              <option>Otros</option>
-            </select>
-            <select id="fil-pol-orden" style="padding:8px 10px;border:1px solid #E5E7EB;border-radius:5px;font-size:12px;background:#fff;cursor:pointer">
-              <option value="vto">Ordenar: Vencimiento</option>
-              <option value="cliente">Cliente A-Z</option>
-              <option value="premio">Premio mayor</option>
-              <option value="emision">Fecha emisión</option>
-            </select>
-            <button type="button" id="btn-pol-export" style="padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:5px;font-size:12px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar
-            </button>
-          </div>
-          <!-- Tabla -->
-          <div id="pol-list-table"></div>
-          <!-- Paginación -->
-          <div id="pol-list-pag" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:0 4px;font-size:12px;color:#6B7280"></div>
+          <select id="fil-pol-estado" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
+            <option value="">Todos los estados</option>
+            <option value="activa">Activas</option>
+            <option value="vencida">Vencidas</option>
+            <option value="renovada">Renovadas</option>
+            <option value="anulada">Anuladas</option>
+          </select>
+          <select id="fil-pol-ramo" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
+            <option value="">Todos los ramos</option>
+            <option>Automotor</option><option>Hogar</option><option>Integral de comercio</option>
+            <option>ART</option><option>Accidentes Personales</option>
+            <option>Responsabilidad Civil</option><option>Vida Individual</option>
+            <option>Vida Colectiva</option><option>Otros</option>
+          </select>
+          <select id="fil-pol-aseg" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
+            <option value="">Todas las compañías</option>
+          </select>
+          <button type="button" class="btn btn-sm" id="btn-pol-export">↓ CSV</button>
         </div>
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:9px 16px;background:var(--bg);border-bottom:0.5px solid var(--border)">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Cliente</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Ramo · Compañía</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Premio anual</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Vencimiento</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Días</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Estado</div>
+          </div>
+          <div id="pol-panel-list"></div>
+        </div>
+        <div id="pol-panel-footer" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:right"></div>
       </div>
 
       <!-- COTIZACIONES -->
@@ -4393,10 +4359,115 @@ async function cargarPolizas() {
 }
 
 function renderPanelPolizas() {
-  renderPolCards();
-  renderPolFiltrosOptions();
-  renderPolAttention();
-  renderPolListadoCompleto();
+  var hoy = new Date().toISOString().split('T')[0];
+  var limite60 = new Date(); limite60.setDate(limite60.getDate()+60);
+  var lim60Str = limite60.toISOString().split('T')[0];
+  var total = _allPolizas.length;
+  var vencidas = 0, proximas = 0, premioTotal = 0;
+  _allPolizas.forEach(function(p) {
+    if (p.fecha_vencimiento < hoy) vencidas++;
+    else if (p.fecha_vencimiento <= lim60Str) proximas++;
+    if (p.estado === 'activa' || !p.estado) premioTotal += parseFloat(p.prima_anual||0);
+  });
+  var el = function(id){ return document.getElementById(id); };
+  if(el('pol-total'))    el('pol-total').textContent = total;
+  if(el('pol-premio'))   el('pol-premio').textContent = premioTotal ? '$'+Math.round(premioTotal).toLocaleString('es-AR') : '—';
+  if(el('pol-proximas')) el('pol-proximas').textContent = proximas;
+  if(el('pol-vencidas')) el('pol-vencidas').textContent = vencidas;
+
+  // Poblar select aseguradoras
+  var asegSel = el('fil-pol-aseg');
+  if (asegSel) {
+    var aseguradoras = [...new Set(_allPolizas.map(function(p){ return p.aseguradora; }).filter(Boolean))].sort();
+    asegSel.innerHTML = '<option value="">Todas las compañías</option>' + aseguradoras.map(function(a){ return '<option>'+a+'</option>'; }).join('');
+  }
+
+  filtrarPolizasPanel();
+}
+
+function filtrarPolizasPanel() {
+  var q      = (document.getElementById('srch-pol')||{}).value||'';
+  var filEst = (document.getElementById('fil-pol-estado')||{}).value||'';
+  var filRamo= (document.getElementById('fil-pol-ramo')||{}).value||'';
+  var filAseg= (document.getElementById('fil-pol-aseg')||{}).value||'';
+  var ql = q.toLowerCase();
+  var hoy = new Date().toISOString().split('T')[0];
+  var limite60 = new Date(); limite60.setDate(limite60.getDate()+60);
+  var lim60Str = limite60.toISOString().split('T')[0];
+
+  var filtered = _allPolizas.filter(function(p) {
+    var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
+    var nombre = cl ? (cl.apellido+' '+cl.nombre).toLowerCase() : '';
+    var numPol = (p.numero_poliza||'').toLowerCase();
+    if (ql && !nombre.includes(ql) && !numPol.includes(ql)) return false;
+    if (filRamo && (p.ramo||'').toLowerCase().indexOf(filRamo.toLowerCase()) === -1) return false;
+    if (filAseg && p.aseguradora !== filAseg) return false;
+    if (filEst) {
+      if (filEst === 'activa' && p.estado !== 'activa' && p.estado) return false;
+      if (filEst === 'vencida' && p.fecha_vencimiento >= hoy) return false;
+      if (filEst !== 'activa' && filEst !== 'vencida' && p.estado !== filEst) return false;
+    }
+    return true;
+  });
+
+  // Sort by vencimiento
+  filtered.sort(function(a,b){ return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1; });
+
+  var cont = document.getElementById('pol-panel-list');
+  if (!cont) return;
+  if (!filtered.length) {
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">Sin pólizas con esos filtros</div>';
+    if(document.getElementById('pol-panel-footer')) document.getElementById('pol-panel-footer').textContent='';
+    return;
+  }
+
+  cont.innerHTML = filtered.map(function(p, i) {
+    var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
+    var nombre = cl ? cl.apellido+', '+cl.nombre : '—';
+    var diasVto = p.fecha_vencimiento ? Math.round((new Date(p.fecha_vencimiento) - new Date(hoy)) / 864e5) : null;
+    var diasBg = '#F3F4F6', diasColor = 'var(--muted)', diasTxt = diasVto !== null ? diasVto+'d' : '—';
+    if (diasVto !== null) {
+      if (diasVto < 0)  { diasBg='#FCEBEB'; diasColor='#A32D2D'; diasTxt='Vencida'; }
+      else if (diasVto <= 15) { diasBg='#FEF3C7'; diasColor='#854F0B'; }
+      else if (diasVto <= 60) { diasBg='#FEF9C3'; diasColor='#713F12'; }
+      else { diasBg='#EAF3DE'; diasColor='#27500A'; }
+    }
+    var estadoBg = p.estado==='activa'||!p.estado ? '#DBEAFE' : p.estado==='renovada'?'#EAF3DE':'#F3F4F6';
+    var estadoColor = p.estado==='activa'||!p.estado ? '#1E40AF' : p.estado==='renovada'?'#27500A':'var(--muted)';
+    var estadoLabel = p.estado ? p.estado.charAt(0).toUpperCase()+p.estado.slice(1) : 'Activa';
+    var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+    return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+'</div></div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
+      +'<div style="font-size:12px;font-weight:500;color:var(--text)">'+(p.prima_anual?'$'+Number(p.prima_anual).toLocaleString('es-AR'):'—')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
+      +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
+      +'<div><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
+      +'</div>';
+  }).join('');
+
+  var footer = document.getElementById('pol-panel-footer');
+  if (footer) footer.textContent = filtered.length + ' póliza' + (filtered.length!==1?'s':'');
+}
+
+function irAFichaCliente(clienteId) {
+  fichaId = clienteId;
+  fichaTab = 'polizas';
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var secCl = document.getElementById('sec-clientes');
+  var navCl = document.querySelector('.nav-btn[data-sec="clientes"]');
+  if (secCl) secCl.classList.add('active');
+  if (navCl) navCl.classList.add('active');
+  var toprow = document.getElementById('cl-toprow');
+  var tabla = document.getElementById('cl-tabla-wrap');
+  var fichaWrap = document.getElementById('ficha-wrap');
+  if (toprow) toprow.style.display = 'none';
+  if (tabla) tabla.style.display = 'none';
+  if (fichaWrap) fichaWrap.classList.add('open');
+  var doRender = function(){ if(fichaId) renderFicha(); };
+  if (!allCl.length) cargarClientes().then(doRender);
+  else setTimeout(doRender, 80);
 }
 
 function renderPolCards() {
