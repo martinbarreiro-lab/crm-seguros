@@ -101,7 +101,27 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-t" id="topbar-title">Dashboard</div>
-      <div style="display:flex;gap:7px" id="topbar-actions"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <!-- Campana de notificaciones -->
+        <div style="position:relative">
+          <button type="button" id="notif-btn" onclick="toggleNotifPanel()" style="position:relative;padding:6px 8px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;font-size:10px;font-weight:600;min-width:17px;height:17px;border-radius:20px;padding:0 4px;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
+          </button>
+          <!-- Dropdown panel -->
+          <div id="notif-panel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:320px;background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.10)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:0.5px solid var(--border)">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">Notificaciones</div>
+              <button type="button" onclick="toggleNotifPanel()" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1">✕</button>
+            </div>
+            <div id="notif-list" style="max-height:400px;overflow-y:auto"></div>
+            <div style="padding:10px 14px;border-top:0.5px solid var(--border);text-align:center">
+              <button type="button" onclick="irASeccion('tareas');toggleNotifPanel();" style="font-size:12px;color:var(--med);border:none;background:none;cursor:pointer">Ver todas las tareas →</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:7px" id="topbar-actions"></div>
+      </div>
     </div>
     <div class="page">
       <div class="alerta alerta-ok" id="alerta-g"></div>
@@ -1331,6 +1351,7 @@ async function mostrarApp() {
   try { await cargarConfig(); } catch(e){}
   setTimeout(verificarRenovaciones, 3000);
   setTimeout(limpiarCanceladasViejas, 5000);
+  setTimeout(actualizarBadgeNotif, 2000);
 }
 
 // ---- NAVEGACIÓN ----
@@ -5969,6 +5990,125 @@ async function moverTarea(id, estado) {
   await sb.from('tareas').update({ estado }).eq('id', id);
   cargarTareas();
   if (fichaId) renderFicha();
+}
+
+// ---- NOTIFICACIONES ----
+var _notifOpen = false;
+
+function toggleNotifPanel() {
+  _notifOpen = !_notifOpen;
+  document.getElementById('notif-panel').style.display = _notifOpen ? 'block' : 'none';
+  if (_notifOpen) cargarNotificaciones();
+}
+
+document.addEventListener('click', function(e) {
+  var btn = document.getElementById('notif-btn');
+  var panel = document.getElementById('notif-panel');
+  if (!btn || !panel) return;
+  if (!btn.contains(e.target) && !panel.contains(e.target)) {
+    _notifOpen = false;
+    panel.style.display = 'none';
+  }
+});
+
+async function cargarNotificaciones() {
+  var hoy = new Date().toISOString().split('T')[0];
+  var semana = new Date(); semana.setDate(semana.getDate() + 7);
+  var semStr = semana.toISOString().split('T')[0];
+
+  var { data: tareas } = await sb.from('tareas').select('*,clientes(nombre,apellido)')
+    .eq('productor_id', user.id)
+    .not('estado', 'in', '("cerrada","cancelada")')
+    .not('fecha_limite', 'is', null)
+    .lte('fecha_limite', semStr)
+    .order('fecha_limite', {ascending: true});
+
+  var { data: polizas } = await sb.from('polizas').select('*,clientes(nombre,apellido)')
+    .eq('productor_id', user.id)
+    .eq('estado', 'activa')
+    .lte('fecha_vencimiento', semStr)
+    .gte('fecha_vencimiento', hoy)
+    .order('fecha_vencimiento', {ascending: true});
+
+  var notifs = [];
+  var todas = tareas || [];
+
+  // Vencidas
+  var vencidas = todas.filter(function(t){ return t.fecha_limite < hoy; });
+  vencidas.forEach(function(t) {
+    var dias = Math.round((new Date(hoy) - new Date(t.fecha_limite)) / 864e5);
+    var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
+    notifs.push({tipo:'vencida', titulo:t.titulo+nombre, sub:'Venció hace '+dias+'d · '+t.tablero, color:'var(--red)', textColor:'#A32D2D', accion:function(){ irASeccion('tareas'); }});
+  });
+
+  // Hoy
+  var hoySin = todas.filter(function(t){ return t.fecha_limite === hoy; });
+  hoySin.forEach(function(t) {
+    var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
+    notifs.push({tipo:'hoy', titulo:t.titulo+nombre, sub:'Para hoy · '+t.tablero, color:'#F59E0B', textColor:'#854F0B', accion:function(){ irASeccion('tareas'); }});
+  });
+
+  // Pólizas por vencer
+  (polizas||[]).forEach(function(p) {
+    var dias = Math.round((new Date(p.fecha_vencimiento) - new Date(hoy)) / 864e5);
+    var nombre = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '';
+    notifs.push({tipo:'poliza', titulo:'Póliza por vencer — '+nombre, sub:p.ramo+' · en '+dias+'d', color:'var(--med)', textColor:'var(--med)', accion:function(){ irASeccion('polizas'); }});
+  });
+
+  // Badge
+  var badge = document.getElementById('notif-badge');
+  if (badge) {
+    if (notifs.length) { badge.style.display='flex'; badge.textContent=notifs.length; }
+    else { badge.style.display='none'; }
+  }
+
+  // Render list
+  var list = document.getElementById('notif-list');
+  if (!list) return;
+  if (!notifs.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">Sin notificaciones pendientes 🎉</div>';
+    return;
+  }
+  var lastTipo = '';
+  list.innerHTML = notifs.map(function(n, i) {
+    var sep = '';
+    if (n.tipo !== lastTipo) {
+      var label = n.tipo==='vencida'?'Vencidas':n.tipo==='hoy'?'Para hoy':'Pólizas por vencer';
+      sep = '<div style="padding:8px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">'+label+'</div>';
+      lastTipo = n.tipo;
+    }
+    var border = i < notifs.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+    return sep+'<div onclick="_notifAcciones['+i+']()" style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;cursor:pointer;'+border+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="width:7px;height:7px;border-radius:50%;background:'+n.color+';margin-top:5px;flex-shrink:0"></div>'
+      +'<div><div style="font-size:13px;color:var(--text);margin-bottom:2px">'+n.titulo+'</div>'
+      +'<div style="font-size:11px;color:'+n.textColor+'">'+n.sub+'</div></div>'
+      +'</div>';
+  }).join('');
+  // Store actions
+  window._notifAcciones = notifs.map(function(n){ return n.accion; });
+}
+
+function irASeccion(sec) {
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var s = document.getElementById('sec-'+sec);
+  var b = document.querySelector('.nav-btn[data-sec="'+sec+'"]');
+  if (s) s.classList.add('active');
+  if (b) b.classList.add('active');
+  if (sec==='tareas') cargarTareas();
+  if (sec==='polizas') cargarPolizas();
+}
+
+// Actualizar badge al iniciar
+async function actualizarBadgeNotif() {
+  var hoy = new Date().toISOString().split('T')[0];
+  var semana = new Date(); semana.setDate(semana.getDate() + 7);
+  var semStr = semana.toISOString().split('T')[0];
+  var { data: t } = await sb.from('tareas').select('id').eq('productor_id',user.id).not('estado','in','("cerrada","cancelada")').not('fecha_limite','is',null).lte('fecha_limite',semStr);
+  var { data: p } = await sb.from('polizas').select('id').eq('productor_id',user.id).eq('estado','activa').lte('fecha_vencimiento',semStr).gte('fecha_vencimiento',hoy);
+  var total = ((t||[]).length) + ((p||[]).length);
+  var badge = document.getElementById('notif-badge');
+  if (badge) { badge.style.display = total ? 'flex' : 'none'; if(total) badge.textContent = total; }
 }
 
 // ---- CONFIGURACIÓN ----
