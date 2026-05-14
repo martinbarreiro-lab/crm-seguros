@@ -1487,6 +1487,9 @@ let fichaTab = 'resumen';
 let tablerof = 'hoy';
 let fichaClienteIdForInt = null;
 
+// Configuración global — se sobreescribe al cargar desde Supabase
+var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30, dias_proximas:30 };
+
 // ---- AUTH ----
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -6745,7 +6748,11 @@ async function actualizarBadgeNotif() {
 }
 
 // ---- CONFIGURACIÓN ----
-var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30, dias_proximas:30 };
+function objTipoChange(val) {
+  // placeholder for future tipo-specific logic
+}
+
+
 
 async function cargarConfig() {
   try {
