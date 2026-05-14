@@ -5348,7 +5348,8 @@ document.getElementById('btn-guardar-cotz').onclick = async function() {
     titulo: 'Cotizar '+ramoLabel+(nombreCl?' — '+nombreCl:''),
     tablero: 'ventas',
     estado: 'pendiente',
-    prioridad: 'media'
+    prioridad: 'media',
+    tipo: 'general'
   });
   if (errTarea) {
     console.error('Error tarea:', errTarea);
