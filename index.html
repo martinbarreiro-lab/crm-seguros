@@ -5315,12 +5315,17 @@ document.getElementById('btn-guardar-cotz').onclick = async function() {
   else if (ramo==='comercio') { datos_riesgo = {nombre_comercio:gv('fc-com-nombre'),cuit:gv('fc-com-cuit'),actividad:gv('fc-com-act'),direccion:gv('fc-com-dir'),m2:gv('fc-com-m2'),empleados:gv('fc-com-emp')}; }
   else if (ramo==='art') { datos_riesgo = {razon_social:gv('fc-art-rs'),cuit:gv('fc-art-cuit'),actividad:gv('fc-art-act'),empleados:gv('fc-art-emp'),masa_salarial:gv('fc-art-masa')}; }
   var { data: cotNueva, error } = await sb.from('cotizaciones').insert({productor_id:user.id,cliente_id:cid,ramo:ramo,notas:notas,datos_riesgo:datos_riesgo,estado:'pendiente',ofertas:[]}).select().single();
-  if (error) { alert('Error: '+error.message); return; }
+  if (error) { alert('Error al guardar cotización: '+error.message+'\n\nCódigo: '+error.code); return; }
   // Crear tarea automática
   var cl = allCl.find(function(x){ return x.id===cid; });
   var nombreCl = cl ? cl.apellido+', '+cl.nombre : '';
-  await sb.from('tareas').insert({productor_id:user.id,cliente_id:cid,titulo:'Cotizar '+RAMO_LABELS_COT[ramo]+' — '+nombreCl,tablero:'ventas',estado:'pendiente'});
-  mostrarAlerta('✅ Cotización registrada y tarea creada');
+  var { error: errTarea } = await sb.from('tareas').insert({productor_id:user.id,cliente_id:cid,titulo:'Cotizar '+RAMO_LABELS_COT[ramo]+' — '+nombreCl,tablero:'ventas',estado:'pendiente'});
+  if (errTarea) {
+    console.error('Error tarea:', errTarea);
+    mostrarAlerta('✅ Cotización registrada (Error al crear tarea: '+errTarea.message+')');
+  } else {
+    mostrarAlerta('✅ Cotización registrada y tarea creada en Ventas');
+  }
   cerrarModal('modal-cotz');
   await cargarCotizaciones();
 };
