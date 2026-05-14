@@ -466,9 +466,15 @@
             <div class="kanban-col-header"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><div class="kanban-col-title">Cerrado</div><div class="kanban-col-cnt" id="cnt-c">0</div></div>
             <div class="kanban-body" id="col-c"></div>
           </div>
-          <div class="kanban-col">
-            <div class="kanban-col-header"><div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div><div class="kanban-col-title">Cancelado</div><div class="kanban-col-cnt" id="cnt-x">0</div></div>
-            <div class="kanban-body" id="col-x"></div>
+          <div class="kanban-col" id="col-canceladas-wrap">
+            <div class="kanban-col-header" onclick="toggleCanceladasCol()" style="cursor:pointer;user-select:none">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div>
+              <div class="kanban-col-title">Canceladas</div>
+              <div class="kanban-col-cnt" id="cnt-x">0</div>
+              <span id="cancel-col-chev" style="font-size:13px;color:var(--muted);margin-left:auto">▼</span>
+            </div>
+            <div class="kanban-body" id="col-x" style="display:none"></div>
+          </div>
           </div>
         </div>
       </div>
@@ -512,6 +518,13 @@
               <div style="display:flex;align-items:center;gap:8px">
                 <input type="number" id="cfg-dias-cobr" min="1" max="30" value="5" style="width:80px;text-align:center">
                 <span style="font-size:12px;color:var(--muted)">días antes del vencimiento</span>
+              </div>
+            </div>
+            <div class="frow">
+              <label>Eliminar tareas canceladas después de</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="cfg-dias-cancel" min="1" max="365" value="30" style="width:80px;text-align:center">
+                <span style="font-size:12px;color:var(--muted)">días</span>
               </div>
             </div>
           </div>
@@ -1317,6 +1330,7 @@ async function mostrarApp() {
   // Cargar config y verificar renovaciones al iniciar
   try { await cargarConfig(); } catch(e){}
   setTimeout(verificarRenovaciones, 3000);
+  setTimeout(limpiarCanceladasViejas, 5000);
 }
 
 // ---- NAVEGACIÓN ----
@@ -5369,6 +5383,29 @@ function cotCalcFranq() {
   }
 }
 
+function toggleCanceladasCol() {
+  var col = document.getElementById('col-x');
+  var chev = document.getElementById('cancel-col-chev');
+  if (!col) return;
+  var isOpen = col.style.display !== 'none';
+  col.style.display = isOpen ? 'none' : 'block';
+  if (chev) chev.textContent = isOpen ? '▼' : '▲';
+}
+
+async function reactivarTarea(tareaId) {
+  var { error } = await sb.from('tareas').update({estado:'pendiente'}).eq('id', tareaId);
+  if (error) { mostrarAlerta('❌ Error al reactivar'); return; }
+  mostrarAlerta('✅ Tarea reactivada');
+  cargarTareas();
+}
+
+async function limpiarCanceladasViejas() {
+  var dias = (_cfg && _cfg.dias_canceladas) || 30;
+  var limite = new Date(); limite.setDate(limite.getDate() - dias);
+  var limStr = limite.toISOString();
+  await sb.from('tareas').delete().eq('productor_id', user.id).eq('estado','cancelada').lt('updated_at', limStr);
+}
+
 function cotToggleCob(cb, pfx) {
   var row = cb.closest('.cot-cob-row-'+pfx);
   var inp = row ? row.querySelector('.cot-cob-inp') : null;
@@ -5654,6 +5691,7 @@ async function cargarTareas() {
   const prioCls = {urgente:'pi-urgente', alta:'pi-alta', media:'pi-media', baja:'pi-baja'};
   const prioEmoji = {urgente:'🔴', alta:'🟡', media:'🔵', baja:'⚪'};
   const sig = {pendiente:'encurso', encurso:'esperando', esperando:'cerrada'};
+  var diasElim = (_cfg && _cfg.dias_canceladas) || 30;
 
   Object.keys(cols).forEach(function(k) {
     const items = lista.filter(function(t) { return t.estado === cols[k]; });
@@ -5661,6 +5699,27 @@ async function cargarTareas() {
     if (cntEl) cntEl.textContent = items.length;
     const col = document.getElementById('col-' + k);
     if (!col) return;
+
+    // Renderizado especial para canceladas
+    if (k === 'x') {
+      if (!items.length) { col.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--lt)">Sin tareas canceladas</div>'; return; }
+      col.innerHTML = items.map(function(t) {
+        var canceladaEn = new Date(t.updated_at || t.created_at);
+        var diasPasados = Math.floor((new Date() - canceladaEn) / 864e5);
+        var diasRestantes = diasElim - diasPasados;
+        var diasColor = diasRestantes <= 3 ? 'color:var(--red)' : 'color:var(--muted)';
+        var catClass = catCls[t.tablero] || 'cat-general';
+        return '<div style="background:var(--bg);border:0.5px dashed var(--border);border-radius:var(--rsm);padding:10px 12px;margin-bottom:6px">'
+          +'<div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">'+t.tablero.toUpperCase()+'</div>'
+          +'<div style="font-size:13px;color:var(--muted);text-decoration:line-through;margin-bottom:6px">'+t.titulo+'</div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between">'
+          +'<span style="font-size:11px;'+diasColor+'">'+(diasRestantes>0?'se elimina en '+diasRestantes+'d':'se elimina hoy')+'</span>'
+          +'<button type="button" onclick="reactivarTarea(\''+t.id+'\')" style="font-size:11px;padding:3px 8px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--text)">Reactivar</button>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      return;
+    }
     if (!items.length) {
       const msg = tablerof === 'hoy' && k === 'p' ? 'No hay tareas para hoy 🎉' : 'Sin tareas';
       col.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--lt)">' + msg + '</div>';
@@ -5913,7 +5972,7 @@ async function moverTarea(id, estado) {
 }
 
 // ---- CONFIGURACIÓN ----
-var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true };
+var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30 };
 
 async function cargarConfig() {
   try {
@@ -5924,6 +5983,7 @@ async function cargarConfig() {
   if(el('cfg-dias-renov')) el('cfg-dias-renov').value   = _cfg.dias_renov;
   if(el('cfg-dias-sin'))   el('cfg-dias-sin').value     = _cfg.dias_sin;
   if(el('cfg-dias-cobr'))  el('cfg-dias-cobr').value    = _cfg.dias_cobr;
+  if(el('cfg-dias-cancel'))el('cfg-dias-cancel').value  = _cfg.dias_canceladas || 30;
   if(el('cfg-auto-cotiz')) el('cfg-auto-cotiz').checked = _cfg.auto_cotiz;
   if(el('cfg-auto-sin'))   el('cfg-auto-sin').checked   = _cfg.auto_sin;
   if(el('cfg-auto-renov')) el('cfg-auto-renov').checked = _cfg.auto_renov;
@@ -5935,6 +5995,7 @@ async function guardarConfig() {
     dias_renov: parseInt((el('cfg-dias-renov')||{}).value)||15,
     dias_sin:   parseInt((el('cfg-dias-sin')||{}).value)||30,
     dias_cobr:  parseInt((el('cfg-dias-cobr')||{}).value)||5,
+    dias_canceladas: parseInt((el('cfg-dias-cancel')||{}).value)||30,
     auto_cotiz: !!(el('cfg-auto-cotiz')&&el('cfg-auto-cotiz').checked),
     auto_sin:   !!(el('cfg-auto-sin')&&el('cfg-auto-sin').checked),
     auto_renov: !!(el('cfg-auto-renov')&&el('cfg-auto-renov').checked),
