@@ -347,6 +347,7 @@
           <select id="fil-pol-estado" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
             <option value="">Todos los estados</option>
             <option value="activa">Activas</option>
+            <option value="proxima">⏰ Próximas a vencer</option>
             <option value="vencida">Vencidas</option>
             <option value="renovada">Renovadas</option>
             <option value="anulada">Anuladas</option>
@@ -362,6 +363,9 @@
             <option value="">Todas las compañías</option>
           </select>
           <button type="button" class="btn btn-sm" id="btn-pol-export">↓ CSV</button>
+        </div>
+        <div id="pol-proximas-info" style="display:none;padding:8px 12px;background:var(--light);border-radius:var(--rsm);margin-bottom:10px;font-size:12px;color:var(--med)">
+          ⏰ Mostrando pólizas que vencen en los próximos <strong id="pol-proximas-dias">30</strong> días. Podés cambiar este valor en <strong>Configuración</strong>.
         </div>
         <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden">
           <div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:9px 16px;background:var(--bg);border-bottom:0.5px solid var(--border)">
@@ -597,6 +601,20 @@
               <div style="display:flex;align-items:center;gap:8px">
                 <input type="number" id="cfg-dias-cancel" min="1" max="365" value="30" style="width:80px;text-align:center">
                 <span style="font-size:12px;color:var(--muted)">días</span>
+              </div>
+            </div>
+            <div class="frow">
+              <label>Pólizas "próximas a vencer" en listado</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <select id="cfg-dias-proximas" style="font-size:13px;padding:6px 10px">
+                  <option value="7">7 días</option>
+                  <option value="15">15 días</option>
+                  <option value="30" selected>30 días</option>
+                  <option value="45">45 días</option>
+                  <option value="60">60 días</option>
+                  <option value="90">90 días</option>
+                </select>
+                <span style="font-size:12px;color:var(--muted)">antes del vencimiento</span>
               </div>
             </div>
           </div>
@@ -4789,8 +4807,15 @@ function filtrarPolizasPanel() {
   var filAseg= (document.getElementById('fil-pol-aseg')||{}).value||'';
   var ql = q.toLowerCase();
   var hoy = new Date().toISOString().split('T')[0];
-  var limite60 = new Date(); limite60.setDate(limite60.getDate()+60);
-  var lim60Str = limite60.toISOString().split('T')[0];
+  var diasProx = (_cfg && _cfg.dias_proximas) || 30;
+  var limProx = new Date(); limProx.setDate(limProx.getDate()+diasProx);
+  var limProxStr = limProx.toISOString().split('T')[0];
+
+  // Mostrar/ocultar chip informativo
+  var infoEl = document.getElementById('pol-proximas-info');
+  var diasEl = document.getElementById('pol-proximas-dias');
+  if (infoEl) infoEl.style.display = filEst==='proxima' ? 'block' : 'none';
+  if (diasEl) diasEl.textContent = diasProx;
 
   var filtered = _allPolizas.filter(function(p) {
     var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
@@ -4799,10 +4824,16 @@ function filtrarPolizasPanel() {
     if (ql && !nombre.includes(ql) && !numPol.includes(ql)) return false;
     if (filRamo && (p.ramo||'').toLowerCase().indexOf(filRamo.toLowerCase()) === -1) return false;
     if (filAseg && p.aseguradora !== filAseg) return false;
-    if (filEst) {
-      if (filEst === 'activa' && p.estado !== 'activa' && p.estado) return false;
-      if (filEst === 'vencida' && p.fecha_vencimiento >= hoy) return false;
-      if (filEst !== 'activa' && filEst !== 'vencida' && p.estado !== filEst) return false;
+    if (filEst === 'proxima') {
+      // Próximas a vencer: vigentes que vencen dentro de X días (sin incluir ya vencidas)
+      if (!p.fecha_vencimiento) return false;
+      return p.fecha_vencimiento >= hoy && p.fecha_vencimiento <= limProxStr;
+    } else if (filEst === 'vencida') {
+      return p.fecha_vencimiento && p.fecha_vencimiento < hoy;
+    } else if (filEst === 'activa') {
+      return p.estado === 'activa' || !p.estado;
+    } else if (filEst) {
+      return p.estado === filEst;
     }
     return true;
   });
@@ -6580,7 +6611,7 @@ async function actualizarBadgeNotif() {
 }
 
 // ---- CONFIGURACIÓN ----
-var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30 };
+var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30, dias_proximas:30 };
 
 async function cargarConfig() {
   try {
@@ -6592,6 +6623,7 @@ async function cargarConfig() {
   if(el('cfg-dias-sin'))   el('cfg-dias-sin').value     = _cfg.dias_sin;
   if(el('cfg-dias-cobr'))  el('cfg-dias-cobr').value    = _cfg.dias_cobr;
   if(el('cfg-dias-cancel'))el('cfg-dias-cancel').value  = _cfg.dias_canceladas || 30;
+  if(el('cfg-dias-proximas'))el('cfg-dias-proximas').value = _cfg.dias_proximas || 30;
   if(el('cfg-auto-cotiz')) el('cfg-auto-cotiz').checked = _cfg.auto_cotiz;
   if(el('cfg-auto-sin'))   el('cfg-auto-sin').checked   = _cfg.auto_sin;
   if(el('cfg-auto-renov')) el('cfg-auto-renov').checked = _cfg.auto_renov;
@@ -6604,6 +6636,7 @@ async function guardarConfig() {
     dias_sin:   parseInt((el('cfg-dias-sin')||{}).value)||30,
     dias_cobr:  parseInt((el('cfg-dias-cobr')||{}).value)||5,
     dias_canceladas: parseInt((el('cfg-dias-cancel')||{}).value)||30,
+    dias_proximas: parseInt((el('cfg-dias-proximas')||{}).value)||30,
     auto_cotiz: !!(el('cfg-auto-cotiz')&&el('cfg-auto-cotiz').checked),
     auto_sin:   !!(el('cfg-auto-sin')&&el('cfg-auto-sin').checked),
     auto_renov: !!(el('cfg-auto-renov')&&el('cfg-auto-renov').checked),
