@@ -85,6 +85,11 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Análisis
       </button>
+      <div class="nav-sec">Sistema</div>
+      <button type="button" class="nav-btn" data-sec="config">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Configuración
+      </button>
     </nav>
     <div class="sb-foot">
       <span class="sb-name" id="sb-nombre">—</span>
@@ -480,6 +485,62 @@
           <div class="card"><div class="card-t">Producción por aseguradora</div><div id="an-aseg"><div class="loading"><span class="spin"></span>Calculando...</div></div></div>
         </div>
       </div>
+
+      <div id="sec-config" class="sec">
+        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:16px">Configuración</div>
+
+        <!-- Alertas y vencimientos -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-t" style="margin-bottom:12px">⏰ Alertas y vencimientos</div>
+          <div class="g3">
+            <div class="frow">
+              <label>Días anticipación renovaciones</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="cfg-dias-renov" min="1" max="90" value="15" style="width:80px;text-align:center">
+                <span style="font-size:12px;color:var(--muted)">días antes del vencimiento</span>
+              </div>
+            </div>
+            <div class="frow">
+              <label>Días sin movimiento siniestros</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="cfg-dias-sin" min="1" max="90" value="30" style="width:80px;text-align:center">
+                <span style="font-size:12px;color:var(--muted)">días para alertar</span>
+              </div>
+            </div>
+            <div class="frow">
+              <label>Días anticipación cobranzas</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="cfg-dias-cobr" min="1" max="30" value="5" style="width:80px;text-align:center">
+                <span style="font-size:12px;color:var(--muted)">días antes del vencimiento</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tareas automáticas -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-t" style="margin-bottom:12px">🤖 Tareas automáticas</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="cfg-auto-cotiz" checked style="width:16px;height:16px;accent-color:var(--med)">
+              <div><div style="font-size:13px;color:var(--text)">Crear tarea al registrar una cotización</div><div style="font-size:11px;color:var(--muted)">Se crea en el tablero Ventas con tipo "Cotizar"</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="cfg-auto-sin" checked style="width:16px;height:16px;accent-color:var(--med)">
+              <div><div style="font-size:13px;color:var(--text)">Crear tarea al abrir un siniestro</div><div style="font-size:11px;color:var(--muted)">Se crea en el tablero Siniestros con tipo "Iniciar denuncia"</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="cfg-auto-renov" checked style="width:16px;height:16px;accent-color:var(--med)">
+              <div><div style="font-size:13px;color:var(--text)">Crear tarea al detectar vencimiento de póliza</div><div style="font-size:11px;color:var(--muted)">Se crea en el tablero Renovaciones con tipo "Cotizar renovación"</div></div>
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button type="button" class="btn" onclick="cargarConfig()">Restablecer</button>
+          <button type="button" class="btn btn-p" onclick="guardarConfig()">Guardar configuración</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -873,19 +934,20 @@
     <div class="frow"><label>Título *</label><input type="text" id="ft-tit" placeholder="Descripción de la tarea..."></div>
     <div class="fg2">
       <div class="frow"><label>Tablero *</label>
-        <select id="ft-tab">
+        <select id="ft-tab" onchange="tarSetTipos(this.value,'ft-tipo','ft-tipo-otro-wrap')">
           <option value="ventas">Ventas</option><option value="siniestros">Siniestros</option>
           <option value="cobranzas">Cobranzas</option><option value="renovaciones">Renovaciones</option>
           <option value="general">General</option>
         </select>
       </div>
       <div class="frow"><label>Tipo</label>
-        <select id="ft-tipo">
-          <option>Llamar al cliente</option><option>Enviar cotización</option>
-          <option>Gestionar siniestro</option><option>Cobrar cuota</option>
-          <option>Renovar póliza</option><option>Seguimiento</option>
-          <option>Trámite aseguradora</option><option>Tarea libre</option>
+        <select id="ft-tipo" onchange="tarOnTipoChange(this.value,'ft-tipo-otro-wrap')">
+          <option>Cotizar</option><option>Enviar cotización</option>
+          <option>Seguimiento cotización</option><option>Contacto con cliente</option>
+          <option>Cotización aceptada</option><option>Cotización rechazada</option>
+          <option>Otro...</option>
         </select>
+        <input type="text" id="ft-tipo-otro-wrap" placeholder="Escribí el tipo..." style="display:none;margin-top:6px">
       </div>
     </div>
     <div class="fg2">
@@ -968,12 +1030,13 @@
             </select>
           </div>
           <div class="frow"><label>Tipo</label>
-            <select id="tar-edit-tipo">
-              <option>Llamar al cliente</option><option>Enviar cotización</option>
-              <option>Gestionar siniestro</option><option>Cobrar cuota</option>
-              <option>Renovar póliza</option><option>Seguimiento</option>
-              <option>Trámite aseguradora</option><option>Tarea libre</option>
+            <select id="tar-edit-tipo" onchange="tarOnTipoChange(this.value,'tar-edit-tipo-otro')">
+              <option>Cotizar</option><option>Enviar cotización</option>
+              <option>Seguimiento cotización</option><option>Contacto con cliente</option>
+              <option>Cotización aceptada</option><option>Cotización rechazada</option>
+              <option>Otro...</option>
             </select>
+            <input type="text" id="tar-edit-tipo-otro" placeholder="Escribí el tipo..." style="display:none;margin-top:6px">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1251,6 +1314,9 @@ async function mostrarApp() {
   setupCtxHandlers();
   await cargarDashboard();
   await cargarClientes();
+  // Cargar config y verificar renovaciones al iniciar
+  try { await cargarConfig(); } catch(e){}
+  setTimeout(verificarRenovaciones, 3000);
 }
 
 // ---- NAVEGACIÓN ----
@@ -1261,7 +1327,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('sec-' + sec).classList.add('active');
     this.classList.add('active');
-    const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis' };
+    const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
       // Always reset to list view when clicking clientes in sidebar
@@ -1290,6 +1356,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (sec === 'cobranzas') cargarCobranzas();
     if (sec === 'tareas') cargarTareas();
     if (sec === 'analisis') cargarAnalisis();
+    if (sec === 'config') cargarConfig();
   });
 });
 
@@ -4129,6 +4196,12 @@ document.getElementById('btn-guardar-sin').onclick = async function() {
     var { error } = await sb.from('siniestros').insert(datos);
     if (error) { alert('Error: ' + error.message); return; }
     mostrarAlerta('✅ Siniestro registrado');
+    // Tarea automática si está activada
+    if (_cfg.auto_sin) {
+      var cl = allCl.find(function(x){ return x.id===datos.cliente_id; });
+      var nombreCl = cl ? (cl.apellido||'')+', '+(cl.nombre||'') : '';
+      await crearTareaAuto({ cliente_id:datos.cliente_id, titulo:'Iniciar denuncia — '+nombreCl+' ('+datos.tipo_ramo+')', tablero:'siniestros', tipo:'Iniciar denuncia' });
+    }
   }
   cerrarModal('modal-sin');
   if (fichaId) renderFicha();
@@ -4187,7 +4260,7 @@ document.getElementById('btn-guardar-tar').onclick = async function() {
     productor_id: user.id,
     titulo: document.getElementById('ft-tit').value.trim(),
     tablero: document.getElementById('ft-tab').value,
-    tipo: document.getElementById('ft-tipo').value,
+    tipo: getTipoFinal('ft-tipo','ft-tipo-otro-wrap'),
     prioridad: document.getElementById('ft-prio').value,
     cliente_id: document.getElementById('ft-cl').value || null,
     fecha_limite: document.getElementById('ft-fecha').value || null,
@@ -5837,6 +5910,103 @@ async function moverTarea(id, estado) {
   await sb.from('tareas').update({ estado }).eq('id', id);
   cargarTareas();
   if (fichaId) renderFicha();
+}
+
+// ---- CONFIGURACIÓN ----
+var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true };
+
+async function cargarConfig() {
+  try {
+    var { data } = await sb.from('configuracion').select('*').eq('productor_id', user.id).single();
+    if (data && data.config) _cfg = Object.assign(_cfg, JSON.parse(data.config));
+  } catch(e){}
+  var el = function(id){ return document.getElementById(id); };
+  if(el('cfg-dias-renov')) el('cfg-dias-renov').value   = _cfg.dias_renov;
+  if(el('cfg-dias-sin'))   el('cfg-dias-sin').value     = _cfg.dias_sin;
+  if(el('cfg-dias-cobr'))  el('cfg-dias-cobr').value    = _cfg.dias_cobr;
+  if(el('cfg-auto-cotiz')) el('cfg-auto-cotiz').checked = _cfg.auto_cotiz;
+  if(el('cfg-auto-sin'))   el('cfg-auto-sin').checked   = _cfg.auto_sin;
+  if(el('cfg-auto-renov')) el('cfg-auto-renov').checked = _cfg.auto_renov;
+}
+
+async function guardarConfig() {
+  var el = function(id){ return document.getElementById(id); };
+  _cfg = {
+    dias_renov: parseInt((el('cfg-dias-renov')||{}).value)||15,
+    dias_sin:   parseInt((el('cfg-dias-sin')||{}).value)||30,
+    dias_cobr:  parseInt((el('cfg-dias-cobr')||{}).value)||5,
+    auto_cotiz: !!(el('cfg-auto-cotiz')&&el('cfg-auto-cotiz').checked),
+    auto_sin:   !!(el('cfg-auto-sin')&&el('cfg-auto-sin').checked),
+    auto_renov: !!(el('cfg-auto-renov')&&el('cfg-auto-renov').checked),
+  };
+  await sb.from('configuracion').upsert({productor_id:user.id, config:JSON.stringify(_cfg)}, {onConflict:'productor_id'});
+  mostrarAlerta('✅ Configuración guardada');
+}
+
+// ---- TIPOS DE TAREA POR TABLERO ----
+var TIPOS_TABLERO = {
+  ventas:       ['Cotizar','Enviar cotización','Seguimiento cotización','Contacto con cliente','Cotización aceptada','Cotización rechazada','Otro...'],
+  siniestros:   ['Iniciar denuncia','Seguimiento siniestro','Enviar documentación','Contactar compañía','Coordinar inspección / peritaje','Informar al cliente','Gestionar liquidación','Cierre de siniestro','Otro...'],
+  cobranzas:    ['Cobrar cuota','Enviar recordatorio de pago','Gestionar mora','Registrar pago','Contactar cliente por deuda','Otro...'],
+  renovaciones: ['Cotizar renovación','Enviar propuesta de renovación','Seguimiento renovación','Confirmar renovación','Baja de póliza','Otro...'],
+  general:      ['Reunión de negocios','Llamada con compañía aseguradora','Trámite administrativo','Facturación','Capacitación / formación','Tarea interna','Otro...']
+};
+
+function tarSetTipos(tablero, selId, otraId) {
+  var sel = document.getElementById(selId);
+  if (!sel) return;
+  var tipos = TIPOS_TABLERO[tablero] || TIPOS_TABLERO.general;
+  sel.innerHTML = tipos.map(function(t){ return '<option>'+t+'</option>'; }).join('');
+  tarOnTipoChange(sel.value, otraId);
+}
+
+function tarOnTipoChange(val, otraId) {
+  var inp = document.getElementById(otraId);
+  if (!inp) return;
+  inp.style.display = val === 'Otro...' ? 'block' : 'none';
+  if (val === 'Otro...') setTimeout(function(){ inp.focus(); }, 50);
+}
+
+function getTipoFinal(selId, otraId) {
+  var sel = document.getElementById(selId);
+  var inp = document.getElementById(otraId);
+  if (!sel) return '';
+  if (sel.value === 'Otro...' && inp && inp.value.trim()) return inp.value.trim();
+  return sel.value === 'Otro...' ? 'Tarea libre' : sel.value;
+}
+
+// ---- TAREAS AUTOMÁTICAS ----
+async function crearTareaAuto(opts) {
+  var { error } = await sb.from('tareas').insert({
+    productor_id: user.id,
+    cliente_id:   opts.cliente_id || null,
+    poliza_id:    opts.poliza_id  || null,
+    titulo:       opts.titulo,
+    tablero:      opts.tablero,
+    tipo:         opts.tipo,
+    estado:       'pendiente',
+    prioridad:    'media',
+    auto_generada: true
+  });
+  if (error) console.error('Error tarea auto:', error.message);
+}
+
+async function verificarRenovaciones() {
+  if (!_cfg.auto_renov) return;
+  var dias = _cfg.dias_renov || 15;
+  var hoy = new Date();
+  var limite = new Date(hoy); limite.setDate(limite.getDate() + dias);
+  var limStr = limite.toISOString().split('T')[0];
+  var hoyStr = hoy.toISOString().split('T')[0];
+  var { data: pols } = await sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',user.id).eq('estado','activa').lte('fecha_vencimiento',limStr).gte('fecha_vencimiento',hoyStr);
+  if (!pols || !pols.length) return;
+  for (var i=0;i<pols.length;i++) {
+    var p = pols[i];
+    var nombreCl = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '';
+    var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).eq('tablero','renovaciones').eq('estado','pendiente');
+    if (existing && existing.length) continue;
+    await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+' ('+p.ramo+')', tablero:'renovaciones', tipo:'Cotizar renovación' });
+  }
 }
 
 // ---- ANÁLISIS ----
