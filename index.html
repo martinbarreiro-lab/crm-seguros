@@ -637,6 +637,12 @@
           </div>
         </div>
 
+        <!-- Análisis de objetivos -->
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:12px">Análisis de objetivos</div>
+          <div id="an-objetivos"><div style="font-size:12px;color:var(--lt);padding:8px 0">Sin objetivos definidos.</div></div>
+        </div>
+
         <!-- Ranking + Cross-selling -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
@@ -1022,11 +1028,24 @@
       </div>
       <div class="frow"><label>Meta *</label><input type="number" id="fobj-meta" placeholder="0"></div>
     </div>
+    <div class="frow"><label>Período</label>
+      <select id="fobj-periodo" onchange="objPeriodoChange(this.value)" style="margin-bottom:6px">
+        <option value="mes">Este mes</option>
+        <option value="3meses">3 meses</option>
+        <option value="6meses">6 meses</option>
+        <option value="anio">Este año</option>
+        <option value="custom">Personalizado...</option>
+      </select>
+      <div id="fobj-custom-wrap" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+        <div><label style="font-size:11px;color:var(--muted)">Desde</label><input type="date" id="fobj-desde"></div>
+        <div><label style="font-size:11px;color:var(--muted)">Hasta</label><input type="date" id="fobj-hasta"></div>
+      </div>
+    </div>
     <div class="frow"><label>Progreso</label>
       <select id="fobj-auto">
         <option value="manual">Manual — lo actualizo yo</option>
         <option value="cotizaciones_aceptadas">Automático — Cotizaciones aceptadas</option>
-        <option value="polizas_nuevas">Automático — Pólizas nuevas del mes</option>
+        <option value="polizas_nuevas">Automático — Pólizas nuevas</option>
         <option value="polizas_renovadas">Automático — Pólizas renovadas</option>
         <option value="premio_nuevas">Automático — Premio pólizas nuevas ($)</option>
       </select>
@@ -1809,11 +1828,59 @@ function dashMostrarDetCal(key, evs) {
 }
 
 // ---- OBJETIVOS ----
+function objPeriodoChange(val) {
+  var wrap = document.getElementById('fobj-custom-wrap');
+  if (wrap) wrap.style.display = val === 'custom' ? 'grid' : 'none';
+}
+
+function objGetRango(o) {
+  var hoy = new Date();
+  var hasta = hoy.toISOString().split('T')[0];
+  var desde;
+  var periodo = o.periodo || 'mes';
+  if (periodo === 'custom' && o.desde && o.hasta) {
+    return {desde: o.desde, hasta: o.hasta};
+  } else if (periodo === '3meses') {
+    var d = new Date(hoy); d.setMonth(d.getMonth()-3);
+    desde = d.toISOString().split('T')[0];
+  } else if (periodo === '6meses') {
+    var d = new Date(hoy); d.setMonth(d.getMonth()-6);
+    desde = d.toISOString().split('T')[0];
+  } else if (periodo === 'anio') {
+    desde = new Date(hoy.getFullYear(),0,1).toISOString().split('T')[0];
+  } else {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+  }
+  return {desde, hasta};
+}
+
+function objGetCalificacion(pct) {
+  if (pct >= 100) return {label:'Muy bueno 🏆', color:'#27500A', bg:'#C0DD97'};
+  if (pct >= 50)  return {label:'Bueno ✅',     color:'#185FA5', bg:'#DBEAFE'};
+  if (pct >= 20)  return {label:'Regular ⚠',   color:'#854F0B', bg:'#FEF3C7'};
+  return           {label:'Malo ❌',             color:'#A32D2D', bg:'#FCEBEB'};
+}
+
+function objPeriodoLabel(o) {
+  var periodo = o.periodo || 'mes';
+  if (periodo === 'custom' && o.desde && o.hasta) return fmtDate(o.desde)+' → '+fmtDate(o.hasta);
+  if (periodo === '3meses') return 'Últimos 3 meses';
+  if (periodo === '6meses') return 'Últimos 6 meses';
+  if (periodo === 'anio')   return 'Este año';
+  return 'Este mes';
+}
+
 function abrirModalObjetivo() {
   document.getElementById('fobj-nombre').value = '';
   document.getElementById('fobj-meta').value = '';
   document.getElementById('fobj-tipo').value = 'cantidad';
   document.getElementById('fobj-auto').value = 'manual';
+  document.getElementById('fobj-periodo').value = 'mes';
+  var wrap = document.getElementById('fobj-custom-wrap');
+  if (wrap) wrap.style.display = 'none';
+  var hoy = new Date().toISOString().split('T')[0];
+  if (document.getElementById('fobj-desde')) document.getElementById('fobj-desde').value = hoy;
+  if (document.getElementById('fobj-hasta')) document.getElementById('fobj-hasta').value = hoy;
   document.getElementById('modal-objetivo').classList.add('open');
 }
 
@@ -1822,11 +1889,13 @@ async function guardarObjetivo() {
   var meta = parseFloat(document.getElementById('fobj-meta').value)||0;
   var tipo = document.getElementById('fobj-tipo').value;
   var auto = document.getElementById('fobj-auto').value;
+  var periodo = document.getElementById('fobj-periodo').value;
+  var desde = periodo==='custom' ? (document.getElementById('fobj-desde')||{}).value : null;
+  var hasta = periodo==='custom' ? (document.getElementById('fobj-hasta')||{}).value : null;
   if (!nombre||!meta) { alert('Completá nombre y meta'); return; }
-  var mes = new Date().getMonth()+1;
-  var anio = new Date().getFullYear();
+  if (periodo==='custom' && (!desde||!hasta)) { alert('Completá las fechas del período'); return; }
   var objs = _dashObjetivos.slice();
-  objs.push({nombre,meta,tipo,auto,progreso:0,mes,anio,id:Date.now()});
+  objs.push({id:Date.now(), nombre, meta, tipo, auto, progreso:0, periodo, desde, hasta});
   await sb.from('configuracion').upsert({productor_id:user.id, config:JSON.stringify(Object.assign({},_cfg,{objetivos:objs}))}, {onConflict:'productor_id'});
   _dashObjetivos = objs;
   cerrarModal('modal-objetivo');
@@ -1834,65 +1903,61 @@ async function guardarObjetivo() {
 }
 
 async function calcularProgresosObjetivos() {
-  var hoy = new Date();
-  var desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-  var hasta = hoy.toISOString().split('T')[0];
-
-  var [cotAcep, polNuevas, polRenov, premioData] = await Promise.all([
-    sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',user.id).eq('estado','aceptada').gte('updated_at',desde),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',user.id).gte('created_at',desde),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',user.id).eq('estado','renovada').gte('updated_at',desde),
-    sb.from('polizas').select('prima_anual').eq('productor_id',user.id).gte('created_at',desde),
-  ]);
-  var premioNuevas = (premioData.data||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
-
-  var autoVals = {
-    cotizaciones_aceptadas: cotAcep.count||0,
-    polizas_nuevas: polNuevas.count||0,
-    polizas_renovadas: polRenov.count||0,
-    premio_nuevas: Math.round(premioNuevas),
-  };
-
-  _dashObjetivos = _dashObjetivos.map(function(o){
-    if (o.auto !== 'manual') o.progreso = autoVals[o.auto]||0;
-    return o;
-  });
-
+  for (var i=0; i<_dashObjetivos.length; i++) {
+    var o = _dashObjetivos[i];
+    if (o.auto === 'manual') continue;
+    var rango = objGetRango(o);
+    var desde = rango.desde, hasta = rango.hasta+'T23:59:59';
+    var val = 0;
+    if (o.auto === 'cotizaciones_aceptadas') {
+      var {count} = await sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',user.id).eq('estado','aceptada').gte('updated_at',desde).lte('updated_at',hasta);
+      val = count||0;
+    } else if (o.auto === 'polizas_nuevas') {
+      var {count} = await sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',user.id).gte('created_at',desde).lte('created_at',hasta);
+      val = count||0;
+    } else if (o.auto === 'polizas_renovadas') {
+      var {count} = await sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',user.id).eq('estado','renovada').gte('updated_at',desde).lte('updated_at',hasta);
+      val = count||0;
+    } else if (o.auto === 'premio_nuevas') {
+      var {data} = await sb.from('polizas').select('prima_anual').eq('productor_id',user.id).gte('created_at',desde).lte('created_at',hasta);
+      val = Math.round((data||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0));
+    }
+    _dashObjetivos[i].progreso = val;
+  }
   renderObjetivos();
 }
 
 function renderObjetivos() {
   var cont = document.getElementById('dash-objetivos');
   if (!cont) return;
-  var mes = new Date().getMonth()+1;
-  var anio = new Date().getFullYear();
-  var objs = _dashObjetivos.filter(function(o){ return o.mes===mes && o.anio===anio; });
-
-  if (!objs.length) {
+  if (!_dashObjetivos.length) {
     cont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--lt);font-size:13px">Sin objetivos definidos.<br><span style="font-size:11px">Hacé click en + Agregar para crear uno.</span></div>';
     return;
   }
-
   var tit = document.getElementById('dash-obj-titulo');
-  if (tit) tit.textContent = 'Objetivos — '+_MESES[new Date().getMonth()]+' '+new Date().getFullYear();
+  if (tit) tit.textContent = 'Objetivos';
 
-  cont.innerHTML = objs.map(function(o,i){
-    var pct = Math.min(100, Math.round((o.progreso/o.meta)*100));
-    var borderColor = pct>=80?'var(--green)':pct>=50?'var(--med)':pct>=25?'var(--amber)':'var(--red)';
-    var textColor = pct>=80?'var(--green)':pct>=50?'var(--med)':pct>=25?'var(--amber)':'var(--red)';
+  cont.innerHTML = _dashObjetivos.map(function(o,i){
+    var pct = Math.min(100, Math.round((o.progreso/o.meta)*100)) || 0;
+    var cal = objGetCalificacion(pct);
+    var borderColor = pct>=100?'var(--green)':pct>=50?'var(--med)':pct>=20?'var(--amber)':'var(--red)';
     var progTxt = o.tipo==='monto' ? '$'+Number(o.progreso).toLocaleString('es-AR')+' / $'+Number(o.meta).toLocaleString('es-AR') : o.progreso+' / '+o.meta;
+    var periodoTxt = objPeriodoLabel(o);
     var manualBtns = o.auto==='manual' ? '<div style="display:flex;align-items:center;gap:4px"><button type="button" onclick="cambiarObjetivo('+i+',-1)" style="width:20px;height:20px;font-size:13px;padding:0;border-radius:4px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;line-height:1">−</button><button type="button" onclick="cambiarObjetivo('+i+',1)" style="width:20px;height:20px;font-size:13px;padding:0;border-radius:4px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;line-height:1">+</button></div>' : '';
     return '<div style="padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border-left:3px solid '+borderColor+';margin-bottom:8px">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'
       +'<div style="font-size:12px;font-weight:500;color:var(--text)">'+o.nombre+'</div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
       +(manualBtns||'')
-      +'<span style="font-size:11px;color:'+textColor+';font-weight:500" id="obj-pct-'+i+'">'+progTxt+' · '+pct+'%</span>'
+      +'<span style="font-size:11px;font-weight:500;color:'+borderColor+'">'+progTxt+' · '+pct+'%</span>'
       +'</div></div>'
       +'<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">'
-      +'<div id="obj-bar-'+i+'" style="height:100%;width:'+pct+'%;background:'+borderColor+';border-radius:3px;transition:width .3s"></div>'
+      +'<div style="height:100%;width:'+pct+'%;background:'+borderColor+';border-radius:3px;transition:width .3s"></div>'
       +'</div>'
-      +'<div style="font-size:10px;color:var(--muted);margin-top:4px">'+(o.auto==='manual'?'Manual':'Automático')+' · '+o.auto.replace(/_/g,' ')+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">'
+      +'<div style="font-size:10px;color:var(--muted)">'+periodoTxt+' · '+(o.auto==='manual'?'Manual':'Auto')+'</div>'
+      +'<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:'+cal.bg+';color:'+cal.color+'">'+cal.label+'</span>'
+      +'</div>'
       +'</div>';
   }).join('');
 }
@@ -6981,6 +7046,34 @@ async function cargarAnalisis() {
       +'<div style="font-size:10px;color:var(--muted)">'+e.mes+'</div>'
       +'</div>';
   }).join('');
+
+  // Análisis de objetivos
+  var anObjEl = el('an-objetivos');
+  if (anObjEl) {
+    if (!_dashObjetivos.length) {
+      anObjEl.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin objetivos definidos. Creá uno desde el Dashboard.</div>';
+    } else {
+      anObjEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">'
+        + _dashObjetivos.map(function(o){
+          var pct = o.meta > 0 ? Math.round((o.progreso/o.meta)*100) : 0;
+          var cal = objGetCalificacion(pct);
+          var borderColor = pct>=100?'var(--green)':pct>=50?'var(--med)':pct>=20?'var(--amber)':'var(--red)';
+          var progTxt = o.tipo==='monto' ? '$'+Number(o.progreso).toLocaleString('es-AR')+' / $'+Number(o.meta).toLocaleString('es-AR') : o.progreso+' / '+o.meta;
+          return '<div style="padding:12px 14px;background:var(--bg);border-radius:var(--rsm);border-left:3px solid '+borderColor+'">'
+            +'<div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px">'+o.nombre+'</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+objPeriodoLabel(o)+'</div>'
+            +'<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px">'
+            +'<div style="height:100%;width:'+Math.min(100,pct)+'%;background:'+borderColor+';border-radius:3px"></div>'
+            +'</div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between">'
+            +'<span style="font-size:11px;color:var(--muted)">'+progTxt+' · '+pct+'%</span>'
+            +'<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+cal.bg+';color:'+cal.color+'">'+cal.label+'</span>'
+            +'</div>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
+  }
 
   // Ranking clientes
   var sinMap = {};
