@@ -1604,24 +1604,17 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
-      // Always reset to list view when clicking clientes in sidebar
       const fichaWrap = document.getElementById('ficha-wrap');
       const tablaWrap = document.getElementById('cl-tabla-wrap');
       const toprow = document.getElementById('cl-toprow');
       const count = document.getElementById('cl-count');
       const pag = document.getElementById('cl-pagination');
       if (fichaWrap) fichaWrap.classList.remove('open');
-      if (tablaWrap) tablaWrap.style.display = 'block';
+      if (tablaWrap) { tablaWrap.style.display = 'block'; tablaWrap.style.marginTop = '12px'; }
       if (toprow) toprow.style.display = 'flex';
       if (count) count.style.display = 'block';
       if (pag) pag.style.display = '';
-      // Reset section header to default
-      const secTitle = document.querySelector('.cl-section-title');
-      const secSub = document.querySelector('.cl-section-sub');
-      const secIcon = document.querySelector('.cl-section-icon');
-      if (secTitle) secTitle.textContent = 'Clientes / Prospectos';
-      if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
-      if (secIcon) secIcon.style.display = 'flex';
+      fichaId = null;
       cargarClientes();
     }
     if (sec === 'polizas') cargarPolizas();
