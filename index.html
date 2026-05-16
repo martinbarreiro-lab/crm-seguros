@@ -1586,11 +1586,15 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       const toprow = document.getElementById('cl-toprow');
       const count = document.getElementById('cl-count');
       const pag = document.getElementById('cl-pagination');
+      const ft = document.getElementById('ficha-titulo');
+      const fb = document.getElementById('ficha-badge');
       if (fichaWrap) fichaWrap.classList.remove('open');
       if (tablaWrap) tablaWrap.style.display = 'block';
       if (toprow) toprow.style.display = 'flex';
       if (count) count.style.display = 'block';
       if (pag) pag.style.display = '';
+      if (ft) ft.textContent = '';
+      if (fb) fb.innerHTML = '';
       cargarClientes();
     }
     if (sec === 'polizas') cargarPolizas();
