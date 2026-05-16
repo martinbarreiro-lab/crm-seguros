@@ -1604,17 +1604,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
-      const fichaWrap = document.getElementById('ficha-wrap');
-      const tablaWrap = document.getElementById('cl-tabla-wrap');
-      const toprow = document.getElementById('cl-toprow');
-      const count = document.getElementById('cl-count');
-      const pag = document.getElementById('cl-pagination');
-      if (fichaWrap) fichaWrap.classList.remove('open');
-      if (tablaWrap) { tablaWrap.style.display = 'block'; tablaWrap.style.marginTop = '12px'; }
-      if (toprow) toprow.style.display = 'flex';
-      if (count) count.style.display = 'block';
-      if (pag) pag.style.display = '';
-      fichaId = null;
+      resetClientes();
       cargarClientes();
     }
     if (sec === 'polizas') cargarPolizas();
@@ -6807,6 +6797,20 @@ function aplicarFiltroCross() {
   window._crossFiltroIds = null;
 }
 
+function resetClientes() {
+  fichaId = null;
+  var fw = document.getElementById('ficha-wrap');
+  var tw = document.getElementById('cl-tabla-wrap');
+  var tr = document.getElementById('cl-toprow');
+  var ce = document.getElementById('cl-count');
+  var pe = document.getElementById('cl-pagination');
+  if (fw) fw.classList.remove('open');
+  if (tw) tw.style.display = 'block';
+  if (tr) tr.style.display = 'flex';
+  if (ce) ce.style.display = 'block';
+  if (pe) pe.style.display = '';
+}
+
 function irASeccion(sec) {
   document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -6814,6 +6818,7 @@ function irASeccion(sec) {
   var b = document.querySelector('.nav-btn[data-sec="'+sec+'"]');
   if (s) s.classList.add('active');
   if (b) b.classList.add('active');
+  if (sec==='clientes') { resetClientes(); cargarClientes(); }
   if (sec==='tareas') cargarTareas();
   if (sec==='polizas') cargarPolizas();
 }
