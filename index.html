@@ -1581,13 +1581,15 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
       fichaId = null;
-      const fichaWrap = document.getElementById('ficha-wrap');
-      const tablaWrap = document.getElementById('cl-tabla-wrap');
-      const toprow = document.getElementById('cl-toprow');
-      const count = document.getElementById('cl-count');
-      const pag = document.getElementById('cl-pagination');
-      const ft = document.getElementById('ficha-titulo');
-      const fb = document.getElementById('ficha-badge');
+      var fichaWrap = document.getElementById('ficha-wrap');
+      var tablaWrap = document.getElementById('cl-tabla-wrap');
+      var toprow = document.getElementById('cl-toprow');
+      var count = document.getElementById('cl-count');
+      var pag = document.getElementById('cl-pagination');
+      var ft = document.getElementById('ficha-titulo');
+      var fb = document.getElementById('ficha-badge');
+      var secTitle = document.querySelector('.cl-section-title');
+      var secSub = document.querySelector('.cl-section-sub');
       if (fichaWrap) fichaWrap.classList.remove('open');
       if (tablaWrap) tablaWrap.style.display = 'block';
       if (toprow) toprow.style.display = 'flex';
@@ -1595,6 +1597,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       if (pag) pag.style.display = '';
       if (ft) ft.textContent = '';
       if (fb) fb.innerHTML = '';
+      if (secTitle) secTitle.textContent = 'Clientes / Prospectos';
+      if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
       cargarClientes();
     }
     if (sec === 'polizas') cargarPolizas();
@@ -2212,12 +2216,16 @@ document.getElementById('btn-volver-cl').onclick = function() {
   document.getElementById('ficha-wrap').classList.remove('open');
   document.getElementById('cl-toprow').style.display = 'flex';
   document.getElementById('cl-tabla-wrap').style.display = 'block';
-  const countEl = document.getElementById('cl-count');
+  var countEl = document.getElementById('cl-count');
   if (countEl) countEl.style.display = 'block';
-  const ft = document.getElementById('ficha-titulo');
-  const fb = document.getElementById('ficha-badge');
+  var ft = document.getElementById('ficha-titulo');
+  var fb = document.getElementById('ficha-badge');
   if (ft) ft.textContent = '';
   if (fb) fb.innerHTML = '';
+  var secTitle = document.querySelector('.cl-section-title');
+  var secSub = document.querySelector('.cl-section-sub');
+  if (secTitle) secTitle.textContent = 'Clientes / Prospectos';
+  if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
 };
 
 async function renderFicha() {
