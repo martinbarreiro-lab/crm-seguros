@@ -76,10 +76,11 @@ input,select,textarea,button{font-family:inherit;font-size:14px}
 .g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.metric{background:var(--bg);border-radius:var(--rsm);padding:13px 15px}
-.metric .lbl{font-size:11px;color:var(--lt);margin-bottom:4px}
-.metric .val{font-size:22px;font-weight:600}
-.metric .sub{font-size:10px;color:var(--lt);margin-top:3px}
+.metric{background:var(--white);border:0.5px solid var(--border);border-radius:var(--rsm);padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.metric .lbl{font-size:11px;color:var(--muted);margin-bottom:3px}
+.metric .val{font-size:20px;font-weight:600;color:var(--text)}
+.metric .sub{font-size:10px;color:var(--muted);margin-top:2px}
+.metric .m-body{flex:1}
 
 /* Panel siniestros */
 
