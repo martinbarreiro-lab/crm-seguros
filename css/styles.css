@@ -13,7 +13,7 @@
   --r:10px;--rsm:7px;
   --shadow:0 2px 8px rgba(0,0,0,.08)
 }
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;overflow-x:hidden}
 input,select,textarea,button{font-family:inherit;font-size:14px}
 
 /* LOGIN */
@@ -31,8 +31,8 @@ input,select,textarea,button{font-family:inherit;font-size:14px}
 .err-box.show{display:block}
 
 /* APP */
-.app{display:none;min-height:100vh}
-.app.show{display:flex}
+.app{display:none}
+.app.show{display:flex;align-items:flex-start;min-height:100vh}
 .sidebar{width:240px;background:#1E2A3B;border-right:none;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
 .sb-logo{padding:18px 16px 12px;border-bottom:0.5px solid var(--border)}
 .sb-title{font-size:15px;font-weight:700;color:var(--blue)}
@@ -57,10 +57,10 @@ input,select,textarea,button{font-family:inherit;font-size:14px}
 .sb-name{display:block;font-weight:600;font-size:13px;color:#fff;margin-bottom:2px}
 .btn-out{background:none;border:none;font-size:11px;color:rgba(255,255,255,.35);cursor:pointer;padding:0}
 .btn-out:hover{color:var(--red)}
-.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:hidden;min-height:100vh}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;background:var(--white);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50}
 .topbar-t{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px}
-.page{padding:24px;flex:1}
+.page{padding:24px;flex:1;min-width:0;overflow-x:hidden}
 .sec{display:none}.sec.active{display:block}
 
 /* COMPONENTES */
