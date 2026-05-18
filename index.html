@@ -5725,7 +5725,7 @@ function renderCotCard(cot, isInline) {
   html.push('<span style="font-size:13px;font-weight:500;color:var(--text)">'+ramo+(subtitulo?' · '+subtitulo:'')+'</span>');
   html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span>');
   html.push('</div>');
-  html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span><span id="'+chevId+'" style="font-size:13px;color:var(--muted)">▼</span></div>');
+  html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span><span id="'+chevId+'" style="font-size:13px;color:var(--muted)">▼</span><button type="button" onclick="event.stopPropagation();eliminarCotizacion(\''+cot.id+'\')" style="border:none;background:none;cursor:pointer;padding:3px 5px;color:var(--muted);font-size:14px;line-height:1;border-radius:4px" title="Eliminar cotización">✕</button></div>');
   html.push('</div>');
   // Body
   html.push('<div id="'+bodyId+'" style="display:none;border-top:0.5px solid var(--border);padding:14px;background:var(--bg)">');
@@ -5801,6 +5801,12 @@ function renderCotCard(cot, isInline) {
   html.push('</div>');
   html.push('</div></div>');
   return html.join('');
+}
+
+async function eliminarCotizacion(id) {
+  if (!confirm('¿Eliminar esta cotización? No se puede deshacer.')) return;
+  await sb.from('cotizaciones').delete().eq('id', id).eq('productor_id', user.id);
+  cargarCotizaciones();
 }
 
 function toggleCotSb(bodyId, chevId) {
