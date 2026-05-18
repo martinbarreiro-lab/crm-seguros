@@ -86,6 +86,10 @@
         Análisis
       </button>
       <div class="nav-sec">Sistema</div>
+      <button type="button" class="nav-btn" data-sec="companias">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+        Compañías
+      </button>
       <button type="button" class="nav-btn" data-sec="config">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         Configuración
@@ -668,6 +672,77 @@
             <div style="font-size:11px;color:var(--med)">Potencial total</div>
             <div style="font-size:13px;font-weight:600;color:var(--med)" id="an-cross-total">—</div>
           </div>
+        </div>
+      </div>
+
+      <!-- COMPAÑÍAS -->
+      <div id="sec-companias" class="sec">
+        <div class="sec-header">
+          <div class="sec-header-left">
+            <div class="icon-card icon-card-lg ic-purple"><i class="ti ti-building-bank" style="font-size:17px"></i></div>
+            <div><div class="sec-header-title">Compañías</div><div class="sec-header-sub">Importá archivos y sincronizá tu cartera automáticamente</div></div>
+          </div>
+        </div>
+
+        <!-- Paso 1: Elegir compañía -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-t" style="margin-bottom:10px">1 · Elegí la compañía</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="comp-grid">
+            <div class="comp-btn active" data-comp="fed_patronal" onclick="selComp(this)">
+              <div style="font-size:13px;font-weight:500;color:var(--text)">Federación Patronal</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><i class="ti ti-file-zip" style="font-size:11px"></i> ZIP / XML</div>
+            </div>
+            <div class="comp-btn" data-comp="seguro_metal" onclick="selComp(this)">
+              <div style="font-size:13px;font-weight:500;color:var(--text)">Seguro Metal</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><i class="ti ti-table" style="font-size:11px"></i> XLS</div>
+            </div>
+            <div class="comp-btn" data-comp="provincia_art" onclick="selComp(this)">
+              <div style="font-size:13px;font-weight:500;color:var(--text)">Provincia ART</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><i class="ti ti-table" style="font-size:11px"></i> XLSX</div>
+            </div>
+            <div class="comp-btn" data-comp="la_equitativa" onclick="selComp(this)">
+              <div style="font-size:13px;font-weight:500;color:var(--text)">La Equitativa</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><i class="ti ti-file-text" style="font-size:11px"></i> CSV</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paso 2: Drop zone -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-t" style="margin-bottom:10px">2 · Subí el archivo</div>
+          <div id="comp-dropzone" style="border:1.5px dashed var(--border);border-radius:var(--r);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s"
+            onclick="document.getElementById('comp-file-input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--light)'"
+            ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+            ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';handleCompFile(event.dataTransfer.files[0])">
+            <i class="ti ti-upload" style="font-size:28px;color:var(--muted);display:block;margin-bottom:8px"></i>
+            <div style="font-size:13px;font-weight:500;color:var(--text)" id="comp-drop-title">Arrastrá el archivo acá o hacé click para buscarlo</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px" id="comp-drop-sub">Federación Patronal: ZIP con XMLs</div>
+          </div>
+          <input type="file" id="comp-file-input" style="display:none" onchange="handleCompFile(this.files[0])">
+        </div>
+
+        <!-- Log de procesamiento -->
+        <div class="card" id="comp-result-card" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="card-t">Resultado de la importación</div>
+            <span id="comp-result-badge" style="font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500"></span>
+          </div>
+          <!-- Métricas -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+            <div class="metric"><div class="m-body"><div class="lbl">Clientes nuevos</div><div class="val" id="comp-stat-cl-new">—</div></div><div class="icon-card icon-card-md ic-green"><i class="ti ti-user-plus" style="font-size:14px"></i></div></div>
+            <div class="metric"><div class="m-body"><div class="lbl">Clientes actualizados</div><div class="val" id="comp-stat-cl-upd">—</div></div><div class="icon-card icon-card-md ic-blue"><i class="ti ti-user-check" style="font-size:14px"></i></div></div>
+            <div class="metric"><div class="m-body"><div class="lbl">Pólizas procesadas</div><div class="val" id="comp-stat-pol">—</div></div><div class="icon-card icon-card-md ic-blue"><i class="ti ti-file-text" style="font-size:14px"></i></div></div>
+            <div class="metric"><div class="m-body"><div class="lbl">Sin cambios</div><div class="val" id="comp-stat-skip">—</div></div><div class="icon-card icon-card-md" style="background:#F3F4F6"><i class="ti ti-minus" style="font-size:14px;color:var(--muted)"></i></div></div>
+          </div>
+          <!-- Log detallado -->
+          <div id="comp-log" style="background:var(--bg);border-radius:var(--rsm);padding:10px 12px;max-height:200px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+
+        <!-- Historial de importaciones -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-t" style="margin-bottom:10px">Historial de importaciones</div>
+          <div id="comp-historial" style="font-size:12px;color:var(--muted)">Sin importaciones registradas.</div>
         </div>
       </div>
 
@@ -1552,35 +1627,6 @@ document.getElementById('btn-logout').onclick = async function() {
   document.getElementById('app').classList.remove('show');
   document.getElementById('login-screen').style.display = 'flex';
 };
-
-// ── Timeout de inactividad: 45 minutos ──────────────────────
-(function() {
-  var TIMEOUT_MS = 45 * 60 * 1000;
-  var _timer = null;
-
-  function resetTimer() {
-    clearTimeout(_timer);
-    if (!user) return;
-    _timer = setTimeout(async function() {
-      await sb.auth.signOut();
-      user = null;
-      document.getElementById('app').classList.remove('show');
-      document.getElementById('login-screen').style.display = 'flex';
-      mostrarAlerta('Sesión cerrada por inactividad.');
-    }, TIMEOUT_MS);
-  }
-
-  ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(function(ev) {
-    document.addEventListener(ev, resetTimer, { passive: true });
-  });
-
-  // Arrancar el timer cuando el usuario logra entrar
-  var _origMostrarApp = mostrarApp;
-  mostrarApp = async function() {
-    await _origMostrarApp();
-    resetTimer();
-  };
-})();
 
 async function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
@@ -6863,6 +6909,7 @@ function irASeccion(sec) {
   if (b) b.classList.add('active');
   if (sec==='tareas') cargarTareas();
   if (sec==='polizas') cargarPolizas();
+  if (sec==='companias') cargarHistorialComp();
 }
 
 // Actualizar badge al iniciar
@@ -8879,6 +8926,410 @@ async function guardarDescripcionSin(sinId) {
 }
 
 init();
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO COMPAÑÍAS — Importación y sincronización
+// ═══════════════════════════════════════════════════════════
+
+var _compActual = 'fed_patronal';
+var _compFormatos = {
+  fed_patronal:  { label: 'Federación Patronal', fmt: 'ZIP / XML',  hint: 'Federación Patronal: ZIP con XMLs' },
+  seguro_metal:  { label: 'Seguro Metal',         fmt: 'XLS',        hint: 'Seguro Metal: archivo .xls' },
+  provincia_art: { label: 'Provincia ART',         fmt: 'XLSX',       hint: 'Provincia ART: archivo .xlsx' },
+  la_equitativa: { label: 'La Equitativa',         fmt: 'CSV',        hint: 'La Equitativa: archivo .csv' },
+};
+
+function selComp(btn) {
+  document.querySelectorAll('.comp-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  _compActual = btn.dataset.comp;
+  var fmt = _compFormatos[_compActual];
+  var dz = document.getElementById('comp-dropzone');
+  document.getElementById('comp-drop-title').textContent = 'Arrastrá el archivo acá o hacé click para buscarlo';
+  document.getElementById('comp-drop-sub').textContent = fmt.hint;
+  document.getElementById('comp-file-input').value = '';
+  document.getElementById('comp-result-card').style.display = 'none';
+  dz.style.borderColor = 'var(--border)';
+  dz.style.background = '';
+}
+
+function handleCompFile(file) {
+  if (!file) return;
+  var dz = document.getElementById('comp-dropzone');
+  dz.style.borderColor = 'var(--blue)';
+  dz.style.background = 'var(--light)';
+  document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
+  document.getElementById('comp-drop-sub').textContent = (file.size/1024).toFixed(0) + ' KB';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      if (_compActual === 'fed_patronal') procesarFedPatronal(e.target.result, file.name);
+      else if (_compActual === 'seguro_metal') procesarExcel(e.target.result, file.name, 'seguro_metal');
+      else if (_compActual === 'provincia_art') procesarExcel(e.target.result, file.name, 'provincia_art');
+      else if (_compActual === 'la_equitativa') procesarCSV(e.target.result, file.name);
+    } catch(err) {
+      compLog('error', 'Error al procesar: ' + err.message);
+    }
+  };
+  if (_compActual === 'fed_patronal') reader.readAsArrayBuffer(file);
+  else if (_compActual === 'la_equitativa') reader.readAsText(file, 'latin1');
+  else reader.readAsArrayBuffer(file);
+}
+
+// ── HELPERS ────────────────────────────────────────────────
+function compLog(tipo, msg) {
+  var log = document.getElementById('comp-log');
+  if (!log) return;
+  var colors = { ok: 'var(--green)', skip: 'var(--muted)', warn: 'var(--amber)', error: 'var(--red)', info: 'var(--med)' };
+  var icons  = { ok: 'ti-check', skip: 'ti-minus', warn: 'ti-alert-triangle', error: 'ti-x', info: 'ti-info-circle' };
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:flex-start;gap:6px;padding:2px 0;border-bottom:0.5px solid var(--border)';
+  row.innerHTML = '<i class="ti ' + (icons[tipo]||'ti-circle') + '" style="font-size:12px;color:' + (colors[tipo]||'var(--muted)') + ';margin-top:1px;flex-shrink:0"></i>'
+    + '<span style="color:var(--text);font-size:12px">' + msg + '</span>';
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+function compMostrarResultado(stats) {
+  var card = document.getElementById('comp-result-card');
+  card.style.display = 'block';
+  document.getElementById('comp-stat-cl-new').textContent = stats.clNew || 0;
+  document.getElementById('comp-stat-cl-upd').textContent = stats.clUpd || 0;
+  document.getElementById('comp-stat-pol').textContent    = stats.polizas || 0;
+  document.getElementById('comp-stat-skip').textContent   = stats.skip || 0;
+  var badge = document.getElementById('comp-result-badge');
+  if (stats.error) {
+    badge.textContent = 'Con errores';
+    badge.style.cssText = 'font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500;background:var(--rl);color:var(--red)';
+  } else {
+    badge.textContent = 'Completado';
+    badge.style.cssText = 'font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500;background:#EAF3DE;color:var(--green)';
+  }
+  // Guardar en historial local
+  var hist = JSON.parse(localStorage.getItem('comp_historial') || '[]');
+  hist.unshift({ comp: _compFormatos[_compActual].label, fecha: new Date().toLocaleDateString('es-AR'), stats: stats });
+  if (hist.length > 20) hist = hist.slice(0,20);
+  localStorage.setItem('comp_historial', JSON.stringify(hist));
+  cargarHistorialComp();
+}
+
+function fmtDateComp(str) {
+  if (!str) return null;
+  str = String(str).trim().replace(/\//g,'-');
+  if (str.length === 8 && !str.includes('-')) {
+    return str.slice(0,4) + '-' + str.slice(4,6) + '-' + str.slice(6,8);
+  }
+  var parts = str.split('-');
+  if (parts.length === 3 && parts[0].length === 4) return str.slice(0,10);
+  if (parts.length === 3 && parts[2].length === 4) return parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
+  return null;
+}
+
+function cargarHistorialComp() {
+  var el = document.getElementById('comp-historial');
+  if (!el) return;
+  var hist = JSON.parse(localStorage.getItem('comp_historial') || '[]');
+  if (!hist.length) { el.innerHTML = '<span style="color:var(--muted)">Sin importaciones registradas.</span>'; return; }
+  el.innerHTML = hist.map(function(h) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:12px">'
+      + '<div><span style="font-weight:500;color:var(--text)">' + h.comp + '</span> <span style="color:var(--muted)">' + h.fecha + '</span></div>'
+      + '<div style="display:flex;gap:10px;color:var(--muted)">'
+      + '<span style="color:var(--green)">+' + (h.stats.clNew||0) + ' clientes</span>'
+      + '<span style="color:var(--med)">~' + (h.stats.polizas||0) + ' pólizas</span>'
+      + '<span>' + (h.stats.skip||0) + ' sin cambios</span>'
+      + '</div></div>';
+  }).join('');
+}
+
+// ── FEDERACIÓN PATRONAL (ZIP/XML) ──────────────────────────
+async function procesarFedPatronal(buffer, filename) {
+  document.getElementById('comp-log').innerHTML = '';
+  document.getElementById('comp-result-card').style.display = 'block';
+  compLog('info', 'Leyendo ZIP: ' + filename);
+  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+
+  try {
+    // Cargar JSZip dinámicamente
+    if (!window.JSZip) {
+      await new Promise(function(res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    var zip = await JSZip.loadAsync(buffer);
+
+    // Leer clientes
+    var clFile = zip.file('CART_CLIENTES.xml');
+    if (clFile) {
+      var xmlText = await clFile.async('string');
+      var parser = new DOMParser();
+      var xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+      // Parsear campos metadata
+      var fields = {};
+      xmlDoc.querySelectorAll('FIELD').forEach(function(f) {
+        fields[f.getAttribute('attrname')] = f.getAttribute('desc');
+      });
+
+      var rows = xmlDoc.querySelectorAll('ROW');
+      compLog('info', rows.length + ' clientes en el archivo');
+      var uid = user.id;
+
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var nombre = row.getAttribute('B') || '';
+        var dni    = row.getAttribute('D') || '';
+        var email  = row.getAttribute('AA') || '';
+        var tel    = row.getAttribute('K') || '';
+        var cuit   = row.getAttribute('U') || '';
+        var dir    = (row.getAttribute('E') || '') + (row.getAttribute('F') ? ' ' + row.getAttribute('F') : '');
+        if (!nombre) continue;
+
+        // Buscar si ya existe
+        var { data: existe } = await sb.from('clientes').select('id,nombre,email,telefono').eq('productor_id', uid).eq('nombre', nombre).maybeSingle();
+
+        if (!existe) {
+          var { error: errIns } = await sb.from('clientes').insert({
+            productor_id: uid, nombre: nombre, dni: dni, email: email,
+            telefono: tel, cuit: cuit, direccion: dir, tipo: 'cliente'
+          });
+          if (!errIns) { stats.clNew++; compLog('ok', 'Nuevo cliente: ' + nombre); }
+          else compLog('warn', 'Error al insertar: ' + nombre);
+        } else {
+          var cambios = {};
+          if (email && email !== existe.email) cambios.email = email;
+          if (tel && tel !== existe.telefono) cambios.telefono = tel;
+          if (Object.keys(cambios).length) {
+            await sb.from('clientes').update(cambios).eq('id', existe.id);
+            stats.clUpd++;
+            compLog('info', 'Actualizado: ' + nombre);
+          } else {
+            stats.skip++;
+          }
+        }
+      }
+    }
+
+    // Leer pólizas
+    var polFile = zip.file('CART_CERTIFICADOS.xml');
+    var ramoFile = zip.file('CART_RAMOS_POLIZAS.xml');
+    var ramos = {};
+    if (ramoFile) {
+      var ramoXml = await ramoFile.async('string');
+      var ramoDoc = new DOMParser().parseFromString(ramoXml, 'text/xml');
+      ramoDoc.querySelectorAll('ROW').forEach(function(r) {
+        ramos[r.getAttribute('A')] = r.getAttribute('B');
+      });
+    }
+
+    if (polFile) {
+      var polXml = await polFile.async('string');
+      var polDoc = new DOMParser().parseFromString(polXml, 'text/xml');
+      var polRows = polDoc.querySelectorAll('ROW');
+      compLog('info', polRows.length + ' pólizas en el archivo');
+
+      for (var j = 0; j < polRows.length; j++) {
+        var pr = polRows[j];
+        var nroPol  = pr.getAttribute('B');
+        var seccion = pr.getAttribute('A');
+        var ramo    = ramos[seccion] || 'Ramo ' + seccion;
+        var codCl   = pr.getAttribute('E');
+        var vigDesde = fmtDateComp(pr.getAttribute('I'));
+        var vigHasta = fmtDateComp(pr.getAttribute('J'));
+        if (!nroPol) continue;
+
+        var { data: polExiste } = await sb.from('polizas').select('id,estado,fecha_vencimiento').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
+        stats.polizas++;
+
+        if (!polExiste) {
+          // Buscar cliente por código
+          var { data: clPol } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('dni', codCl).maybeSingle();
+          await sb.from('polizas').insert({
+            productor_id: user.id,
+            cliente_id: clPol ? clPol.id : null,
+            numero_poliza: nroPol,
+            ramo: ramo,
+            aseguradora: 'Federación Patronal',
+            fecha_inicio: vigDesde,
+            fecha_vencimiento: vigHasta,
+            estado: 'activa'
+          });
+          compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + ramo);
+        } else {
+          var polCambios = {};
+          if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) polCambios.fecha_vencimiento = vigHasta;
+          if (Object.keys(polCambios).length) {
+            await sb.from('polizas').update(polCambios).eq('id', polExiste.id);
+            compLog('info', 'Póliza actualizada: ' + nroPol);
+          } else {
+            stats.skip++;
+          }
+        }
+      }
+    }
+
+    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
+    compMostrarResultado(stats);
+
+  } catch(e) {
+    stats.error = true;
+    compLog('error', 'Error: ' + e.message);
+    compMostrarResultado(stats);
+  }
+}
+
+// ── SEGURO METAL / PROVINCIA ART (XLS/XLSX) ───────────────
+async function procesarExcel(buffer, filename, comp) {
+  document.getElementById('comp-log').innerHTML = '';
+  document.getElementById('comp-result-card').style.display = 'block';
+  compLog('info', 'Leyendo archivo: ' + filename);
+  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+
+  try {
+    if (!window.XLSX) {
+      await new Promise(function(res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    var wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    compLog('info', rows.length + ' filas encontradas');
+
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var nombre, nroPol, ramo, vigDesde, vigHasta, aseguradora, premio;
+
+      if (comp === 'seguro_metal') {
+        nombre     = String(row['Asegurado.1'] || row['Asegurado'] || '').trim();
+        nroPol     = String(row['Póliza'] || '').trim();
+        ramo       = String(row['Rama'] || '').trim();
+        vigDesde   = fmtDateComp(row['Vig. desde']);
+        vigHasta   = fmtDateComp(row['Vig. hasta']);
+        aseguradora = 'Seguro Metal';
+        premio     = parseFloat(row['Premio Emitido']) || null;
+      } else if (comp === 'provincia_art') {
+        nombre     = String(row['RAZÓN SOCIAL'] || '').trim();
+        nroPol     = String(row['CONTRATO'] || '').trim();
+        ramo       = 'ART';
+        vigDesde   = fmtDateComp(row['VIGENCIA DESDE']);
+        vigHasta   = fmtDateComp(row['VIGENCIA HASTA']);
+        aseguradora = 'Provincia ART';
+        premio     = null;
+      }
+
+      if (!nombre || !nroPol) { stats.skip++; continue; }
+
+      // Cliente
+      var { data: clExiste } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('nombre', nombre).maybeSingle();
+      if (!clExiste) {
+        var { data: clIns } = await sb.from('clientes').insert({ productor_id: user.id, nombre: nombre, tipo: 'cliente' }).select('id').single();
+        clExiste = clIns;
+        stats.clNew++;
+        compLog('ok', 'Nuevo cliente: ' + nombre);
+      }
+
+      // Póliza
+      var { data: polExiste } = await sb.from('polizas').select('id,fecha_vencimiento,prima_anual').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
+      stats.polizas++;
+
+      if (!polExiste) {
+        await sb.from('polizas').insert({
+          productor_id: user.id,
+          cliente_id: clExiste ? clExiste.id : null,
+          numero_poliza: nroPol, ramo: ramo,
+          aseguradora: aseguradora,
+          fecha_inicio: vigDesde, fecha_vencimiento: vigHasta,
+          prima_anual: premio, estado: 'activa'
+        });
+        compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + nombre);
+      } else {
+        var polCambios = {};
+        if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) polCambios.fecha_vencimiento = vigHasta;
+        if (premio && premio !== polExiste.prima_anual) polCambios.prima_anual = premio;
+        if (Object.keys(polCambios).length) {
+          await sb.from('polizas').update(polCambios).eq('id', polExiste.id);
+          compLog('info', 'Actualizada: ' + nroPol);
+        } else { stats.skip++; }
+      }
+    }
+
+    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
+    compMostrarResultado(stats);
+
+  } catch(e) {
+    stats.error = true;
+    compLog('error', 'Error: ' + e.message);
+    compMostrarResultado(stats);
+  }
+}
+
+// ── LA EQUITATIVA (CSV) ────────────────────────────────────
+async function procesarCSV(text, filename) {
+  document.getElementById('comp-log').innerHTML = '';
+  document.getElementById('comp-result-card').style.display = 'block';
+  compLog('info', 'Leyendo CSV: ' + filename);
+  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+
+  try {
+    var lines = text.split('\n').filter(function(l){ return l.trim(); });
+    var headers = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
+    compLog('info', (lines.length - 1) + ' filas encontradas');
+
+    for (var i = 1; i < lines.length; i++) {
+      var vals = lines[i].split(',').map(function(v){ return v.trim().replace(/"/g,''); });
+      var row = {};
+      headers.forEach(function(h, idx){ row[h] = vals[idx] || ''; });
+
+      var nombre  = row['Tomador'] || '';
+      var nroPol  = row['Ramo póliza'] || '';
+      var ramo    = row['Ramo'] || '';
+      var vigDesde = fmtDateComp(row['Desde']);
+      var vigHasta = fmtDateComp(row['Hasta']);
+
+      if (!nombre || !nroPol) { stats.skip++; continue; }
+
+      var { data: clExiste } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('nombre', nombre).maybeSingle();
+      if (!clExiste) {
+        var { data: clIns } = await sb.from('clientes').insert({ productor_id: user.id, nombre: nombre, tipo: 'cliente' }).select('id').single();
+        clExiste = clIns;
+        stats.clNew++;
+        compLog('ok', 'Nuevo cliente: ' + nombre);
+      }
+
+      var { data: polExiste } = await sb.from('polizas').select('id,fecha_vencimiento').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
+      stats.polizas++;
+
+      if (!polExiste) {
+        await sb.from('polizas').insert({
+          productor_id: user.id, cliente_id: clExiste ? clExiste.id : null,
+          numero_poliza: nroPol, ramo: ramo,
+          aseguradora: 'La Equitativa del Plata',
+          fecha_inicio: vigDesde, fecha_vencimiento: vigHasta, estado: 'activa'
+        });
+        compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + nombre);
+      } else {
+        if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) {
+          await sb.from('polizas').update({ fecha_vencimiento: vigHasta }).eq('id', polExiste.id);
+          compLog('info', 'Vencimiento actualizado: ' + nroPol);
+        } else { stats.skip++; }
+      }
+    }
+
+    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
+    compMostrarResultado(stats);
+
+  } catch(e) {
+    stats.error = true;
+    compLog('error', 'Error: ' + e.message);
+    compMostrarResultado(stats);
+  }
+}
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">
