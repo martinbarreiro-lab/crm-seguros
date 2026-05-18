@@ -5719,13 +5719,17 @@ function renderCotCard(cot, isInline) {
   var html = [];
   html.push('<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px">');
   // Header
-  html.push('<div onclick="toggleCotSb(\''+bodyId+'\',\''+chevId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer">');
-  html.push('<div style="display:flex;align-items:center;gap:10px">');
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">');
+  html.push('<div onclick="toggleCotSb(\''+bodyId+'\',\''+chevId+'\')" style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;min-width:0">');
   if (!isInline) html.push('<span style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</span><span style="font-size:11px;color:var(--muted)">·</span>');
   html.push('<span style="font-size:13px;font-weight:500;color:var(--text)">'+ramo+(subtitulo?' · '+subtitulo:'')+'</span>');
   html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span>');
   html.push('</div>');
-  html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span><span id="'+chevId+'" style="font-size:13px;color:var(--muted)">▼</span></div>');
+  html.push('<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">');
+  html.push('<span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span>');
+  html.push('<span id="'+chevId+'" onclick="toggleCotSb(\''+bodyId+'\',\''+chevId+'\')" style="font-size:13px;color:var(--muted);cursor:pointer;padding:2px 4px">▼</span>');
+  html.push('<button type="button" onclick="eliminarCotizacion(\''+cot.id+'\')" title="Eliminar cotización" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;border:0.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit"><i class=\"ti ti-trash\" style=\"font-size:12px\"></i>Eliminar</button>');
+  html.push('</div>');
   html.push('</div>');
   // Body
   html.push('<div id="'+bodyId+'" style="display:none;border-top:0.5px solid var(--border);padding:14px;background:var(--bg)">');
