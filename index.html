@@ -3338,9 +3338,9 @@ function renderSinEtapaPanel(s, etapa) {
   if (s.estado !== 'cerrado') {
     html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:4px;border-top:0.5px solid #F3F4F6">');
     if (etapa !== 'cierre') {
-      html.push('<button type="button" data-btn-avanzar class="btn btn-sm" onclick="avanzarEtapaSin(\''+s.id+'\',\''+etapa+'\')">Avanzar estado →</button>');
+      html.push('<button type="button" data-btn-avanzar class="btn btn-sm btn-p" onclick="avanzarEtapaSin(\''+s.id+'\',\''+etapa+'\')" style="display:flex;align-items:center;gap:6px;font-weight:500"><i class="ti ti-circle-arrow-right" style="font-size:14px"></i>Avanzar estado</button>');
     } else {
-      html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" onclick="cerrarSiniestro(\''+s.id+'\')">✓ Cerrar siniestro</button>');
+      html.push('<button type="button" data-btn-cerrar class="btn btn-sm btn-ok" onclick="cerrarSiniestro(\''+s.id+'\')" style="display:flex;align-items:center;gap:6px;font-weight:500"><i class="ti ti-check" style="font-size:14px"></i>Cerrar siniestro</button>');
     }
     html.push('</div>');
   }
@@ -5817,10 +5817,16 @@ function confirmar(titulo, msg) {
 }
 
 async function eliminarCotizacion(id) {
-  try { await confirmar('¿Eliminar cotización?', 'Se borrará el registro completo. No se puede deshacer.'); }
-  catch(e) { return; }
-  await sb.from('cotizaciones').delete().eq('id', id).eq('productor_id', user.id);
-  cargarCotizaciones();
+  confirmarAccion({
+    icon: '🗑',
+    titulo: 'Eliminar cotización',
+    msg: 'Se borrará el registro completo. Esta acción no se puede deshacer.',
+    btnOk: 'Eliminar',
+    btnOkStyle: 'background:#EF4444;color:#fff;border-color:#EF4444;min-width:100px;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit'
+  }, async function() {
+    await sb.from('cotizaciones').delete().eq('id', id).eq('productor_id', user.id);
+    cargarCotizaciones();
+  });
 }
 
 function toggleCotSb(bodyId, chevId) {
