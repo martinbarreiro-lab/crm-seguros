@@ -487,3 +487,8 @@ tr:hover td{background:var(--bg)}
 .sin-estado-pill{font-size:11px;padding:2px 9px;border-radius:20px}
 .sin-estado-pill.abierto{background:#DBEAFE;color:#1E40AF}
 .sin-estado-pill.cerrado{background:#EAF3DE;color:#27500A}
+
+/* Compañías */
+.comp-btn{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rsm);padding:10px 12px;cursor:pointer;transition:all .15s}
+.comp-btn:hover{border-color:var(--med)}
+.comp-btn.active{border:1.5px solid var(--med);background:var(--light)}
