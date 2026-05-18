@@ -558,8 +558,11 @@
       <!-- ANÁLISIS -->
       <div id="sec-analisis" class="sec">
         <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:600;color:var(--text)">Análisis del negocio</div>
+        <div class="sec-header">
+          <div class="sec-header-left">
+            <div class="icon-card icon-card-lg ic-blue"><i class="ti ti-chart-bar" style="font-size:17px" aria-hidden="true"></i></div>
+            <div><div class="sec-header-title">Análisis del negocio</div><div class="sec-header-sub">Métricas, proyecciones y oportunidades</div></div>
+          </div>
           <div style="display:flex;gap:4px">
             <button type="button" class="btn btn-sm" onclick="analSetPeriodo('mes',this)">Este mes</button>
             <button type="button" class="btn btn-sm btn-p" id="anal-btn-trim" onclick="analSetPeriodo('trim',this)">Trimestre</button>
@@ -568,101 +571,102 @@
         </div>
 
         <!-- Número principal -->
-        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;min-width:0;overflow:hidden">
           <div>
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valor actual de cartera</div>
-            <div style="font-size:34px;font-weight:500;color:var(--text);margin-bottom:4px" id="an-cartera-val">—</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Valor actual de cartera</div>
+            <div style="font-size:24px;font-weight:600;color:var(--text);margin-bottom:3px" id="an-cartera-val">—</div>
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:13px;font-weight:500" id="an-cartera-delta"></span>
-              <span style="font-size:12px;color:var(--muted)" id="an-cartera-mensual"></span>
+              <span style="font-size:11px;font-weight:500" id="an-cartera-delta"></span>
+              <span style="font-size:11px;color:var(--muted)" id="an-cartera-mensual"></span>
             </div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Proyección anual</div>
-            <div style="font-size:22px;font-weight:500;color:var(--med)" id="an-proyeccion">—</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px" id="an-proy-sub"></div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Proyección anual</div>
+            <div style="font-size:18px;font-weight:600;color:var(--med)" id="an-proyeccion">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px" id="an-proy-sub"></div>
           </div>
         </div>
 
-        <!-- Alertas -->
-        <div id="an-alertas" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
-
-        <!-- Flujo + Proyección 90d -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Flujo del negocio</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="an-flujo-periodo">Lo que entró vs lo que salió</div>
-            <div style="display:flex;gap:8px;margin-bottom:10px">
-              <div style="flex:1;padding:10px;background:#EAF3DE;border-radius:var(--rsm);text-align:center">
-                <div style="font-size:16px;font-weight:500;color:var(--green)" id="an-flujo-entra">—</div>
-                <div style="font-size:11px;color:var(--green);margin-top:2px" id="an-flujo-entra-sub"></div>
+        <!-- Evolución área + Flujo dona -->
+        <div style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:10px;margin-bottom:10px">
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px">Evolución de cartera</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Premio acumulado mes a mes</div>
+            <div id="an-evol-svg" style="width:100%"></div>
+          </div>
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px">Flujo <span id="an-flujo-periodo-lbl"></span></div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Entró vs salió</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+              <div id="an-flujo-dona" style="flex-shrink:0"></div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div style="width:8px;height:8px;border-radius:2px;background:var(--green);flex-shrink:0"></div>
+                  <div><div style="font-size:11px;font-weight:500;color:var(--green)" id="an-flujo-entra">—</div><div style="font-size:10px;color:var(--muted)" id="an-flujo-entra-sub"></div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div style="width:8px;height:8px;border-radius:2px;background:var(--red);flex-shrink:0"></div>
+                  <div><div style="font-size:11px;font-weight:500;color:var(--red)" id="an-flujo-sale">—</div><div style="font-size:10px;color:var(--muted)" id="an-flujo-sale-sub"></div></div>
+                </div>
               </div>
-              <div style="flex:1;padding:10px;background:#FCEBEB;border-radius:var(--rsm);text-align:center">
-                <div style="font-size:16px;font-weight:500;color:var(--red)" id="an-flujo-sale">—</div>
-                <div style="font-size:11px;color:var(--red);margin-top:2px" id="an-flujo-sale-sub"></div>
-              </div>
-            </div>
-            <div style="padding:8px 12px;background:var(--bg);border-radius:var(--rsm);display:flex;justify-content:space-between;align-items:center">
-              <div style="font-size:12px;color:var(--muted)">Resultado neto</div>
-              <div style="font-size:14px;font-weight:500" id="an-flujo-neto">—</div>
             </div>
           </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Proyección 90 días</div>
+        </div>
+
+        <!-- Proyección 90d + Objetivos -->
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px">
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px">Proyección 90 días</div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Basada en renovaciones pendientes</div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <div style="display:flex;justify-content:space-between;padding:7px 10px;background:var(--bg);border-radius:var(--rsm)">
-                <div style="font-size:12px;color:var(--muted)">Premio en riesgo (vencen)</div>
-                <div style="font-size:12px;font-weight:500;color:var(--red)" id="an-proy90-riesgo">—</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--muted)">Premio en riesgo</span><span style="font-size:11px;font-weight:500;color:var(--red)" id="an-proy90-riesgo">—</span></div>
+                <div style="height:7px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:100%;background:#FCEBEB;border-radius:3px"></div></div>
               </div>
-              <div style="display:flex;justify-content:space-between;padding:7px 10px;background:var(--bg);border-radius:var(--rsm)">
-                <div style="font-size:12px;color:var(--muted)" id="an-proy90-ret-lbl">Proyectado a retener</div>
-                <div style="font-size:12px;font-weight:500;color:var(--green)" id="an-proy90-ret">—</div>
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--muted)" id="an-proy90-ret-lbl">Proyectado a retener</span><span style="font-size:11px;font-weight:500;color:var(--green)" id="an-proy90-ret">—</span></div>
+                <div style="height:7px;background:var(--bg);border-radius:3px;overflow:hidden"><div id="an-proy90-bar" style="height:100%;width:0%;background:var(--green);border-radius:3px;transition:width .5s"></div></div>
               </div>
-              <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:2px">
-                <div id="an-proy90-bar" style="height:100%;width:0%;background:var(--green);border-radius:3px;transition:width .5s"></div>
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--muted)">En riesgo real</span><span style="font-size:11px;font-weight:500;color:var(--amber)" id="an-proy90-riesgoreal">—</span></div>
+                <div style="height:7px;background:var(--bg);border-radius:3px;overflow:hidden"><div id="an-proy90-bar2" style="height:100%;width:0%;background:var(--amber);border-radius:3px;transition:width .5s"></div></div>
               </div>
-              <div style="font-size:11px;color:var(--muted)" id="an-proy90-sub"></div>
             </div>
+          </div>
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Objetivos del período</div>
+            <div id="an-objetivos"><div style="font-size:12px;color:var(--lt);padding:8px 0">Sin objetivos definidos.</div></div>
           </div>
         </div>
 
-        <!-- Evolución mensual -->
-        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Evolución de cartera</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Premio acumulado mes a mes</div>
-          <div id="an-evol-bars" style="display:flex;align-items:flex-end;gap:4px;height:90px"></div>
-          <div style="display:flex;gap:16px;margin-top:8px">
-            <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:3px;background:var(--med);border-radius:2px"></div>Premio acumulado mensual</div>
+        <!-- Distribución ramo + compañía -->
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px">
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Distribución por ramo</div>
+            <div id="an-dist-ramo"><div style="font-size:12px;color:var(--lt);padding:4px 0">Sin datos</div></div>
+          </div>
+          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Distribución por compañía</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Premio anual por aseguradora</div>
+            <div id="an-dist-cia"><div style="font-size:12px;color:var(--lt);padding:4px 0">Sin datos</div></div>
+            <div id="an-cia-alerta" style="display:none;margin-top:10px"></div>
           </div>
         </div>
 
-        <!-- Análisis de objetivos -->
-        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:12px">Análisis de objetivos</div>
-          <div id="an-objetivos"><div style="font-size:12px;color:var(--lt);padding:8px 0">Sin objetivos definidos.</div></div>
+        <!-- Top clientes -->
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Top clientes por valor</div>
+          <div id="an-ranking"></div>
         </div>
 
-        <!-- Ranking + Cross-selling -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Top clientes por valor</div>
-            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 55px;padding:6px 8px;background:var(--bg);border-radius:var(--rsm);margin-bottom:6px">
-              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase">Cliente</div>
-              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase">Premio</div>
-              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase">Siniest.</div>
-              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase">Valor</div>
-            </div>
-            <div id="an-ranking"></div>
-          </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Potencial de crecimiento</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Premio estimado por oportunidades no desarrolladas</div>
-            <div id="an-cross" style="display:flex;flex-direction:column;gap:6px"></div>
-            <div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);display:flex;justify-content:space-between;align-items:center">
-              <div style="font-size:12px;color:var(--med)">Potencial total</div>
-              <div style="font-size:14px;font-weight:500;color:var(--med)" id="an-cross-total">—</div>
-            </div>
+        <!-- Cross-selling -->
+        <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Potencial de crecimiento — cross-selling</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Premio estimado por oportunidades no desarrolladas</div>
+          <div id="an-cross" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+          <div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;color:var(--med)">Potencial total</div>
+            <div style="font-size:13px;font-weight:600;color:var(--med)" id="an-cross-total">—</div>
           </div>
         </div>
       </div>
@@ -6969,6 +6973,282 @@ async function cargarAnalisis() {
   else desde = new Date(hoy.getFullYear(), 0, 1);
   var desdeStr = desde.toISOString().split('T')[0];
   var el = function(id){ return document.getElementById(id); };
+  var fmtM = function(v) {
+    if (!v) return '$0';
+    var abs = Math.abs(v);
+    if (abs >= 1e9) return (v<0?'-':'')+'$'+(abs/1e9).toFixed(2).replace(/\.?0+$/,'')+'B';
+    if (abs >= 1e6) return (v<0?'-':'')+'$'+(abs/1e6).toFixed(1).replace(/\.?0+$/,'')+'M';
+    if (abs >= 1e3) return (v<0?'-':'')+'$'+(abs/1e3).toFixed(0)+'K';
+    return (v<0?'-':'')+'$'+Math.round(abs).toLocaleString('es-AR');
+  };
+
+  var periodoLabel = _analPeriodo==='mes'?'este mes':_analPeriodo==='trim'?'del trimestre':'de este año';
+  if(el('an-flujo-periodo-lbl')) el('an-flujo-periodo-lbl').textContent = periodoLabel;
+
+  var [polActivas, polPeriodo, sinData, cotzData, clData] = await Promise.all([
+    sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',uid).eq('estado','activa'),
+    sb.from('polizas').select('*').eq('productor_id',uid).gte('created_at',desdeStr),
+    sb.from('siniestros').select('cliente_id').eq('productor_id',uid).neq('estado','cerrado'),
+    sb.from('cotizaciones').select('estado').eq('productor_id',uid),
+    sb.from('clientes').select('id').eq('productor_id',uid),
+  ]);
+
+  var activas = polActivas.data || [];
+  var premioTotal = activas.reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
+
+  if(el('an-cartera-val')) el('an-cartera-val').textContent = '$'+Math.round(premioTotal).toLocaleString('es-AR');
+  if(el('an-cartera-mensual')) el('an-cartera-mensual').textContent = premioTotal ? fmtM(premioTotal/12)+'/mes estimado' : '';
+
+  // Tasa retención
+  var {data: polHist} = await sb.from('polizas').select('estado').eq('productor_id',uid).not('estado','in','("activa")');
+  var renov = (polHist||[]).filter(function(p){return p.estado==='renovada';}).length;
+  var bajas = (polHist||[]).filter(function(p){return ['no_renueva','anulada'].includes(p.estado);}).length;
+  var totalHist = renov + bajas;
+  var tasaRet = totalHist > 0 ? Math.round(renov/totalHist*100) : null;
+  var retPct = tasaRet || 78;
+
+  if (tasaRet !== null) {
+    if(el('an-proyeccion')) el('an-proyeccion').textContent = fmtM(Math.round(premioTotal*(retPct/100)));
+    if(el('an-proy-sub')) el('an-proy-sub').textContent = 'Basada en retención '+retPct+'%';
+  } else {
+    if(el('an-proyeccion')) el('an-proyeccion').textContent = fmtM(Math.round(premioTotal));
+    if(el('an-proy-sub')) el('an-proy-sub').textContent = 'Sin historial suficiente aún';
+  }
+
+  // Flujo dona
+  var polPer = polPeriodo.data || [];
+  var premioEntro = polPer.reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
+  var nuevas = polPer.filter(function(p){return !p.poliza_anterior_id;}).length;
+  var renovPer = polPer.filter(function(p){return p.estado==='renovada';}).length;
+  var {data: bajasPer} = await sb.from('polizas').select('prima_anual').eq('productor_id',uid).not('estado','in','("activa","renovada")').gte('updated_at',desdeStr);
+  var premioSalio = (bajasPer||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
+  var neto = premioEntro - premioSalio;
+
+  if(el('an-cartera-delta')) {
+    el('an-cartera-delta').textContent = (neto>=0?'↑ +':'↓ ')+fmtM(Math.abs(neto))+' '+periodoLabel;
+    el('an-cartera-delta').style.color = neto>=0?'var(--green)':'var(--red)';
+  }
+  if(el('an-flujo-entra')) el('an-flujo-entra').textContent = '+'+fmtM(premioEntro);
+  if(el('an-flujo-entra-sub')) el('an-flujo-entra-sub').textContent = (nuevas+renovPer)+' ingresaron';
+  if(el('an-flujo-sale')) el('an-flujo-sale').textContent = '-'+fmtM(premioSalio);
+  if(el('an-flujo-sale-sub')) el('an-flujo-sale-sub').textContent = (bajasPer||[]).length+' salieron';
+
+  // Dona SVG flujo
+  var donaEl = el('an-flujo-dona');
+  if(donaEl) {
+    var tot = premioEntro + premioSalio || 1;
+    var circum = 2 * Math.PI * 28;
+    var entPct = premioEntro/tot;
+    var salPct = premioSalio/tot;
+    var entDash = (circum * entPct).toFixed(1)+' '+(circum*(1-entPct)).toFixed(1);
+    var salDash = (circum * salPct).toFixed(1)+' '+(circum*(1-salPct)).toFixed(1);
+    var salOffset = -(circum * entPct).toFixed(1);
+    donaEl.innerHTML = '<svg viewBox="0 0 80 80" style="width:68px;height:68px">'
+      +'<circle cx="40" cy="40" r="28" fill="none" stroke="#F3F4F6" stroke-width="12"/>'
+      +(premioEntro?'<circle cx="40" cy="40" r="28" fill="none" stroke="var(--green)" stroke-width="12" stroke-dasharray="'+entDash+'" stroke-dashoffset="44" stroke-linecap="round"/>':'')
+      +(premioSalio?'<circle cx="40" cy="40" r="28" fill="none" stroke="var(--red)" stroke-width="12" stroke-dasharray="'+salDash+'" stroke-dashoffset="'+salOffset+'" stroke-linecap="round"/>':'')
+      +'<text x="40" y="37" text-anchor="middle" font-size="8" font-weight="600" fill="var(--med)">'+fmtM(neto)+'</text>'
+      +'<text x="40" y="48" text-anchor="middle" font-size="7" fill="var(--muted)">neto</text>'
+      +'</svg>';
+  }
+
+  // Proyección 90d
+  var lim90 = new Date(); lim90.setDate(lim90.getDate()+90);
+  var {data: pol90} = await sb.from('polizas').select('prima_anual').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoyStr).lte('fecha_vencimiento',lim90.toISOString().split('T')[0]);
+  var riesgo90 = (pol90||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
+  var retenido = Math.round(riesgo90 * retPct/100);
+  var riesgoReal = riesgo90 - retenido;
+  if(el('an-proy90-riesgo')) el('an-proy90-riesgo').textContent = fmtM(riesgo90);
+  if(el('an-proy90-ret-lbl')) el('an-proy90-ret-lbl').textContent = 'Proyectado a retener ('+retPct+'%)';
+  if(el('an-proy90-ret')) el('an-proy90-ret').textContent = fmtM(retenido);
+  if(el('an-proy90-bar')) el('an-proy90-bar').style.width = retPct+'%';
+  if(el('an-proy90-riesgoreal')) el('an-proy90-riesgoreal').textContent = fmtM(riesgoReal);
+  if(el('an-proy90-bar2')) el('an-proy90-bar2').style.width = (100-retPct)+'%';
+
+  // Evolución área SVG (últimos 6 meses)
+  var evolData = [];
+  for (var m=5;m>=0;m--) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth()-m, 1);
+    var dFin = new Date(hoy.getFullYear(), hoy.getMonth()-m+1, 0);
+    var mesLabel = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][d.getMonth()];
+    var {data: pMes} = await sb.from('polizas').select('prima_anual').eq('productor_id',uid).lte('created_at',dFin.toISOString()).eq('estado','activa');
+    evolData.push({mes:mesLabel, v:(pMes||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0)});
+  }
+  var maxEvol = Math.max.apply(null, evolData.map(function(e){return e.v;})) || 1;
+  var evolEl = el('an-evol-svg');
+  if(evolEl) {
+    var W=500, H=80, pad=30, aH=55;
+    var pts = evolData.map(function(e,i){
+      var x = pad + i*(W-pad*2)/5;
+      var y = e.v ? (H - 8 - Math.round(e.v/maxEvol*aH)) : H-8;
+      return {x:x,y:y,v:e.v,mes:e.mes};
+    });
+    var lastIdx = evolData.map(function(e,i){return e.v?i:-1;}).reduce(function(a,b){return b>a?b:a;},-1);
+    // Línea y área solo para puntos con datos
+    var lineSegs = [], areaSegs = [];
+    var inSeg = false;
+    for(var i=0;i<pts.length;i++){
+      if(pts[i].v){
+        if(!inSeg){lineSegs.push('M'+pts[i].x+','+(H-8));inSeg=true;}
+        lineSegs.push('L'+pts[i].x+','+pts[i].y);
+        areaSegs.push(pts[i].x+','+(H-8)+' '+pts[i].x+','+pts[i].y);
+      } else { inSeg=false; }
+    }
+    evolEl.innerHTML = '<svg viewBox="0 0 '+W+' '+(H+16)+'" style="width:100%;height:'+(H+16)+'px" preserveAspectRatio="none">'
+      +'<defs><linearGradient id="evolGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#185FA5" stop-opacity="0.18"/><stop offset="100%" stop-color="#185FA5" stop-opacity="0"/></linearGradient></defs>'
+      +'<line x1="'+pad+'" y1="'+(H-8)+'" x2="'+(W-pad)+'" y2="'+(H-8)+'" stroke="#F3F4F6" stroke-width="1"/>'
+      // Línea punteada fondo
+      +'<line x1="'+pad+'" y1="'+(H-8)+'" x2="'+(W-pad)+'" y2="'+(H-8)+'" stroke="#E5E7EB" stroke-width="1.5" stroke-dasharray="4,3"/>'
+      // Área
+      +(lastIdx>=1?'<polygon points="'+pts[lastIdx>0?lastIdx-1:lastIdx].x+','+(H-8)+' '+pts.slice(0,lastIdx+1).filter(function(p){return p.v;}).map(function(p){return p.x+','+p.y;}).join(' ')+' '+pts[lastIdx].x+','+(H-8)+'" fill="url(#evolGrad)"/>':'')
+      // Línea
+      +(lineSegs.length?'<path d="'+lineSegs.join('')+'" fill="none" stroke="#185FA5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>':'')
+      // Puntos
+      +pts.map(function(p,i){
+        var isLast = i===lastIdx;
+        return p.v
+          ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(isLast?5:3)+'" fill="#185FA5"/>'+(isLast?'<circle cx="'+p.x+'" cy="'+p.y+'" r="9" fill="#185FA5" opacity="0.12"/>':'')
+          : '<circle cx="'+p.x+'" cy="'+(H-8)+'" r="3" fill="none" stroke="#D1D5DB" stroke-width="1.5"/>';
+      }).join('')
+      // Labels
+      +pts.map(function(p,i){
+        var isLast = i===lastIdx;
+        return (p.v&&isLast?'<text x="'+p.x+'" y="'+(p.y-8)+'" text-anchor="middle" font-size="8.5" fill="#185FA5" font-weight="600">'+fmtM(p.v)+'</text>':'')
+          +'<text x="'+p.x+'" y="'+(H+12)+'" text-anchor="middle" font-size="8.5" fill="'+(isLast&&p.v?'#185FA5':'#9CA3AF')+'" '+(isLast&&p.v?'font-weight="600"':'')+'>'+p.mes+'</text>';
+      }).join('')
+      +'</svg>';
+  }
+
+  // Objetivos
+  var anObjEl = el('an-objetivos');
+  if (anObjEl) {
+    if (!_dashObjetivos.length) {
+      anObjEl.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:4px 0">Sin objetivos definidos. Creá uno desde el Dashboard.</div>';
+    } else {
+      anObjEl.innerHTML = _dashObjetivos.map(function(o){
+        var pct = o.meta > 0 ? Math.round((o.progreso/o.meta)*100) : 0;
+        var cal = objGetCalificacion(pct);
+        var borderColor = pct>=100?'var(--green)':pct>=50?'var(--med)':pct>=20?'var(--amber)':'var(--red)';
+        var progTxt = o.tipo==='monto' ? fmtM(o.progreso)+' / '+fmtM(o.meta) : o.progreso+' / '+o.meta;
+        return '<div style="padding:10px 12px;background:var(--bg);border-radius:var(--rsm);border-left:3px solid '+borderColor+';margin-bottom:8px">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><div style="font-size:12px;font-weight:500;color:var(--text)">'+o.nombre+'</div>'
+          +'<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:'+cal.bg+';color:'+cal.color+'">'+cal.label+'</span></div>'
+          +'<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+Math.min(100,pct)+'%;background:'+borderColor+';border-radius:2px"></div></div>'
+          +'<div style="display:flex;justify-content:space-between"><span style="font-size:10px;color:var(--muted)">'+progTxt+' · '+pct+'%</span><span style="font-size:10px;color:var(--muted)">'+objPeriodoLabel(o)+'</span></div>'
+          +'</div>';
+      }).join('');
+    }
+  }
+
+  // Distribución por ramo
+  var ramoMap = {};
+  activas.forEach(function(p){ ramoMap[p.ramo] = (ramoMap[p.ramo]||0)+(parseFloat(p.prima_anual)||0); });
+  var ramoColors = ['#185FA5','#3C3489','#854F0B','#27500A','#A32D2D','#639922','#0C447C'];
+  var ramoEntries = Object.entries(ramoMap).sort(function(a,b){return b[1]-a[1];});
+  if(el('an-dist-ramo')) el('an-dist-ramo').innerHTML = ramoEntries.length ? ramoEntries.map(function(e,i){
+    var pct = premioTotal>0?Math.round(e[1]/premioTotal*100):0;
+    return '<div style="margin-bottom:7px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+      +'<span style="font-size:11px;color:var(--text)">'+e[0]+'</span>'
+      +'<div style="display:flex;gap:8px"><span style="font-size:10px;color:var(--muted)">'+fmtM(e[1])+'</span><span style="font-size:11px;font-weight:500;color:var(--text)">'+pct+'%</span></div>'
+      +'</div>'
+      +'<div style="height:7px;background:var(--bg);border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+ramoColors[i%ramoColors.length]+';border-radius:3px"></div>'
+      +'</div></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--lt);padding:4px 0">Sin datos</div>';
+
+  // Distribución por compañía
+  var ciaMap = {};
+  activas.forEach(function(p){ if(p.aseguradora) ciaMap[p.aseguradora] = (ciaMap[p.aseguradora]||0)+(parseFloat(p.prima_anual)||0); });
+  var ciaEntries = Object.entries(ciaMap).sort(function(a,b){return b[1]-a[1];});
+  if(el('an-dist-cia')) el('an-dist-cia').innerHTML = ciaEntries.length ? ciaEntries.map(function(e,i){
+    var pct = premioTotal>0?Math.round(e[1]/premioTotal*100):0;
+    var barColor = pct>=70?'var(--red)':pct>=40?'var(--amber)':'#185FA5';
+    return '<div style="margin-bottom:7px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:3px;align-items:center">'
+      +'<div style="display:flex;align-items:center;gap:5px">'
+      +'<span style="font-size:11px;color:var(--text)">'+e[0]+'</span>'
+      +(pct>=70?'<span style="font-size:9px;padding:1px 5px;border-radius:20px;background:#FCEBEB;color:#A32D2D">'+pct+'%</span>':'')
+      +'</div>'
+      +'<span style="font-size:10px;color:var(--muted)">'+fmtM(e[1])+'</span>'
+      +'</div>'
+      +'<div style="height:7px;background:var(--bg);border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div>'
+      +'</div></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--lt);padding:4px 0">Sin datos</div>';
+
+  // Alerta concentración dentro de la card
+  var topCia = ciaEntries[0];
+  var alertaEl = el('an-cia-alerta');
+  if(alertaEl && topCia && premioTotal>0) {
+    var topPct = Math.round(topCia[1]/premioTotal*100);
+    if(topPct>=70) {
+      alertaEl.style.display='flex';
+      alertaEl.innerHTML='<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#FCEBEB;border-radius:var(--rsm);width:100%">'
+        +'<i class="ti ti-alert-triangle" style="font-size:12px;color:#A32D2D;flex-shrink:0"></i>'
+        +'<span style="font-size:10px;color:#791F1F">Alta concentración — diversificá para reducir riesgo</span></div>';
+    } else { alertaEl.style.display='none'; }
+  }
+
+  // Ranking clientes (barras horizontales)
+  var sinMap = {};
+  (sinData.data||[]).forEach(function(s){ sinMap[s.cliente_id] = (sinMap[s.cliente_id]||0)+1; });
+  var rankData = activas.reduce(function(acc, p){
+    if (!p.cliente_id) return acc;
+    if (!acc[p.cliente_id]) acc[p.cliente_id] = {id:p.cliente_id, nombre:p.clientes?(p.clientes.apellido+', '+p.clientes.nombre):'—', premio:0, sins:sinMap[p.cliente_id]||0};
+    acc[p.cliente_id].premio += parseFloat(p.prima_anual)||0;
+    return acc;
+  }, {});
+  var ranking = Object.values(rankData).sort(function(a,b){return b.premio-a.premio;}).slice(0,5);
+  var maxRank = ranking.length ? ranking[0].premio : 1;
+  var vBg={alto:'#EAF3DE',medio:'#E6F1FB',bajo:'#FCEBEB'};
+  var vCl={alto:'#27500A',medio:'#185FA5',bajo:'#A32D2D'};
+  if(el('an-ranking')) el('an-ranking').innerHTML = ranking.length ? ranking.map(function(c){
+    var valor = c.sins>2?'bajo':c.premio===ranking[0].premio?'alto':'medio';
+    var barW = Math.round(c.premio/maxRank*100);
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer" onclick="irAFichaCliente(\''+c.id+'\')" onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'
+      +'<div style="font-size:11px;color:var(--text);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.nombre+'</div>'
+      +'<div style="flex:1;height:12px;background:var(--bg);border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+barW+'%;background:linear-gradient(90deg,#185FA5,#4A90D9);border-radius:3px"></div></div>'
+      +'<div style="font-size:11px;font-weight:600;color:#185FA5;width:48px;text-align:right;flex-shrink:0">'+fmtM(c.premio)+'</div>'
+      +'<span style="font-size:9px;padding:1px 5px;border-radius:20px;background:'+vBg[valor]+';color:'+vCl[valor]+';flex-shrink:0">'+valor.charAt(0).toUpperCase()+valor.slice(1)+'</span>'
+      +'</div>';
+  }).join('') : '<div style="font-size:12px;color:var(--lt);padding:4px 0">Sin datos</div>';
+
+  // Cross-selling
+  var clienteIds = (clData.data||[]).map(function(c){return c.id;});
+  var crossOps = [];
+  var premioPromedioAuto=60000, premioPromedioHog=30000, premioPromedioVida=40000;
+  var {data: tienenAuto} = await sb.from('polizas').select('cliente_id').eq('productor_id',uid).eq('estado','activa').ilike('ramo','%auto%');
+  var {data: tienenHogar} = await sb.from('polizas').select('cliente_id').eq('productor_id',uid).eq('estado','activa').ilike('ramo','%hogar%');
+  var idsAuto = [...new Set((tienenAuto||[]).map(function(p){return p.cliente_id;}))];
+  var idsHogar = new Set((tienenHogar||[]).map(function(p){return p.cliente_id;}));
+  var idsSinHogar = idsAuto.filter(function(id){return !idsHogar.has(id);});
+  if(idsSinHogar.length) crossOps.push({t:'Auto sin Hogar',cant:idsSinHogar.length,premio:idsSinHogar.length*premioPromedioHog,bg:'#E6F1FB',c:'#185FA5',ids:idsSinHogar});
+  var {data: tienenVida} = await sb.from('polizas').select('cliente_id').eq('productor_id',uid).eq('estado','activa').ilike('ramo','%vida%');
+  var idsVida = new Set((tienenVida||[]).map(function(p){return p.cliente_id;}));
+  var idsSinVida = clienteIds.filter(function(id){return !idsVida.has(id);});
+  if(idsSinVida.length) crossOps.push({t:'Sin Vida Individual',cant:idsSinVida.length,premio:idsSinVida.length*premioPromedioVida,bg:'#FAEEDA',c:'#854F0B',ids:idsSinVida});
+  var ramosPorCliente = {};
+  activas.forEach(function(p){ if(!ramosPorCliente[p.cliente_id]) ramosPorCliente[p.cliente_id]=new Set(); ramosPorCliente[p.cliente_id].add(p.ramo); });
+  var idsSoloUno = Object.keys(ramosPorCliente).filter(function(id){return ramosPorCliente[id].size===1;});
+  if(idsSoloUno.length) crossOps.push({t:'Solo un ramo',cant:idsSoloUno.length,premio:idsSoloUno.length*premioPromedioAuto,bg:'#EAF3DE',c:'#3B6D11',ids:idsSoloUno});
+  var totalCross = crossOps.reduce(function(a,c){return a+c.premio;},0);
+  if(el('an-cross')) el('an-cross').innerHTML = crossOps.length ? crossOps.map(function(x){
+    var barPct = totalCross>0?Math.round(x.premio/totalCross*100):0;
+    return '<div style="padding:10px 12px;background:'+x.bg+';border-radius:var(--rsm)">'
+      +'<div style="font-size:11px;font-weight:500;color:'+x.c+';margin-bottom:5px">'+x.t+'</div>'
+      +'<div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin-bottom:5px">'
+      +'<div style="height:100%;width:'+barPct+'%;background:'+x.c+';border-radius:2px"></div></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:10px;color:'+x.c+'">'+x.cant+' clientes</span>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<span style="font-size:11px;font-weight:600;color:'+x.c+'">≈ '+fmtM(x.premio)+'/año</span>'
+      +'<button type="button" class="btn btn-sm" onclick="verClientesCross('+JSON.stringify(x.ids)+')" style="font-size:10px;padding:2px 7px">Ver →</button>'
+      +'</div></div></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--lt);padding:4px 0">Sin oportunidades detectadas</div>';
+  if(el('an-cross-total')) el('an-cross-total').textContent = totalCross ? '≈ '+fmtM(totalCross)+'/año' : '—';
+}
 
   // Datos base
   var [polActivas, polPeriodo, sinData, cotzData, clData] = await Promise.all([
