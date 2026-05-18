@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MB Seguros — CRM</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
@@ -587,29 +588,22 @@
           </div>
         </div>
 
-        <!-- Evolución área + Flujo dona -->
+        <!-- Evolución barras agrupadas + Waterfall flujo -->
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px">
           <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
             <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px">Evolución de cartera</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Premio acumulado mes a mes</div>
-            <div id="an-evol-svg" style="width:100%"></div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Movimiento mensual de pólizas</div>
+            <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:8px;height:8px;border-radius:2px;background:#27500A"></div>Nuevas</div>
+              <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:8px;height:8px;border-radius:2px;background:#185FA5"></div>Renovadas</div>
+              <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:8px;height:8px;border-radius:2px;background:#A32D2D"></div>Bajas</div>
+            </div>
+            <div style="position:relative;height:130px"><canvas id="an-evol-chart" role="img" aria-label="Evolución de cartera mensual">Evolución mensual de pólizas.</canvas></div>
           </div>
           <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px">
             <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px">Flujo <span id="an-flujo-periodo-lbl"></span></div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Entró vs salió</div>
-            <div style="display:flex;align-items:center;justify-content:center;gap:12px">
-              <div id="an-flujo-dona" style="flex-shrink:0"></div>
-              <div style="display:flex;flex-direction:column;gap:6px">
-                <div style="display:flex;align-items:center;gap:5px">
-                  <div style="width:8px;height:8px;border-radius:2px;background:var(--green);flex-shrink:0"></div>
-                  <div><div style="font-size:11px;font-weight:500;color:var(--green)" id="an-flujo-entra">—</div><div style="font-size:10px;color:var(--muted)" id="an-flujo-entra-sub"></div></div>
-                </div>
-                <div style="display:flex;align-items:center;gap:5px">
-                  <div style="width:8px;height:8px;border-radius:2px;background:var(--red);flex-shrink:0"></div>
-                  <div><div style="font-size:11px;font-weight:500;color:var(--red)" id="an-flujo-sale">—</div><div style="font-size:10px;color:var(--muted)" id="an-flujo-sale-sub"></div></div>
-                </div>
-              </div>
-            </div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Cómo se movió la cartera</div>
+            <div style="position:relative;height:148px"><canvas id="an-flujo-chart" role="img" aria-label="Waterfall flujo de cartera">Waterfall flujo de cartera.</canvas></div>
           </div>
         </div>
 
@@ -7028,30 +7022,6 @@ async function cargarAnalisis() {
     el('an-cartera-delta').textContent = (neto>=0?'↑ +':'↓ ')+fmtM(Math.abs(neto))+' '+periodoLabel;
     el('an-cartera-delta').style.color = neto>=0?'var(--green)':'var(--red)';
   }
-  if(el('an-flujo-entra')) el('an-flujo-entra').textContent = '+'+fmtM(premioEntro);
-  if(el('an-flujo-entra-sub')) el('an-flujo-entra-sub').textContent = (nuevas+renovPer)+' ingresaron';
-  if(el('an-flujo-sale')) el('an-flujo-sale').textContent = '-'+fmtM(premioSalio);
-  if(el('an-flujo-sale-sub')) el('an-flujo-sale-sub').textContent = (bajasPer||[]).length+' salieron';
-
-  // Dona SVG flujo
-  var donaEl = el('an-flujo-dona');
-  if(donaEl) {
-    var tot = premioEntro + premioSalio || 1;
-    var circum = 2 * Math.PI * 28;
-    var entPct = premioEntro/tot;
-    var salPct = premioSalio/tot;
-    var entDash = (circum * entPct).toFixed(1)+' '+(circum*(1-entPct)).toFixed(1);
-    var salDash = (circum * salPct).toFixed(1)+' '+(circum*(1-salPct)).toFixed(1);
-    var salOffset = -(circum * entPct).toFixed(1);
-    donaEl.innerHTML = '<svg viewBox="0 0 80 80" style="width:68px;height:68px">'
-      +'<circle cx="40" cy="40" r="28" fill="none" stroke="#F3F4F6" stroke-width="12"/>'
-      +(premioEntro?'<circle cx="40" cy="40" r="28" fill="none" stroke="var(--green)" stroke-width="12" stroke-dasharray="'+entDash+'" stroke-dashoffset="44" stroke-linecap="round"/>':'')
-      +(premioSalio?'<circle cx="40" cy="40" r="28" fill="none" stroke="var(--red)" stroke-width="12" stroke-dasharray="'+salDash+'" stroke-dashoffset="'+salOffset+'" stroke-linecap="round"/>':'')
-      +'<text x="40" y="37" text-anchor="middle" font-size="8" font-weight="600" fill="var(--med)">'+fmtM(neto)+'</text>'
-      +'<text x="40" y="48" text-anchor="middle" font-size="7" fill="var(--muted)">neto</text>'
-      +'</svg>';
-  }
-
   // Proyección 90d
   var lim90 = new Date(); lim90.setDate(lim90.getDate()+90);
   var {data: pol90} = await sb.from('polizas').select('prima_anual').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoyStr).lte('fecha_vencimiento',lim90.toISOString().split('T')[0]);
@@ -7065,58 +7035,113 @@ async function cargarAnalisis() {
   if(el('an-proy90-riesgoreal')) el('an-proy90-riesgoreal').textContent = fmtM(riesgoReal);
   if(el('an-proy90-bar2')) el('an-proy90-bar2').style.width = (100-retPct)+'%';
 
-  // Evolución área SVG (últimos 6 meses)
-  var evolData = [];
-  for (var m=5;m>=0;m--) {
-    var d = new Date(hoy.getFullYear(), hoy.getMonth()-m, 1);
-    var dFin = new Date(hoy.getFullYear(), hoy.getMonth()-m+1, 0);
-    var mesLabel = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][d.getMonth()];
-    var {data: pMes} = await sb.from('polizas').select('prima_anual').eq('productor_id',uid).lte('created_at',dFin.toISOString()).eq('estado','activa');
-    evolData.push({mes:mesLabel, v:(pMes||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0)});
+  // --- Evolución barras agrupadas (últimos 6 meses) ---
+  var seisMesesAtras = new Date(hoy.getFullYear(), hoy.getMonth()-5, 1);
+  var [evolPols, evolBajas] = await Promise.all([
+    sb.from('polizas').select('created_at,poliza_anterior_id').eq('productor_id',uid).gte('created_at', seisMesesAtras.toISOString().split('T')[0]),
+    sb.from('polizas').select('updated_at').eq('productor_id',uid).not('estado','in','("activa","renovada")').gte('updated_at', seisMesesAtras.toISOString().split('T')[0]),
+  ]);
+  var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var evolLabels=[], evolNuevas=[], evolRenov=[], evolBajasMes=[];
+  for (var em=5; em>=0; em--) {
+    var eD = new Date(hoy.getFullYear(), hoy.getMonth()-em, 1);
+    var eMesStr = eD.getFullYear()+'-'+String(eD.getMonth()+1).padStart(2,'0');
+    evolLabels.push(MESES_LABEL[eD.getMonth()]);
+    var polsMes = (evolPols.data||[]).filter(function(p){ return (p.created_at||'').startsWith(eMesStr); });
+    evolNuevas.push(polsMes.filter(function(p){ return !p.poliza_anterior_id; }).length);
+    evolRenov.push(polsMes.filter(function(p){ return !!p.poliza_anterior_id; }).length);
+    evolBajasMes.push((evolBajas.data||[]).filter(function(p){ return (p.updated_at||'').startsWith(eMesStr); }).length);
   }
-  var maxEvol = Math.max.apply(null, evolData.map(function(e){return e.v;})) || 1;
-  var evolEl = el('an-evol-svg');
-  if(evolEl) {
-    var W=500, H=80, pad=30, aH=55;
-    var pts = evolData.map(function(e,i){
-      var x = pad + i*(W-pad*2)/5;
-      var y = e.v ? (H - 8 - Math.round(e.v/maxEvol*aH)) : H-8;
-      return {x:x,y:y,v:e.v,mes:e.mes};
+
+  // Destruir charts previos si existen
+  if (window._anEvolChart) { window._anEvolChart.destroy(); }
+  if (window._anFlujoChart) { window._anFlujoChart.destroy(); }
+
+  var gridCol = 'rgba(0,0,0,0.04)';
+  var tickCol = '#9CA3AF';
+  var baseF = { family: "'Inter', system-ui, sans-serif", size: 10 };
+
+  var evolCanv = el('an-evol-chart');
+  if (evolCanv) {
+    window._anEvolChart = new Chart(evolCanv, {
+      type: 'bar',
+      data: {
+        labels: evolLabels,
+        datasets: [
+          { label: 'Nuevas',    data: evolNuevas,                backgroundColor: '#27500A', borderRadius: 3, barPercentage: 0.8 },
+          { label: 'Renovadas', data: evolRenov,                  backgroundColor: '#185FA5', borderRadius: 3, barPercentage: 0.8 },
+          { label: 'Bajas',     data: evolBajasMes.map(function(v){ return -v; }), backgroundColor: '#A32D2D', borderRadius: 3, barPercentage: 0.8 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function(ctx){ return ' '+ctx.dataset.label+': '+Math.abs(ctx.raw); } } }
+        },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { color: tickCol, font: baseF } },
+          y: { stacked: true, grid: { color: gridCol }, border: { display: false },
+               ticks: { color: tickCol, font: baseF, callback: function(v){ return Math.abs(v); } } }
+        }
+      }
     });
-    var lastIdx = evolData.map(function(e,i){return e.v?i:-1;}).reduce(function(a,b){return b>a?b:a;},-1);
-    // Línea y área solo para puntos con datos
-    var lineSegs = [], areaSegs = [];
-    var inSeg = false;
-    for(var i=0;i<pts.length;i++){
-      if(pts[i].v){
-        if(!inSeg){lineSegs.push('M'+pts[i].x+','+(H-8));inSeg=true;}
-        lineSegs.push('L'+pts[i].x+','+pts[i].y);
-        areaSegs.push(pts[i].x+','+(H-8)+' '+pts[i].x+','+pts[i].y);
-      } else { inSeg=false; }
-    }
-    evolEl.innerHTML = '<svg viewBox="0 0 '+W+' '+(H+16)+'" style="width:100%;height:'+(H+16)+'px" preserveAspectRatio="none">'
-      +'<defs><linearGradient id="evolGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#185FA5" stop-opacity="0.18"/><stop offset="100%" stop-color="#185FA5" stop-opacity="0"/></linearGradient></defs>'
-      +'<line x1="'+pad+'" y1="'+(H-8)+'" x2="'+(W-pad)+'" y2="'+(H-8)+'" stroke="#F3F4F6" stroke-width="1"/>'
-      // Línea punteada fondo
-      +'<line x1="'+pad+'" y1="'+(H-8)+'" x2="'+(W-pad)+'" y2="'+(H-8)+'" stroke="#E5E7EB" stroke-width="1.5" stroke-dasharray="4,3"/>'
-      // Área
-      +(lastIdx>=1?'<polygon points="'+pts[lastIdx>0?lastIdx-1:lastIdx].x+','+(H-8)+' '+pts.slice(0,lastIdx+1).filter(function(p){return p.v;}).map(function(p){return p.x+','+p.y;}).join(' ')+' '+pts[lastIdx].x+','+(H-8)+'" fill="url(#evolGrad)"/>':'')
-      // Línea
-      +(lineSegs.length?'<path d="'+lineSegs.join('')+'" fill="none" stroke="#185FA5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>':'')
-      // Puntos
-      +pts.map(function(p,i){
-        var isLast = i===lastIdx;
-        return p.v
-          ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(isLast?5:3)+'" fill="#185FA5"/>'+(isLast?'<circle cx="'+p.x+'" cy="'+p.y+'" r="9" fill="#185FA5" opacity="0.12"/>':'')
-          : '<circle cx="'+p.x+'" cy="'+(H-8)+'" r="3" fill="none" stroke="#D1D5DB" stroke-width="1.5"/>';
-      }).join('')
-      // Labels
-      +pts.map(function(p,i){
-        var isLast = i===lastIdx;
-        return (p.v&&isLast?'<text x="'+p.x+'" y="'+(p.y-8)+'" text-anchor="middle" font-size="8.5" fill="#185FA5" font-weight="600">'+fmtM(p.v)+'</text>':'')
-          +'<text x="'+p.x+'" y="'+(H+12)+'" text-anchor="middle" font-size="8.5" fill="'+(isLast&&p.v?'#185FA5':'#9CA3AF')+'" '+(isLast&&p.v?'font-weight="600"':'')+'>'+p.mes+'</text>';
-      }).join('')
-      +'</svg>';
+  }
+
+  // --- Waterfall flujo del período ---
+  var wfActual = activas.length;
+  var wfNuevas = (polPer.data||[]).filter(function(p){ return !p.poliza_anterior_id; }).length;
+  var wfRenov  = (polPer.data||[]).filter(function(p){ return !!p.poliza_anterior_id; }).length;
+  var wfBajas  = (bajasPer||[]).length;
+  var wfInicio = Math.max(0, wfActual - wfNuevas - wfRenov + wfBajas);
+  // Flotantes para waterfall: [desde, hasta]
+  var wfFloats = [
+    [0, wfInicio],
+    [wfInicio, wfInicio + wfNuevas],
+    [wfInicio + wfNuevas, wfInicio + wfNuevas + wfRenov],
+    [wfInicio + wfNuevas + wfRenov - wfBajas, wfInicio + wfNuevas + wfRenov],
+    [0, wfActual]
+  ];
+  var wfColors = ['#185FA5','#27500A','#185FA5','#A32D2D','#27500A'];
+  var wfLabels = ['Inicio', '+Nuevas', '+Renov.', '−Bajas', 'Actual'];
+  var wfTooltips = ['Cartera inicio','Pólizas nuevas','Renovaciones','Bajas','Cartera actual'];
+  var wfVals = [wfInicio, wfNuevas, wfRenov, wfBajas, wfActual];
+
+  var flujoCanv = el('an-flujo-chart');
+  if (flujoCanv) {
+    var wfMax = Math.max.apply(null, wfFloats.map(function(f){ return f[1]; })) * 1.15 || 10;
+    window._anFlujoChart = new Chart(flujoCanv, {
+      type: 'bar',
+      data: {
+        labels: wfLabels,
+        datasets: [{
+          data: wfFloats,
+          backgroundColor: wfColors,
+          borderRadius: 3,
+          barPercentage: 0.55,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var i = ctx.dataIndex;
+                var sign = i===3 ? '−' : i>0&&i<4 ? '+' : '';
+                return ' '+wfTooltips[i]+': '+sign+wfVals[i]+' pólizas';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: tickCol, font: baseF } },
+          y: { grid: { color: gridCol }, border: { display: false }, min: 0, max: wfMax,
+               ticks: { color: tickCol, font: baseF } }
+        }
+      }
+    });
   }
 
   // Objetivos
