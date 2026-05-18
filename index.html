@@ -5725,7 +5725,7 @@ function renderCotCard(cot, isInline) {
   html.push('<span style="font-size:13px;font-weight:500;color:var(--text)">'+ramo+(subtitulo?' · '+subtitulo:'')+'</span>');
   html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span>');
   html.push('</div>');
-  html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span><span id="'+chevId+'" style="font-size:13px;color:var(--muted)">▼</span><button type="button" onclick="event.stopPropagation();eliminarCotizacion(\''+cot.id+'\')" style="border:none;background:none;cursor:pointer;padding:3px 5px;color:var(--muted);font-size:14px;line-height:1;border-radius:4px" title="Eliminar cotización">✕</button></div>');
+  html.push('<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span><span id="'+chevId+'" style="font-size:13px;color:var(--muted)">▼</span></div>');
   html.push('</div>');
   // Body
   html.push('<div id="'+bodyId+'" style="display:none;border-top:0.5px solid var(--border);padding:14px;background:var(--bg)">');
@@ -5803,8 +5803,22 @@ function renderCotCard(cot, isInline) {
   return html.join('');
 }
 
+function confirmar(titulo, msg) {
+  return new Promise(function(resolve, reject) {
+    document.getElementById('confirm-title').textContent = titulo;
+    document.getElementById('confirm-msg').textContent = msg;
+    window._confirmReject = reject;
+    document.getElementById('confirm-ok').onclick = function() {
+      cerrarModal('modal-confirm');
+      resolve();
+    };
+    document.getElementById('modal-confirm').classList.add('open');
+  });
+}
+
 async function eliminarCotizacion(id) {
-  if (!confirm('¿Eliminar esta cotización? No se puede deshacer.')) return;
+  try { await confirmar('¿Eliminar cotización?', 'Se borrará el registro completo. No se puede deshacer.'); }
+  catch(e) { return; }
   await sb.from('cotizaciones').delete().eq('id', id).eq('productor_id', user.id);
   cargarCotizaciones();
 }
@@ -8831,6 +8845,20 @@ init();
 <div class="modal-ov" id="modal-pol-det">
   <div class="modal-box" style="max-width:720px;padding:0;overflow:hidden" id="mpd-box">
     <div style="padding:40px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando...</div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-confirm">
+  <div class="modal-box" style="max-width:360px;text-align:center;padding:28px 24px">
+    <div style="width:44px;height:44px;border-radius:50%;background:#FCEBEB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+      <i class="ti ti-trash" style="font-size:22px;color:#A32D2D"></i>
+    </div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px" id="confirm-title">¿Eliminar?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:22px" id="confirm-msg">Esta acción no se puede deshacer.</div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button type="button" class="btn" style="min-width:100px" onclick="cerrarModal('modal-confirm');window._confirmReject&&window._confirmReject()">Cancelar</button>
+      <button type="button" class="btn" style="min-width:100px;background:#A32D2D;color:#fff;border-color:#A32D2D" id="confirm-ok">Eliminar</button>
+    </div>
   </div>
 </div>
 
