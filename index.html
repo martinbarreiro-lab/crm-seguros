@@ -2385,7 +2385,7 @@ async function fichaResumen(c) {
   if(polsActivas.length){
     html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div>');
     polsActivas.forEach(function(p){
-      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
+      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
     });
     html.push('</div>');
   } else {
@@ -2398,7 +2398,7 @@ async function fichaResumen(c) {
     polsVenc.forEach(function(p){
       const dias=Math.round((new Date(p.fecha_vencimiento)-new Date())/864e5);
       const cls=dias<=10?'venc-urgente':dias<=30?'venc-pronto':'venc-ok';
-      html.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
+      html.push('<div class="venc-item"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div></div><span class="venc-badge '+cls+'">'+dias+'d</span></div>');
     });
     html.push('</div>');
   }
@@ -2974,7 +2974,7 @@ async function fichaPolizas(c) {
 
       html.push('<div class="poliza-row" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
-           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero || '—') + '</div>'
+           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
@@ -2998,7 +2998,7 @@ async function fichaPolizas(c) {
     polInactivas.forEach(function(p) {
       html.push('<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">'
            +    '<div>'
-           +      '<div style="font-size:13px;color:#6B7280;text-decoration:line-through">' + (p.numero || '—') + '</div>'
+           +      '<div style="font-size:13px;color:#6B7280;text-decoration:line-through">' + (p.numero_poliza || '—') + '</div>'
            +      '<div style="font-size:11px;color:#9CA3AF">' + p.ramo + ' · ' + (p.aseguradora || '—') + (fmtDate(p.fecha_vencimiento) ? ' · Venció ' + fmtDate(p.fecha_vencimiento) : '') + '</div>'
            +    '</div>'
            +    '<span style="font-size:10px;color:#6B7280;background:#F3F4F6;padding:3px 8px;border-radius:4px;font-weight:600;text-transform:uppercase">' + p.estado + '</span>'
@@ -3029,7 +3029,7 @@ async function fichaPolizas(c) {
            +      '<span style="width:7px;height:7px;background:' + sc.border + ';border-radius:50%"></span>'
            +      '<span style="font-size:10px;color:' + sc.text + ';font-weight:700;text-transform:uppercase">' + d + ' ' + (d === 1 ? 'día' : 'días') + '</span>'
            +    '</div>'
-           +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero || '—') + '</div>'
+           +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero_poliza || '—') + '</div>'
            +    '<div style="font-size:11px;color:#6B7280">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
            +    (p.fecha_vencimiento ? '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Vence ' + fmtDate(p.fecha_vencimiento) + '</div>' : '')
            +  '</div>');
@@ -3096,9 +3096,9 @@ async function fichaSiniestros(c) {
     // Header colapsable
     html.push('<div onclick="toggleSin(\''+sinId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#fff;user-select:none">');
     html.push('<div><div id="sin-header-'+sinId+'" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">');
-    var polizaRef = s.polizas ? ' · Póliza ' + s.polizas.numero : (s.poliza_id ? '' : '');
+    var polizaRef = s.polizas ? ' · Póliza ' + s.polizas.numero_poliza : (s.poliza_id ? '' : '');
     html.push('<span style="font-size:11px;color:#9CA3AF;font-weight:500">N° Siniestro:&nbsp;</span><span style="font-size:13px;font-weight:600;color:#111827">'+(s.numero_expediente||'—')+'</span>');
-    if (s.polizas) html.push('<span style="font-size:11px;color:#9CA3AF;margin-left:4px">· Póliza '+s.polizas.numero+'</span>');
+    if (s.polizas) html.push('<span style="font-size:11px;color:#9CA3AF;margin-left:4px">· Póliza '+s.polizas.numero_poliza+'</span>');
     html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span>');
     if (!isCerrado) html.push('<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:'+(dias>30?'#FEF2F2':'#FFFBEB')+';color:'+(dias>30?'#991B1B':'#854F0B')+'">'+dias+'d</span>');
     html.push('</div>');
@@ -4054,7 +4054,7 @@ async function fichaHistorial(c) {
   const { data: cotzs } = await sb.from('cotizaciones').select('ramo,aseguradora,estado,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
   var eventos=[];
   (ints||[]).forEach(function(i){eventos.push({tipo:'interaccion',fecha:i.created_at,titulo:i.resumen,sub:i.tipo,color:'blue'});});
-  (pols||[]).forEach(function(p){eventos.push({tipo:'poliza',fecha:p.created_at,titulo:'P\u00f3liza: '+p.numero,sub:p.ramo+' \u00b7 '+p.aseguradora,color:'green'});});
+  (pols||[]).forEach(function(p){eventos.push({tipo:'poliza',fecha:p.created_at,titulo:'P\u00f3liza: '+p.numero_poliza,sub:p.ramo+' \u00b7 '+p.aseguradora,color:'green'});});
   (sins||[]).forEach(function(s){eventos.push({tipo:'siniestro',fecha:s.created_at,titulo:'Siniestro: '+(s.numero_expediente||'Sin N\u00b0'),sub:s.tipo_siniestro||'',color:'red'});});
   (cotzs||[]).forEach(function(ct){eventos.push({tipo:'cotizacion',fecha:ct.created_at,titulo:'Cotizaci\u00f3n: '+ct.ramo,sub:ct.aseguradora+' \u00b7 '+ct.estado,color:'amber'});});
   eventos.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);});
@@ -4377,9 +4377,9 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
       categoria: 'renovacion',
       tipo: 'sistema',
       poliza_id: polViejaId,
-      poliza_numero: polVieja.numero || '',
+      poliza_numero: polVieja.numero_poliza || '',
       poliza_ramo: ramo,
-      resumen: 'Renovación de póliza N° '+(polVieja.numero||polViejaId)+' ('+ramo+'). Nueva póliza: N° '+numAseg+' con '+p.aseguradora+'.',
+      resumen: 'Renovación de póliza N° '+(polVieja.numero_poliza||polViejaId)+' ('+ramo+'). Nueva póliza: N° '+numAseg+' con '+p.aseguradora+'.',
       es_automatico: false,
     });
     await completarTareaAutoPoliza(polViejaId, 'renovada');
@@ -4573,7 +4573,7 @@ async function onSinClienteChange() {
   var { data } = await sb.from('polizas').select('id,numero,ramo,aseguradora').eq('cliente_id', cid).eq('estado','activa');
   var pols = data || [];
   sel.innerHTML = '<option value="">Sin vincular</option>' + pols.map(function(p){
-    return '<option value="'+p.id+'" data-ramo="'+p.ramo+'" data-aseg="'+p.aseguradora+'">'+p.numero+' · '+p.ramo+'</option>';
+    return '<option value="'+p.id+'" data-ramo="'+p.ramo+'" data-aseg="'+p.aseguradora+'">'+p.numero_poliza+' · '+p.ramo+'</option>';
   }).join('');
   // Auto-fill aseguradora cuando elige póliza
   sel.onchange = function() {
@@ -4909,7 +4909,7 @@ document.getElementById('fcob-cl').addEventListener('change', async function() {
   const sel = document.getElementById('fcob-pol');
   if (!this.value) { sel.innerHTML = '<option value="">Primero seleccioná un cliente</option>'; return; }
   const { data } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
-  sel.innerHTML = '<option value="">Seleccionar póliza...</option>' + (data || []).map(function(p) { return '<option value="' + p.id + '">' + p.numero + ' — ' + p.ramo + '</option>'; }).join('');
+  sel.innerHTML = '<option value="">Seleccionar póliza...</option>' + (data || []).map(function(p) { return '<option value="' + p.id + '">' + p.numero_poliza + ' — ' + p.ramo + '</option>'; }).join('');
 });
 
 // ---- GUARDAR TAREA ----
@@ -5269,7 +5269,7 @@ function renderPolAttention() {
       html.push('<div style="display:grid;grid-template-columns:1.5fr 1.4fr 0.8fr 0.8fr 0.9fr 1.5fr;gap:8px;padding:11px 12px;' + (isLast ? '' : 'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px">');
       html.push('<div onclick="verFicha(\'' + p.cliente_id + '\')" style="cursor:pointer">');
       html.push('<div style="font-weight:600;color:#111827">' + nombreCl + '</div>');
-      html.push('<div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>');
+      html.push('<div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero_poliza || '—') + '</div></div>');
       html.push('<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>');
       html.push('<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>');
       html.push('<div><div style="font-size:11px;color:' + e.color + ';font-weight:600">' + diasTxt + '</div><div style="font-size:10px;color:#9CA3AF">' + fmtDate(p.fecha_vencimiento) + '</div></div>');
@@ -5342,7 +5342,7 @@ function renderPolListadoCompleto() {
       const dr = p.datos_ramo || {};
       const nombreCl = ((cl.apellido || '') + ' ' + (cl.nombre || '')).toLowerCase();
       const haystack = [
-        (p.numero || '').toLowerCase(),
+        (p.numero_poliza || '').toLowerCase(),
         (p.aseguradora || '').toLowerCase(),
         nombreCl,
         (cl.dni || '').toLowerCase(),
@@ -5415,7 +5415,7 @@ function renderPolListadoCompleto() {
       html.push('<div onclick="abrirDetallePol(\'' + p.id + '\')" style="display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:8px;padding:11px 12px;' + (isLast?'':'border-bottom:1px solid #F3F4F6;') + 'align-items:center;font-size:13px;cursor:pointer">');
       html.push('<div><div style="font-weight:600;color:#111827">' + nombreCl + '</div><div style="font-size:11px;color:#9CA3AF">DNI ' + (cl.dni || '—') + '</div></div>');
       html.push('<div><div style="color:#374151">' + p.ramo + '</div><div style="font-size:11px;color:#9CA3AF">' + (dataClave || '—') + '</div></div>');
-      html.push('<div><div style="color:#374151">' + (p.aseguradora || '—') + '</div><div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero || '—') + '</div></div>');
+      html.push('<div><div style="color:#374151">' + (p.aseguradora || '—') + '</div><div style="font-size:11px;color:#9CA3AF">N° ' + (p.numero_poliza || '—') + '</div></div>');
       html.push('<div style="text-align:right;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>');
       html.push('<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_inicio) + '</div>');
       html.push('<div style="font-size:11px;color:#6B7280">' + fmtDate(p.fecha_vencimiento) + '</div>');
@@ -5480,7 +5480,7 @@ function exportarPolizasCSV() {
     if (txt) {
       const cl = allCl.find(function(c) { return c.id === p.cliente_id; }) || {};
       const nombreCl = ((cl.apellido || '') + ' ' + (cl.nombre || '')).toLowerCase();
-      const haystack = [(p.numero || '').toLowerCase(), (p.aseguradora || '').toLowerCase(), nombreCl, (cl.dni || '').toLowerCase()].join(' ');
+      const haystack = [(p.numero_poliza || '').toLowerCase(), (p.aseguradora || '').toLowerCase(), nombreCl, (cl.dni || '').toLowerCase()].join(' ');
       if (haystack.indexOf(txt) === -1) return false;
     }
     return true;
@@ -5493,7 +5493,7 @@ function exportarPolizasCSV() {
     let estado = e.label;
     if (p.estado === 'cancelada') estado = 'Cancelada';
     if (p.estado === 'no_renueva') estado = 'No renovó';
-    return [p.numero || '', nombreCl, cl.dni || '', p.ramo || '', getDataClavePoliza(p), p.aseguradora || '', p.prima_anual || 0, fmtDate(p.fecha_inicio) || '', fmtDate(p.fecha_vencimiento) || '', estado];
+    return [p.numero_poliza || '', nombreCl, cl.dni || '', p.ramo || '', getDataClavePoliza(p), p.aseguradora || '', p.prima_anual || 0, fmtDate(p.fecha_inicio) || '', fmtDate(p.fecha_vencimiento) || '', estado];
   });
   const csv = [headers, ...rows].map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -5547,7 +5547,7 @@ async function abrirRenovarPoliza(polId) {
     if (p.medio_pago) document.getElementById('fp-medio').value = p.medio_pago;
     if (p.dia_debito) document.getElementById('fp-dia-debito').value = p.dia_debito;
     if (p.periodo_meses) document.getElementById('fp-periodo').value = p.periodo_meses;
-    document.getElementById('fp-notas').value = 'RENOVACIÓN de póliza N° '+(p.numero||'')+'. Ramo: '+p.ramo+'.';
+    document.getElementById('fp-notas').value = 'RENOVACIÓN de póliza N° '+(p.numero_poliza||'')+'. Ramo: '+p.ramo+'.';
     var pdfStatusEl = document.getElementById('fp-pdf-status');
     if (pdfStatusEl) pdfStatusEl.textContent = 'Adjuntá el PDF de la nueva póliza';
     document.getElementById('modal-pol').classList.add('open');
@@ -5570,7 +5570,7 @@ async function abrirRefacturarPoliza(polId) {
   var info = document.getElementById('refact-info');
   if (info) {
     info.innerHTML =
-      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores actuales — N° '+(p.numero||'—')+'</div>'+
+      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores actuales — N° '+(p.numero_poliza||'—')+'</div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500">'+(fmtDate(p.fecha_inicio)||'—')+' → '+(fmtDate(p.fecha_vencimiento)||'—')+'</span></div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio anual</span><span style="font-weight:600;color:#166534">'+fmtMoney(p.prima_anual)+'</span></div>'+
       (p.valor_cuota||p.cantidad_cuotas?'<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Cuota</span><span style="font-weight:500">'+fmtMoney(p.valor_cuota||(p.prima_anual&&p.cantidad_cuotas?Math.round(p.prima_anual/p.cantidad_cuotas):null))+' / '+(p.forma_pago||'mes')+'</span></div>':'');
@@ -5628,8 +5628,8 @@ async function confirmarRefacturacion() {
   if (p.cantidad_cuotas) updates.valor_cuota = Math.round(nuevoPremio / p.cantidad_cuotas);
   var { error } = await sb.from('polizas').update(updates).eq('id', polId);
   if (error) { alert('Error: ' + error.message); return; }
-  var resumen = 'Refacturación de póliza N° '+(p.numero||'—')+' ('+p.ramo+'). Premio: '+fmtMoney(p.prima_anual)+' → '+fmtMoney(nuevoPremio)+'. Nueva vigencia hasta '+nuevaFecha+(motivo?'. '+motivo:'');
-  await registrarHistorial({ cliente_id: p.cliente_id, categoria: 'sistema', tipo: 'sistema', poliza_id: polId, poliza_numero: p.numero, poliza_ramo: p.ramo, resumen: resumen, es_automatico: false });
+  var resumen = 'Refacturación de póliza N° '+(p.numero_poliza||'—')+' ('+p.ramo+'). Premio: '+fmtMoney(p.prima_anual)+' → '+fmtMoney(nuevoPremio)+'. Nueva vigencia hasta '+nuevaFecha+(motivo?'. '+motivo:'');
+  await registrarHistorial({ cliente_id: p.cliente_id, categoria: 'sistema', tipo: 'sistema', poliza_id: polId, poliza_numero: p.numero_poliza, poliza_ramo: p.ramo, resumen: resumen, es_automatico: false });
   await completarTareaAutoPoliza(polId, 'refacturada');
   cerrarModal('modal-refact');
   mostrarAlerta('✅ Póliza refacturada correctamente');
@@ -5643,7 +5643,7 @@ function abrirMenuPoliza(ev, polId) {
   const p = _allPolizas.find(function(x){return x.id===polId;});
   if (!p) return;
   // Simple menu via prompt-style for now
-  const opcion = prompt('Acciones disponibles para póliza N° ' + p.numero + ':\n\n1 - Ver ficha del cliente\n2 - Cancelar póliza\n3 - Marcar como "No renueva"\n\nIngresá el número:');
+  const opcion = prompt('Acciones disponibles para póliza N° ' + p.numero_poliza + ':\n\n1 - Ver ficha del cliente\n2 - Cancelar póliza\n3 - Marcar como "No renueva"\n\nIngresá el número:');
   if (opcion === '1') verFicha(p.cliente_id);
   else if (opcion === '2') cancelarPoliza(polId);
   else if (opcion === '3') marcarNoRenueva(polId);
@@ -5659,7 +5659,7 @@ async function cancelarPoliza(polId) {
     cliente_id: p.cliente_id,
     productor_id: user.id,
     tipo: 'sistema',
-    resumen: 'Cancelación de póliza N° ' + p.numero + ' (' + p.ramo + ')' + (motivo ? '. Motivo: ' + motivo : '')
+    resumen: 'Cancelación de póliza N° ' + p.numero_poliza + ' (' + p.ramo + ')' + (motivo ? '. Motivo: ' + motivo : '')
   });
   await completarTareaAutoPoliza(polId, 'cancelada');
   alert('Póliza cancelada');
@@ -5669,13 +5669,13 @@ async function cancelarPoliza(polId) {
 async function marcarNoRenueva(polId) {
   const p = _allPolizas.find(function(x){return x.id===polId;});
   if (!p) return;
-  if (!confirm('¿Marcar póliza N° ' + p.numero + ' como "No renueva"?')) return;
+  if (!confirm('¿Marcar póliza N° ' + p.numero_poliza + ' como "No renueva"?')) return;
   await sb.from('polizas').update({ estado: 'no_renueva' }).eq('id', polId);
   await sb.from('interacciones').insert({
     cliente_id: p.cliente_id,
     productor_id: user.id,
     tipo: 'sistema',
-    resumen: 'Cliente decidió no renovar póliza N° ' + p.numero + ' (' + p.ramo + ').'
+    resumen: 'Cliente decidió no renovar póliza N° ' + p.numero_poliza + ' (' + p.ramo + ').'
   });
   await completarTareaAutoPoliza(polId, 'no_renovada');
   alert('Póliza marcada como "No renueva"');
@@ -5706,7 +5706,7 @@ async function generarTareasAutoVencimiento() {
 
     const cl = allCl.find(function(c){return c.id===p.cliente_id;}) || {};
     const nombreCl = ((cl.apellido || '') + ', ' + (cl.nombre || '')).trim() || 'Cliente';
-    const titulo = (e.key === 'vencida' ? 'Renovar póliza VENCIDA N° ' : 'Renovar póliza URGENTE N° ') + (p.numero || '') + ' - ' + nombreCl;
+    const titulo = (e.key === 'vencida' ? 'Renovar póliza VENCIDA N° ' : 'Renovar póliza URGENTE N° ') + (p.numero_poliza || '') + ' - ' + nombreCl;
     const desc = p.ramo + ' · ' + (p.aseguradora || '—') + ' · Vence ' + fmtDate(p.fecha_vencimiento) + (e.dias !== null ? ' (' + (e.dias < 0 ? 'hace ' + Math.abs(e.dias) + ' días' : 'en ' + e.dias + ' días') + ')' : '');
     await sb.from('tareas').insert({
       cliente_id: p.cliente_id,
@@ -6437,7 +6437,7 @@ async function cargarCobranzas() {
   if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin cuotas.</div></td></tr>'; return; }
   tbody.innerHTML = data.map(function(c) {
     return '<tr><td>' + (c.clientes ? c.clientes.nombre + ' ' + c.clientes.apellido : '—') + '</td>'
-      + '<td>' + (c.polizas ? c.polizas.numero : '—') + '</td>'
+      + '<td>' + (c.polizas ? c.polizas.numero_poliza : '—') + '</td>'
       + '<td>' + c.numero_cuota + '/' + (c.total_cuotas || '?') + '</td>'
       + '<td style="font-weight:500">$' + (c.monto || 0).toLocaleString('es-AR') + '</td>'
       + '<td>' + fmtDate(c.fecha_vencimiento) + '</td>'
@@ -6665,7 +6665,7 @@ async function verDetalleTarea(id) {
     (pols || []).forEach(function(p) {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.numero + ' — ' + p.ramo;
+      opt.textContent = p.numero_poliza + ' — ' + p.ramo;
       polSel.appendChild(opt);
     });
   }
@@ -6677,7 +6677,7 @@ async function verDetalleTarea(id) {
     const { data: pols } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
     (pols || []).forEach(function(p) {
       const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.numero + ' — ' + p.ramo;
+      opt.value = p.id; opt.textContent = p.numero_poliza + ' — ' + p.ramo;
       polSel.appendChild(opt);
     });
   };
@@ -7475,7 +7475,7 @@ async function abrirMailConPoliza(clienteId, email) {
   var cuerpo = 'Hola,\n\nTe envio informacion sobre tu(s) poliza(s):\n\n';
   if (pols && pols.length) {
     pols.forEach(function(p) {
-      cuerpo += '- Poliza ' + p.numero + ' (' + p.ramo + ' - ' + p.aseguradora + ')';
+      cuerpo += '- Poliza ' + p.numero_poliza + ' (' + p.ramo + ' - ' + p.aseguradora + ')';
       if (p.fecha_vencimiento) cuerpo += ' - Vence: ' + fmtDate(p.fecha_vencimiento);
       cuerpo += '\n';
     });
@@ -8327,7 +8327,7 @@ function pmAct(el) {
   if (act === 'editar') { abrirEditarPoliza(id); }
   else if (act === 'baja') {
     var p = (_allPolizas || []).find(function(x){ return x.id === id; }) || {};
-    abrirBajaPoliza(id, p.numero || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
+    abrirBajaPoliza(id, p.numero_poliza || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
   }
   else if (act === 'eliminar') { eliminarPolizaFicha(id); }
 }
@@ -8353,7 +8353,7 @@ async function abrirEditarPoliza(polId) {
   sv('fp-cl', p.cliente_id);
   onClienteChange && onClienteChange();
   sv('fp-aseg', p.aseguradora);
-  sv('fp-num-aseg', p.numero);
+  sv('fp-num-aseg', p.numero_poliza);
   sv('fp-cobertura', p.cobertura);
   sv('fp-emision', fmtDate(p.fecha_emision));
   sv('fp-inicio', fmtDate(p.fecha_inicio));
@@ -8428,7 +8428,7 @@ async function anularPoliza(polId) {
     const fmtF = function(f) { return f || '—'; };
     des.innerHTML =
       '<div style="padding:8px 12px;font-size:12px;font-weight:600;color:#374151;border-bottom:0.5px solid #E5E7EB">'
-        + (p.ramo||'') + ' · N° ' + (p.numero||'—') + ' · ' + (p.aseguradora||'—')
+        + (p.ramo||'') + ' · N° ' + (p.numero_poliza||'—') + ' · ' + (p.aseguradora||'—')
       + '</div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500;color:#111827">' + fmtF(fmtDate(p.fecha_inicio)) + ' → ' + fmtF(fmtDate(p.fecha_vencimiento)) + '</span></div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Premio anual</span><span style="font-weight:500;color:#16A34A">' + fmtMoney(p.prima_anual) + '</span></div>'
@@ -8436,7 +8436,7 @@ async function anularPoliza(polId) {
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px"><span style="color:#6B7280">Cobertura</span><span style="font-weight:500;color:#111827">' + fmtF(p.cobertura) + '</span></div>';
   }
   // Usar abrirBajaPoliza para el resto del flujo
-  abrirBajaPoliza(polId, p.numero || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
+  abrirBajaPoliza(polId, p.numero_poliza || '', p.ramo || '', p.aseguradora || '', p.cliente_id || '');
 }
 
 
@@ -8608,7 +8608,7 @@ async function confirmarBaja() {
     categoria: 'baja_cancelacion',
     tipo: 'sistema',
     poliza_id: polId,
-    poliza_numero: d.numero || '',
+    poliza_numero: d.numero_poliza || '',
     poliza_ramo: d.ramo || '',
     resumen: 'Baja de póliza. Motivo: ' + motivoFinal + (detalle ? '. ' + detalle : ''),
     adjuntos: adjuntosArr,
@@ -8671,7 +8671,7 @@ function renderDetallePol() {
         '<div>'+
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
-            '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero||'—')+'</span>'+
+            '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero_poliza||'—')+'</span>'+
             '<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;background:'+badgeBg+';color:'+badgeColor+'">'+badgeText+'</span>'+
           '</div>'+
           '<div style="font-size:13px;color:#6B7280">'+p.ramo+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
@@ -8742,7 +8742,7 @@ async function mpdSetTab(tab) {
   if (tab==='historial') {
     cont.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando...</div>';
     var res = await sb.from('interacciones').select('*').eq('cliente_id',p.cliente_id).order('created_at',{ascending:false}).limit(60);
-    var hist = (res.data||[]).filter(function(h){ return h.poliza_id===p.id || h.poliza_numero===p.numero; });
+    var hist = (res.data||[]).filter(function(h){ return h.poliza_id===p.id || h.poliza_numero===p.numero_poliza; });
     cont.innerHTML = renderMpdHistorial(hist);
   } else {
     cont.innerHTML = renderMpdTabContent(p,tab);
