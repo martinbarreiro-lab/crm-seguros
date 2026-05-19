@@ -9508,25 +9508,29 @@ handleCompFile = async function(file) {
         'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml'];
       window._compZipXmls = {};
 
-      // Buscar XMLs en el ZIP raíz y también en ZIPs anidados
+      // Buscar XMLs en el ZIP raíz y también en ZIPs anidados (secuencial para no pisarse)
       async function extraerXmls(zipObj) {
         var archivos = Object.keys(zipObj.files);
         // Primero extraer XMLs directos
-        await Promise.all(xmlFiles.map(async function(fn){
+        for (var xi = 0; xi < xmlFiles.length; xi++) {
+          var fn = xmlFiles[xi];
           var f = zipObj.file(fn);
-          if (f) window._compZipXmls[fn] = await f.async('string');
-        }));
-        // Buscar ZIPs anidados y extraer de ellos también
+          if (f && !window._compZipXmls[fn]) {
+            window._compZipXmls[fn] = await f.async('string');
+          }
+        }
+        // Luego abrir ZIPs anidados en secuencia
         var zipsAnidados = archivos.filter(function(n){ return n.match(/\.zip$/i); });
-        await Promise.all(zipsAnidados.map(async function(zn){
+        for (var zi = 0; zi < zipsAnidados.length; zi++) {
           try {
-            var zBuf = await zipObj.file(zn).async('arraybuffer');
+            var zBuf = await zipObj.file(zipsAnidados[zi]).async('arraybuffer');
             var zAnid = await JSZip.loadAsync(zBuf);
             await extraerXmls(zAnid);
           } catch(e) {}
-        }));
+        }
       }
       await extraerXmls(zip);
+      compLog('info', 'XMLs extraídos: ' + Object.keys(window._compZipXmls).join(', '));
       document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
       normalizarYSincronizar(parseFedPatronal(buf), file.name);
     } else if (_compActual === 'la_equitativa') {
