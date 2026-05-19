@@ -9663,7 +9663,12 @@ async function ejecutarTareasImport() {
   var polRenov = (window._importAnalisis||{}).polRenov || [];
   var cobVenc  = (window._importAnalisis||{}).cobVenc  || [];
   var cobProx  = (window._importAnalisis||{}).cobProx  || [];
-  cerrarModal('modal-analisis-import');
+  window._importAnalisis = null; // prevenir doble ejecución
+
+  // Deshabilitar botón
+  var btn = document.querySelector('#modal-analisis-import .btn-p');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creando...'; }
+
   var uid = user.id;
   var total = 0;
 
@@ -9726,6 +9731,7 @@ async function ejecutarTareasImport() {
   }
 
   compLog('ok', 'Total: '+total+' tareas creadas');
+  cerrarModal('modal-analisis-import');
   mostrarAlerta('✅ '+total+' tareas creadas correctamente');
 }
 async function cargarLib(url) {
