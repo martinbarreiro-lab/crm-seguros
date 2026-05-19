@@ -9134,6 +9134,18 @@ function parseFedPatronal(buffer) {
     });
   } catch(e) {}
 
+  // ── Ramo por póliza desde coberturas (para pólizas sin sección) ──
+  var ramoPorPol = {};
+  try {
+    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var nro = r.getAttribute('B');
+      var sec = r.getAttribute('E');
+      if (nro && sec && ramos[sec] && !ramoPorPol[nro]) {
+        ramoPorPol[nro] = ramos[sec];
+      }
+    });
+  } catch(e) { compLog('warn', 'ramoPorPol: ' + e.message); }
+
   // Set de números de póliza válidas (vigentes + vencidas < 60 días)
   var polNrosValidos = new Set();
 
@@ -9181,18 +9193,6 @@ function parseFedPatronal(buffer) {
       _nroRecibo:        nroRec,
     });
   });
-
-  // ── Ramo por póliza desde coberturas (para pólizas sin sección) ──
-  var ramoPorPol = {};
-  try {
-    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
-      var nro = r.getAttribute('B');
-      var sec = r.getAttribute('E');
-      if (nro && sec && ramos[sec] && !ramoPorPol[nro]) {
-        ramoPorPol[nro] = ramos[sec];
-      }
-    });
-  } catch(e) { compLog('warn', 'ramoPorPol: ' + e.message); }
 
   var cobDescMap = {};
   try {
