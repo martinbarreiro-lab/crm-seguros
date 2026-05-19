@@ -9506,10 +9506,27 @@ handleCompFile = async function(file) {
         'CART_RECIBOS.xml','CART_CERTIFICADOS_COMISIONES.xml','SINT_SINIESTROS.xml',
         'CART_CERTIFICADOS_SUMAS.xml','CART_CIUDADES.xml',
         'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml'];
-      await Promise.all(xmlFiles.map(async function(fn){
-        var f = zip.file(fn);
-        if (f) window._compZipXmls[fn] = await f.async('string');
-      }));
+      window._compZipXmls = {};
+
+      // Buscar XMLs en el ZIP raíz y también en ZIPs anidados
+      async function extraerXmls(zipObj) {
+        var archivos = Object.keys(zipObj.files);
+        // Primero extraer XMLs directos
+        await Promise.all(xmlFiles.map(async function(fn){
+          var f = zipObj.file(fn);
+          if (f) window._compZipXmls[fn] = await f.async('string');
+        }));
+        // Buscar ZIPs anidados y extraer de ellos también
+        var zipsAnidados = archivos.filter(function(n){ return n.match(/\.zip$/i); });
+        await Promise.all(zipsAnidados.map(async function(zn){
+          try {
+            var zBuf = await zipObj.file(zn).async('arraybuffer');
+            var zAnid = await JSZip.loadAsync(zBuf);
+            await extraerXmls(zAnid);
+          } catch(e) {}
+        }));
+      }
+      await extraerXmls(zip);
       document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
       normalizarYSincronizar(parseFedPatronal(buf), file.name);
     } else if (_compActual === 'la_equitativa') {
