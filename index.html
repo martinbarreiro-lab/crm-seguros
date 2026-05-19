@@ -9611,7 +9611,7 @@ async function analizarPostImportacion(uid) {
   // Mostrar modal de confirmación
   var modalHtml = '<div class="modal-ov" id="modal-analisis-import" style="display:flex">'
     +'<div class="modal-box" style="max-width:520px">'
-    +'<div class="modal-t">Análisis post-importación <button type="button" class="modal-x" onclick="cerrarModal(\'modal-analisis-import\')">&#x2715;</button></div>'
+    +'<div class="modal-t">Análisis post-importación <button type="button" class="modal-x" onclick="document.getElementById(\'modal-analisis-import\').remove()">&#x2715;</button></div>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Se encontraron las siguientes situaciones. Elegí qué tareas crear:</div>'
     +'<div style="display:flex;flex-direction:column;gap:8px">';
 
@@ -9651,7 +9651,7 @@ async function analizarPostImportacion(uid) {
 
   modalHtml += '</div>'
     +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'
-    +'<button type="button" class="btn" onclick="cerrarModal(\'modal-analisis-import\')">Omitir</button>'
+    +'<button type="button" class="btn" onclick="document.getElementById(\'modal-analisis-import\').remove()">Omitir</button>'
     +'<button type="button" class="btn btn-p" onclick="ejecutarTareasImport()">Crear tareas seleccionadas</button>'
     +'</div>'
     +'</div></div>';
@@ -9731,7 +9731,8 @@ async function ejecutarTareasImport() {
   }
 
   compLog('ok', 'Total: '+total+' tareas creadas');
-  cerrarModal('modal-analisis-import');
+  var modalEl = document.getElementById('modal-analisis-import');
+  if (modalEl) modalEl.remove();
   mostrarAlerta('✅ '+total+' tareas creadas correctamente');
 }
 async function cargarLib(url) {
