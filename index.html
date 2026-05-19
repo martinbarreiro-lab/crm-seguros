@@ -9318,6 +9318,7 @@ async function normalizarYSincronizar(parsed, filename) {
           localidad:        c.localidad  || null,
           tipo_cliente:     'cliente',
           estado:           'activo',
+          cod_comp_fedpat:  c._codComp   || null,
         });
       } else {
         var cambios = {};
@@ -9351,23 +9352,14 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
     // Refrescar índice de clientes con los recién insertados
-    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni').eq('productor_id', uid);
+    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni,cod_comp_fedpat').eq('productor_id', uid);
     var clPorNombre2 = {}, clPorDni2 = {}, clPorCodComp = {};
     (clBD2||[]).forEach(function(c){
       var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       if (nc) clPorNombre2[nc] = c;
       if (c.nombre) clPorNombre2[c.nombre.trim().toUpperCase()] = c;
       if (c.dni) clPorDni2[String(c.dni).trim()] = c;
-    });
-    // Construir índice por código de compañía desde los clientes parseados
-    var clParsedByCod = {};
-    (parsed.clientes||[]).forEach(function(c){ if (c._codComp) clParsedByCod[c._codComp] = c; });
-    // Cruzar código compañía → nombre → id en BD
-    Object.keys(clParsedByCod).forEach(function(cod){
-      var c = clParsedByCod[cod];
-      var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
-      var bdCl = clPorNombre2[nc] || clPorNombre2[(c.nombre||'').trim().toUpperCase()] || (c.dni ? clPorDni2[c.dni] : null);
-      if (bdCl) clPorCodComp[cod] = bdCl;
+      if (c.cod_comp_fedpat) clPorCodComp[String(c.cod_comp_fedpat)] = c;
     });
 
     // ── Clasificar pólizas: nuevas vs actualizar ──────────
@@ -9463,7 +9455,38 @@ async function normalizarYSincronizar(parsed, filename) {
       }
     }
 
-    // ── Coberturas (solo Fed Patronal por ahora) ───────────
+    // ── Cruce automático pólizas → clientes ──────────────
+    // Actualizar pólizas sin cliente_id usando cod_comp_fedpat
+    var { data: polSinCl } = await sb.from('polizas')
+      .select('id,numero_poliza')
+      .eq('productor_id', uid)
+      .is('cliente_id', null);
+
+    if (polSinCl && polSinCl.length) {
+      // Índice de pólizas por número para cruzar con _codCliente del parser
+      var polNumIdx = {};
+      (polSinCl||[]).forEach(function(p){ polNumIdx[String(p.numero_poliza)] = p.id; });
+
+      // Armar updates: poliza_id → cliente_id
+      var polClUpdates = [];
+      (parsed.polizas||[]).forEach(function(p) {
+        var nro = String(p.numero_poliza||'').trim();
+        var polId = polNumIdx[nro];
+        if (!polId) return;
+        var cl = clPorCodComp[String(p._codCliente||'')] || null;
+        if (cl) polClUpdates.push({ id: polId, cliente_id: cl.id });
+      });
+
+      // Actualizar en lotes de 50
+      var actualizados = 0;
+      for (var pi = 0; pi < polClUpdates.length; pi += 50) {
+        await Promise.all(polClUpdates.slice(pi, pi+50).map(function(u){
+          return sb.from('polizas').update({ cliente_id: u.cliente_id }).eq('id', u.id);
+        }));
+        actualizados += Math.min(50, polClUpdates.length - pi);
+      }
+      if (actualizados) compLog('ok', actualizados + ' pólizas asociadas a clientes');
+    }
     var coberturasArr = parsed.coberturas || [];
     if (coberturasArr.length) {
       // Traer coberturas existentes para no duplicar
