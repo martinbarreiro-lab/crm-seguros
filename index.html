@@ -9344,12 +9344,22 @@ async function normalizarYSincronizar(parsed, filename) {
 
     // Refrescar índice de clientes con los recién insertados
     var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni').eq('productor_id', uid);
-    var clPorNombre2 = {}, clPorDni2 = {};
+    var clPorNombre2 = {}, clPorDni2 = {}, clPorCodComp = {};
     (clBD2||[]).forEach(function(c){
       var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       if (nc) clPorNombre2[nc] = c;
       if (c.nombre) clPorNombre2[c.nombre.trim().toUpperCase()] = c;
       if (c.dni) clPorDni2[String(c.dni).trim()] = c;
+    });
+    // Construir índice por código de compañía desde los clientes parseados
+    var clParsedByCod = {};
+    (parsed.clientes||[]).forEach(function(c){ if (c._codComp) clParsedByCod[c._codComp] = c; });
+    // Cruzar código compañía → nombre → id en BD
+    Object.keys(clParsedByCod).forEach(function(cod){
+      var c = clParsedByCod[cod];
+      var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
+      var bdCl = clPorNombre2[nc] || clPorNombre2[(c.nombre||'').trim().toUpperCase()] || (c.dni ? clPorDni2[c.dni] : null);
+      if (bdCl) clPorCodComp[cod] = bdCl;
     });
 
     // ── Clasificar pólizas: nuevas vs actualizar ──────────
@@ -9360,8 +9370,7 @@ async function normalizarYSincronizar(parsed, filename) {
       var existe  = polPorNumero[nro];
 
       // Buscar cliente_id
-      var cl = null;
-      if (p._codCliente) cl = clPorDni2[String(p._codCliente).trim()];
+      var cl = clPorCodComp[String(p._codCliente)] || null;
       if (!cl && p._nombreCliente) cl = clPorNombre2[(p._nombreCliente||'').trim().toUpperCase()];
 
       if (!existe) {
