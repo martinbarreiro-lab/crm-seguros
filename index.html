@@ -9120,17 +9120,27 @@ function parseFedPatronal(buffer) {
   // ── Pólizas ───────────────────────────────────────────────
   var polizas = [];
   var ESTADOS_POL = { '1':'activa','2':'activa','3':'baja','4':'baja','5':'baja','6':'cancelada' };
+  var hoyParse = new Date();
+  var limite60 = new Date(hoyParse.getTime() - 60 * 86400000).toISOString().slice(0,10);
+  var hoyStr   = hoyParse.toISOString().slice(0,10);
+  // Set de números de póliza válidas (vigentes + vencidas < 60 días)
+  var polNrosValidos = new Set();
+
   parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW').forEach(function(r){
     var nro = r.getAttribute('B');
     if (!nro) return;
+    var vto = fmtDateComp(r.getAttribute('J'));
+    // Filtrar: solo vigentes o vencidas hace menos de 60 días
+    if (vto && vto < limite60) return;
     var s = sumas[nro] || {};
     var c = comisiones[nro] || {};
+    polNrosValidos.add(nro);
     polizas.push({
       numero_poliza:     nro,
       ramo:              ramos[r.getAttribute('A')] || ('Ramo '+r.getAttribute('A')),
       aseguradora:       'Federación Patronal',
       fecha_inicio:      fmtDateComp(r.getAttribute('I')),
-      fecha_vencimiento: fmtDateComp(r.getAttribute('J')),
+      fecha_vencimiento: vto,
       prima_anual:       s.prima_anual  || null,
       suma_asegurada:    s.suma_asegurada || null,
       estado:            ESTADOS_POL[r.getAttribute('F')] || 'activa',
@@ -9140,12 +9150,15 @@ function parseFedPatronal(buffer) {
   });
 
   // ── Cobranzas (recibos) ───────────────────────────────────
+  // Solo de pólizas válidas (vigentes + vencidas < 60 días)
   var cobranzas = [];
   var ESTADOS_REC = { '1':'pendiente','2':'pagada','3':'vencida','4':'pagada' };
   parse('CART_RECIBOS.xml').querySelectorAll('ROW').forEach(function(r){
     var nroPol = r.getAttribute('B');
     var nroRec = r.getAttribute('L');
     if (!nroPol || !nroRec) return;
+    // Solo incluir cobranzas de pólizas válidas
+    if (!polNrosValidos.has(nroPol)) return;
     cobranzas.push({
       numero_cuota:      parseInt(r.getAttribute('G')) || null,
       monto:             parseFloat(r.getAttribute('J')) || null,
