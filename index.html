@@ -9124,13 +9124,15 @@ function parseFedPatronal(buffer) {
   var limite60 = new Date(hoyParse.getTime() - 60 * 86400000).toISOString().slice(0,10);
   var hoyStr   = hoyParse.toISOString().slice(0,10);
 
-  // Índice multirrámica: poliza → ramo principal
+  // ── Índice multirrámica: poliza → ramo principal ──────────
   var multiRamo = {};
-  parse('CART_MULTIRRAMICA.xml').querySelectorAll('ROW').forEach(function(r){
-    var nroPol = r.getAttribute('D') || r.getAttribute('A');
-    var sec    = r.getAttribute('C');
-    if (nroPol && sec && ramos[sec]) multiRamo[nroPol] = ramos[sec];
-  });
+  try {
+    parse('CART_MULTIRRAMICA.xml').querySelectorAll('ROW').forEach(function(r){
+      var nroPol = r.getAttribute('D') || r.getAttribute('A');
+      var sec    = r.getAttribute('C');
+      if (nroPol && sec && ramos[sec]) multiRamo[nroPol] = ramos[sec];
+    });
+  } catch(e) {}
 
   // Set de números de póliza válidas (vigentes + vencidas < 60 días)
   var polNrosValidos = new Set();
