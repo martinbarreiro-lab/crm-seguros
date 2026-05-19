@@ -9184,34 +9184,40 @@ function parseFedPatronal(buffer) {
 
   // ── Ramo por póliza desde coberturas (para pólizas sin sección) ──
   var ramoPorPol = {};
-  parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
-    var nro = r.getAttribute('B');
-    var sec = r.getAttribute('E');
-    if (nro && sec && ramos[sec] && !ramoPorPol[nro]) {
-      ramoPorPol[nro] = ramos[sec];
-    }
-  });
-  var cobDescMap = {}; // { codRamo_codCob: descripcion }
-  parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
-    var key = (r.getAttribute('D')||r.getAttribute('A')) + '_' + r.getAttribute('B');
-    cobDescMap[key] = r.getAttribute('C');
-    // también por código solo por si el ramo no matchea
-    cobDescMap['_'+r.getAttribute('B')] = r.getAttribute('C');
-  });
+  try {
+    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var nro = r.getAttribute('B');
+      var sec = r.getAttribute('E');
+      if (nro && sec && ramos[sec] && !ramoPorPol[nro]) {
+        ramoPorPol[nro] = ramos[sec];
+      }
+    });
+  } catch(e) { compLog('warn', 'ramoPorPol: ' + e.message); }
+
+  var cobDescMap = {};
+  try {
+    parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
+      var key = (r.getAttribute('D')||r.getAttribute('A')) + '_' + r.getAttribute('B');
+      cobDescMap[key] = r.getAttribute('C');
+      cobDescMap['_'+r.getAttribute('B')] = r.getAttribute('C');
+    });
+  } catch(e) { compLog('warn', 'cobDescMap: ' + e.message); }
 
   var coberturas = [];
-  parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
-    var nroPol = r.getAttribute('B');
-    var codCob = r.getAttribute('F');
-    var ramo   = r.getAttribute('E');
-    if (!nroPol || !codCob) return;
-    var desc = cobDescMap[ramo+'_'+codCob] || cobDescMap['_'+codCob] || ('Cobertura ' + codCob);
-    coberturas.push({
-      _nroPol:        nroPol,
-      descripcion:    desc,
-      suma_asegurada: parseFloat(r.getAttribute('G')) || null,
+  try {
+    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var nroPol = r.getAttribute('B');
+      var codCob = r.getAttribute('F');
+      var ramo   = r.getAttribute('E');
+      if (!nroPol || !codCob) return;
+      var desc = cobDescMap[ramo+'_'+codCob] || cobDescMap['_'+codCob] || ('Cobertura ' + codCob);
+      coberturas.push({
+        _nroPol:        nroPol,
+        descripcion:    desc,
+        suma_asegurada: parseFloat(r.getAttribute('G')) || null,
+      });
     });
-  });
+  } catch(e) { compLog('warn', 'coberturas: ' + e.message); }
 
   return { clientes:clientes, polizas:polizas, cobranzas:cobranzas, coberturas:coberturas };
 }
