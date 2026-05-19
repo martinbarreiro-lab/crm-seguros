@@ -9086,24 +9086,34 @@ function parseFedPatronal(buffer) {
   parse('CART_CLIENTES.xml').querySelectorAll('ROW').forEach(function(r){
     var nombre = (r.getAttribute('B')||'').trim();
     if (!nombre) return;
-    var codLoc  = r.getAttribute('J') || r.getAttribute('R');
+    var codLoc    = r.getAttribute('J') || r.getAttribute('R');
     var localidad = codLoc ? (ciudades[codLoc] || null) : null;
-    var calle   = (r.getAttribute('E')||'').trim();
-    var numero  = (r.getAttribute('F')||'').trim();
-    var piso    = (r.getAttribute('G')||'').trim();
-    var depto   = (r.getAttribute('H')||'').trim();
-    var cp      = (r.getAttribute('I')||'').trim();
-    var dir     = [calle, numero, piso?'Piso '+piso:'', depto?'Dto '+depto:'', cp?'CP '+cp:'', localidad||'']
-                    .filter(Boolean).join(' ').trim();
+    var calle     = (r.getAttribute('E')||'').trim();
+    var numDom    = (r.getAttribute('F')||'').trim();
+    var piso      = (r.getAttribute('G')||'').trim();
+    var depto     = (r.getAttribute('H')||'').trim();
+    var cp        = (r.getAttribute('I')||'').trim();
+
+    // Separar nombre y apellido (Fed Patronal manda "APELLIDO NOMBRE")
+    var partes    = nombre.split(' ');
+    var apellido  = partes[0] || '';
+    var nombreSolo = partes.slice(1).join(' ') || '';
+
     clientes.push({
-      nombre:    nombre,
-      dni:       r.getAttribute('D') || null,
-      cuit:      r.getAttribute('U') || null,
-      email:     r.getAttribute('AA')|| null,
-      telefono:  r.getAttribute('K') || null,
-      direccion: dir || null,
-      tipo:      'cliente',
-      _codComp:  r.getAttribute('A'),
+      nombre:              nombreSolo || nombre,
+      apellido:            apellido,
+      dni:                 r.getAttribute('D') || null,
+      cuit:                r.getAttribute('U') || null,
+      email_principal:     r.getAttribute('AA')|| null,
+      telefono_principal:  r.getAttribute('K') || null,
+      calle:               calle || null,
+      numero_dom:          numDom || null,
+      piso:                piso || null,
+      departamento:        depto || null,
+      localidad:           localidad || null,
+      tipo_cliente:        'cliente',
+      estado:              'activo',
+      _codComp:            r.getAttribute('A'),
     });
   });
 
@@ -9249,7 +9259,7 @@ async function normalizarYSincronizar(parsed, filename) {
   try {
     // ── Traer TODO de Supabase en 3 consultas ──────────────
     var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
-      sb.from('clientes').select('id,nombre,dni,email,telefono').eq('productor_id', uid),
+      sb.from('clientes').select('id,nombre,apellido,dni,email_principal,telefono_principal').eq('productor_id', uid),
       sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado').eq('productor_id', uid),
       sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
     ]);
@@ -9258,8 +9268,9 @@ async function normalizarYSincronizar(parsed, filename) {
     var clPorNombre = {};
     var clPorDni    = {};
     (clBD||[]).forEach(function(c){
+      if (c.nombre) clPorNombre[(c.apellido||''+' '+c.nombre||'').trim().toUpperCase()] = c;
       if (c.nombre) clPorNombre[c.nombre.trim().toUpperCase()] = c;
-      if (c.dni)    clPorDni[String(c.dni).trim()]             = c;
+      if (c.dni)    clPorDni[String(c.dni).trim()] = c;
     });
     var polPorNumero = {};
     (polBD||[]).forEach(function(p){ polPorNumero[String(p.numero_poliza)] = p; });
@@ -9270,26 +9281,40 @@ async function normalizarYSincronizar(parsed, filename) {
 
     compLog('info', 'BD: ' + (clBD||[]).length + ' clientes, ' + (polBD||[]).length + ' pólizas, ' + (cobBD||[]).length + ' cobranzas existentes');
 
-    // ── Deduplicar clientes del archivo ───────────────────
     var clUnicos = {};
     parsed.clientes.forEach(function(c){
-      var key = (c.dni || c.nombre||'').trim().toUpperCase();
+      var key = (c.dni || (c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       if (key) clUnicos[key] = c;
     });
 
     // ── Clasificar clientes: nuevos vs actualizar ──────────
     var clInsertar = [], clActualizar = [];
     Object.values(clUnicos).forEach(function(c) {
+      var nombreCompleto = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       var existe = (c.dni ? clPorDni[String(c.dni).trim()] : null)
+                || clPorNombre[nombreCompleto]
                 || clPorNombre[(c.nombre||'').trim().toUpperCase()];
       if (!existe) {
-        clInsertar.push({ productor_id:uid, nombre:c.nombre, dni:c.dni||null,
-          cuit:c.cuit||null, email:c.email||null, telefono:c.telefono||null,
-          direccion:c.direccion||null, tipo:'cliente' });
+        clInsertar.push({
+          productor_id:     uid,
+          nombre:           c.nombre     || null,
+          apellido:         c.apellido   || null,
+          dni:              c.dni        || null,
+          cuit:             c.cuit       || null,
+          email_principal:  c.email_principal  || null,
+          telefono_principal: c.telefono_principal || null,
+          calle:            c.calle      || null,
+          numero_dom:       c.numero_dom || null,
+          piso:             c.piso       || null,
+          departamento:     c.departamento || null,
+          localidad:        c.localidad  || null,
+          tipo_cliente:     'cliente',
+          estado:           'activo',
+        });
       } else {
         var cambios = {};
-        if (c.email    && c.email    !== existe.email)    cambios.email    = c.email;
-        if (c.telefono && c.telefono !== existe.telefono) cambios.telefono = c.telefono;
+        if (c.email_principal    && c.email_principal    !== existe.email_principal)    cambios.email_principal    = c.email_principal;
+        if (c.telefono_principal && c.telefono_principal !== existe.telefono_principal) cambios.telefono_principal = c.telefono_principal;
         if (Object.keys(cambios).length) {
           clActualizar.push({ id:existe.id, cambios:cambios });
         } else { stats.skip++; }
@@ -9318,11 +9343,13 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
     // Refrescar índice de clientes con los recién insertados
-    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,dni').eq('productor_id', uid);
+    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni').eq('productor_id', uid);
     var clPorNombre2 = {}, clPorDni2 = {};
     (clBD2||[]).forEach(function(c){
+      var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
+      if (nc) clPorNombre2[nc] = c;
       if (c.nombre) clPorNombre2[c.nombre.trim().toUpperCase()] = c;
-      if (c.dni)    clPorDni2[String(c.dni).trim()]             = c;
+      if (c.dni) clPorDni2[String(c.dni).trim()] = c;
     });
 
     // ── Clasificar pólizas: nuevas vs actualizar ──────────
