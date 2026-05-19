@@ -9123,6 +9123,15 @@ function parseFedPatronal(buffer) {
   var hoyParse = new Date();
   var limite60 = new Date(hoyParse.getTime() - 60 * 86400000).toISOString().slice(0,10);
   var hoyStr   = hoyParse.toISOString().slice(0,10);
+
+  // Índice multirrámica: poliza → ramo principal
+  var multiRamo = {};
+  parse('CART_MULTIRRAMICA.xml').querySelectorAll('ROW').forEach(function(r){
+    var nroPol = r.getAttribute('D') || r.getAttribute('A');
+    var sec    = r.getAttribute('C');
+    if (nroPol && sec && ramos[sec]) multiRamo[nroPol] = ramos[sec];
+  });
+
   // Set de números de póliza válidas (vigentes + vencidas < 60 días)
   var polNrosValidos = new Set();
 
@@ -9134,10 +9143,12 @@ function parseFedPatronal(buffer) {
     if (vto && vto < limite60) return;
     var s = sumas[nro] || {};
     var c = comisiones[nro] || {};
+    var secCod = r.getAttribute('A');
+    var ramoDesc = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
     polNrosValidos.add(nro);
     polizas.push({
       numero_poliza:     nro,
-      ramo:              ramos[r.getAttribute('A')] || ('Ramo '+r.getAttribute('A')),
+      ramo:              ramoDesc,
       aseguradora:       'Federación Patronal',
       fecha_inicio:      fmtDateComp(r.getAttribute('I')),
       fecha_vencimiento: vto,
@@ -9169,7 +9180,15 @@ function parseFedPatronal(buffer) {
     });
   });
 
-  // ── Coberturas por póliza ─────────────────────────────────
+  // ── Ramo por póliza desde coberturas (para pólizas sin sección) ──
+  var ramoPorPol = {};
+  parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+    var nro = r.getAttribute('B');
+    var sec = r.getAttribute('E');
+    if (nro && sec && ramos[sec] && !ramoPorPol[nro]) {
+      ramoPorPol[nro] = ramos[sec];
+    }
+  });
   var cobDescMap = {}; // { codRamo_codCob: descripcion }
   parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
     var key = (r.getAttribute('D')||r.getAttribute('A')) + '_' + r.getAttribute('B');
@@ -9802,7 +9821,7 @@ handleCompFile = async function(file) {
       var xmlFiles = ['CART_CLIENTES.xml','CART_CERTIFICADOS.xml','CART_RAMOS_POLIZAS.xml',
         'CART_RECIBOS.xml','CART_CERTIFICADOS_COMISIONES.xml','SINT_SINIESTROS.xml',
         'CART_CERTIFICADOS_SUMAS.xml','CART_CIUDADES.xml',
-        'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml'];
+        'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml','CART_MULTIRRAMICA.xml'];
       window._compZipXmls = {};
 
       // Buscar XMLs en el ZIP raíz y también en ZIPs anidados (secuencial para no pisarse)
