@@ -9602,6 +9602,9 @@ async function analizarPostImportacion(uid) {
 
   compLog('info', 'Análisis listo — mostrando resumen');
 
+  // Guardar datos en variables globales para el modal
+  window._importAnalisis = { polRenov: polRenov, cobVenc: cobVenc, cobProx: cobProx };
+
   // Mostrar modal de confirmación
   var modalHtml = '<div class="modal-ov" id="modal-analisis-import" style="display:flex">'
     +'<div class="modal-box" style="max-width:520px">'
@@ -9646,14 +9649,17 @@ async function analizarPostImportacion(uid) {
   modalHtml += '</div>'
     +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'
     +'<button type="button" class="btn" onclick="cerrarModal(\'modal-analisis-import\')">Omitir</button>'
-    +'<button type="button" class="btn btn-p" onclick="ejecutarTareasImport('+JSON.stringify(polRenov)+','+JSON.stringify(cobVenc)+','+JSON.stringify(cobProx)+')">Crear tareas seleccionadas</button>'
+    +'<button type="button" class="btn btn-p" onclick="ejecutarTareasImport()">Crear tareas seleccionadas</button>'
     +'</div>'
     +'</div></div>';
 
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-async function ejecutarTareasImport(polRenov, cobVenc, cobProx) {
+async function ejecutarTareasImport() {
+  var polRenov = (window._importAnalisis||{}).polRenov || [];
+  var cobVenc  = (window._importAnalisis||{}).cobVenc  || [];
+  var cobProx  = (window._importAnalisis||{}).cobProx  || [];
   cerrarModal('modal-analisis-import');
   var uid = user.id;
   var total = 0;
