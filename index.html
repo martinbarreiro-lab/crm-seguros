@@ -9253,6 +9253,14 @@ async function normalizarYSincronizar(parsed, filename) {
   compLog('info', 'Archivo leído: ' + parsed.clientes.length + ' clientes, ' + parsed.polizas.length + ' pólizas');
   compLog('info', 'Consultando base de datos...');
 
+  // Desactivar tareas automáticas durante la importación
+  var _autoRenovOrig = _cfg.auto_renov;
+  var _autoCotizOrig = _cfg.auto_cotiz;
+  var _autoSinOrig   = _cfg.auto_sin;
+  _cfg.auto_renov = false;
+  _cfg.auto_cotiz = false;
+  _cfg.auto_sin   = false;
+
   var uid  = user.id;
   var stats = { clNew:0, clUpd:0, polizas:0, skip:0, error:false };
 
@@ -9500,16 +9508,217 @@ async function normalizarYSincronizar(parsed, filename) {
 
     document.getElementById('comp-drop-title').textContent = filename + ' · sincronizado';
     document.getElementById('comp-dropzone').style.borderColor = 'var(--green)';
+    _cfg.auto_renov = _autoRenovOrig;
+    _cfg.auto_cotiz = _autoCotizOrig;
+    _cfg.auto_sin   = _autoSinOrig;
     compMostrarResultado(stats);
+
+    // ── Análisis post-importación ─────────────────────────
+    await analizarPostImportacion(uid);
 
   } catch(e) {
     stats.error = true;
     compLog('error', 'Error: ' + e.message);
+    _cfg.auto_renov = _autoRenovOrig;
+    _cfg.auto_cotiz = _autoCotizOrig;
+    _cfg.auto_sin   = _autoSinOrig;
     compMostrarResultado(stats);
   }
 }
 
-// ── Loader de librerías (JSZip + SheetJS) ─────────────────
+// ── Análisis post-importación ──────────────────────────────
+async function analizarPostImportacion(uid) {
+  compLog('info', 'Analizando cartera...');
+  var hoy = new Date();
+  var diasRenov = parseInt(_cfg.dias_renov) || 30;
+  var diasCobr  = parseInt(_cfg.dias_cobr)  || 5;
+  var limiteRenov = new Date(hoy.getTime() + diasRenov * 86400000).toISOString().slice(0,10);
+  var hoySt = hoy.toISOString().slice(0,10);
+  var limiteCobr  = new Date(hoy.getTime() + diasCobr  * 86400000).toISOString().slice(0,10);
+
+  // Traer datos en paralelo
+  var [
+    { data: polVencer },
+    { data: cobVencidas },
+    { data: cobProximas },
+    { data: polSinCliente },
+    { data: clSinPol },
+    { data: tareasExist }
+  ] = await Promise.all([
+    // Pólizas por vencer
+    sb.from('polizas').select('id,numero_poliza,ramo,fecha_vencimiento,cliente_id')
+      .eq('productor_id', uid).eq('estado','activa')
+      .lte('fecha_vencimiento', limiteRenov).gte('fecha_vencimiento', hoySt),
+    // Cuotas vencidas
+    sb.from('cobranzas').select('id,poliza_id,numero_cuota,monto,fecha_vencimiento')
+      .eq('productor_id', uid).eq('estado','pendiente').lt('fecha_vencimiento', hoySt),
+    // Cuotas próximas a vencer
+    sb.from('cobranzas').select('id,poliza_id,numero_cuota,monto,fecha_vencimiento')
+      .eq('productor_id', uid).eq('estado','pendiente')
+      .gte('fecha_vencimiento', hoySt).lte('fecha_vencimiento', limiteCobr),
+    // Pólizas sin cliente
+    sb.from('polizas').select('id,numero_poliza,ramo')
+      .eq('productor_id', uid).eq('estado','activa').is('cliente_id', null),
+    // Clientes sin póliza activa - traer todos y filtrar
+    sb.from('clientes').select('id,nombre,apellido')
+      .eq('productor_id', uid),
+    // Tareas pendientes existentes para no duplicar
+    sb.from('tareas').select('poliza_id,tipo,tablero')
+      .eq('productor_id', uid).in('estado',['pendiente','encurso']),
+  ]);
+
+  // Índices para no duplicar tareas
+  var tareasIdx = {};
+  (tareasExist||[]).forEach(function(t){
+    if (t.poliza_id) tareasIdx[t.poliza_id+'_'+t.tablero] = true;
+  });
+
+  // Filtrar pólizas por vencer sin tarea ya existente
+  var polRenov = (polVencer||[]).filter(function(p){
+    return !tareasIdx[p.id+'_renovaciones'];
+  });
+
+  // Filtrar cobranzas con tarea ya existente
+  var cobVenc = (cobVencidas||[]).filter(function(c){
+    return !tareasIdx[c.poliza_id+'_cobranzas'];
+  });
+  var cobProx = (cobProximas||[]).filter(function(c){
+    return !tareasIdx[c.poliza_id+'_cobranzas'];
+  });
+
+  // Clientes sin póliza activa
+  var { data: polActivas } = await sb.from('polizas').select('cliente_id')
+    .eq('productor_id', uid).eq('estado','activa').not('cliente_id','is',null);
+  var clConPol = new Set((polActivas||[]).map(function(p){ return p.cliente_id; }));
+  var clSinPolActiva = (clSinPol||[]).filter(function(c){ return !clConPol.has(c.id); });
+
+  // Si no hay nada para hacer
+  if (!polRenov.length && !cobVenc.length && !cobProx.length) {
+    compLog('skip', 'Análisis completo — no se requieren acciones');
+    if (polSinCliente&&polSinCliente.length) compLog('warn', polSinCliente.length+' pólizas sin cliente asociado — revisalas manualmente');
+    if (clSinPolActiva.length) compLog('warn', clSinPolActiva.length+' clientes sin póliza activa');
+    return;
+  }
+
+  compLog('info', 'Análisis listo — mostrando resumen');
+
+  // Mostrar modal de confirmación
+  var modalHtml = '<div class="modal-ov" id="modal-analisis-import" style="display:flex">'
+    +'<div class="modal-box" style="max-width:520px">'
+    +'<div class="modal-t">Análisis post-importación <button type="button" class="modal-x" onclick="cerrarModal(\'modal-analisis-import\')">&#x2715;</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Se encontraron las siguientes situaciones. Elegí qué tareas crear:</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">';
+
+  if (polRenov.length) {
+    modalHtml += '<div style="padding:10px 12px;background:var(--al);border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--amber)">Pólizas por vencer</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+polRenov.length+' pólizas vencen en los próximos '+diasRenov+' días</div></div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-renov" checked> Crear tareas</label>'
+      +'</div>';
+  }
+  if (cobVenc.length) {
+    modalHtml += '<div style="padding:10px 12px;background:var(--rl);border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--red)">Cuotas vencidas</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+cobVenc.length+' cuotas sin cobrar con fecha pasada</div></div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-cob-venc" checked> Crear tareas</label>'
+      +'</div>';
+  }
+  if (cobProx.length) {
+    modalHtml += '<div style="padding:10px 12px;background:#EAF3DE;border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
+      +'<div><div style="font-size:13px;font-weight:500;color:var(--green)">Cuotas próximas</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+cobProx.length+' cuotas vencen en los próximos '+diasCobr+' días</div></div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-cob-prox" checked> Crear tareas</label>'
+      +'</div>';
+  }
+  if (polSinCliente&&polSinCliente.length) {
+    modalHtml += '<div style="padding:10px 12px;background:var(--bg);border-radius:var(--rsm)">'
+      +'<div style="font-size:13px;font-weight:500;color:var(--text)">Pólizas sin cliente</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+polSinCliente.length+' pólizas no pudieron asociarse a un cliente — revisalas manualmente</div>'
+      +'</div>';
+  }
+  if (clSinPolActiva.length) {
+    modalHtml += '<div style="padding:10px 12px;background:var(--bg);border-radius:var(--rsm)">'
+      +'<div style="font-size:13px;font-weight:500;color:var(--text)">Clientes sin póliza activa</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+clSinPolActiva.length+' clientes importados no tienen pólizas activas</div>'
+      +'</div>';
+  }
+
+  modalHtml += '</div>'
+    +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'
+    +'<button type="button" class="btn" onclick="cerrarModal(\'modal-analisis-import\')">Omitir</button>'
+    +'<button type="button" class="btn btn-p" onclick="ejecutarTareasImport('+JSON.stringify(polRenov)+','+JSON.stringify(cobVenc)+','+JSON.stringify(cobProx)+')">Crear tareas seleccionadas</button>'
+    +'</div>'
+    +'</div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function ejecutarTareasImport(polRenov, cobVenc, cobProx) {
+  cerrarModal('modal-analisis-import');
+  var uid = user.id;
+  var total = 0;
+
+  // Tareas de renovación
+  if (document.getElementById('chk-renov')&&document.getElementById('chk-renov').checked) {
+    for (var i = 0; i < polRenov.length; i += 10) {
+      await Promise.all(polRenov.slice(i,i+10).map(function(p){
+        return sb.from('tareas').insert({
+          productor_id: uid,
+          cliente_id:   p.cliente_id || null,
+          poliza_id:    p.id,
+          titulo:       'Cotizar renovación — '+p.ramo+' · '+p.numero_poliza,
+          tablero:      'renovaciones',
+          tipo:         'Cotizar renovación',
+          estado:       'pendiente',
+          vencimiento:  p.fecha_vencimiento,
+        });
+      }));
+      total += Math.min(10, polRenov.length - i);
+    }
+    compLog('ok', polRenov.length+' tareas de renovación creadas');
+  }
+
+  // Tareas de cobranza — vencidas
+  if (document.getElementById('chk-cob-venc')&&document.getElementById('chk-cob-venc').checked) {
+    for (var j = 0; j < cobVenc.length; j += 10) {
+      await Promise.all(cobVenc.slice(j,j+10).map(function(c){
+        return sb.from('tareas').insert({
+          productor_id: uid,
+          poliza_id:    c.poliza_id,
+          titulo:       'Gestionar mora — cuota '+c.numero_cuota+' vencida el '+fmtDate(c.fecha_vencimiento),
+          tablero:      'cobranzas',
+          tipo:         'Gestionar mora',
+          estado:       'pendiente',
+          vencimiento:  c.fecha_vencimiento,
+        });
+      }));
+      total += Math.min(10, cobVenc.length - j);
+    }
+    compLog('ok', cobVenc.length+' tareas de mora creadas');
+  }
+
+  // Tareas de cobranza — próximas
+  if (document.getElementById('chk-cob-prox')&&document.getElementById('chk-cob-prox').checked) {
+    for (var k = 0; k < cobProx.length; k += 10) {
+      await Promise.all(cobProx.slice(k,k+10).map(function(c){
+        return sb.from('tareas').insert({
+          productor_id: uid,
+          poliza_id:    c.poliza_id,
+          titulo:       'Cobrar cuota '+c.numero_cuota+' — vence '+fmtDate(c.fecha_vencimiento),
+          tablero:      'cobranzas',
+          tipo:         'Cobrar cuota',
+          estado:       'pendiente',
+          vencimiento:  c.fecha_vencimiento,
+        });
+      }));
+      total += Math.min(10, cobProx.length - k);
+    }
+    compLog('ok', cobProx.length+' tareas de cobranza próxima creadas');
+  }
+
+  compLog('ok', 'Total: '+total+' tareas creadas');
+  mostrarAlerta('✅ '+total+' tareas creadas correctamente');
+}
 async function cargarLib(url) {
   return new Promise(function(res, rej) {
     var s = document.createElement('script');
