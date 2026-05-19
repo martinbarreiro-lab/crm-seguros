@@ -8928,7 +8928,9 @@ async function guardarDescripcionSin(sinId) {
 init();
 
 // ═══════════════════════════════════════════════════════════
-// MÓDULO COMPAÑÍAS — Importación y sincronización
+// MÓDULO COMPAÑÍAS — Importación por lotes (batch)
+// Flujo: leer archivo → normalizar en memoria →
+//        comparar con BD en 1 consulta → upsert en lote
 // ═══════════════════════════════════════════════════════════
 
 var _compActual = 'fed_patronal';
@@ -8939,6 +8941,7 @@ var _compFormatos = {
   la_equitativa: { label: 'La Equitativa',         fmt: 'CSV',        hint: 'La Equitativa: archivo .csv' },
 };
 
+// ── UI helpers ─────────────────────────────────────────────
 function selComp(btn) {
   document.querySelectorAll('.comp-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
@@ -8953,39 +8956,15 @@ function selComp(btn) {
   dz.style.background = '';
 }
 
-function handleCompFile(file) {
-  if (!file) return;
-  var dz = document.getElementById('comp-dropzone');
-  dz.style.borderColor = 'var(--blue)';
-  dz.style.background = 'var(--light)';
-  document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
-  document.getElementById('comp-drop-sub').textContent = (file.size/1024).toFixed(0) + ' KB';
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      if (_compActual === 'fed_patronal') procesarFedPatronal(e.target.result, file.name);
-      else if (_compActual === 'seguro_metal') procesarExcel(e.target.result, file.name, 'seguro_metal');
-      else if (_compActual === 'provincia_art') procesarExcel(e.target.result, file.name, 'provincia_art');
-      else if (_compActual === 'la_equitativa') procesarCSV(e.target.result, file.name);
-    } catch(err) {
-      compLog('error', 'Error al procesar: ' + err.message);
-    }
-  };
-  if (_compActual === 'fed_patronal') reader.readAsArrayBuffer(file);
-  else if (_compActual === 'la_equitativa') reader.readAsText(file, 'latin1');
-  else reader.readAsArrayBuffer(file);
-}
-
-// ── HELPERS ────────────────────────────────────────────────
 function compLog(tipo, msg) {
   var log = document.getElementById('comp-log');
   if (!log) return;
-  var colors = { ok: 'var(--green)', skip: 'var(--muted)', warn: 'var(--amber)', error: 'var(--red)', info: 'var(--med)' };
-  var icons  = { ok: 'ti-check', skip: 'ti-minus', warn: 'ti-alert-triangle', error: 'ti-x', info: 'ti-info-circle' };
+  var colors = { ok:'var(--green)', skip:'var(--muted)', warn:'var(--amber)', error:'var(--red)', info:'var(--med)' };
+  var icons  = { ok:'ti-check', skip:'ti-minus', warn:'ti-alert-triangle', error:'ti-x', info:'ti-info-circle' };
   var row = document.createElement('div');
   row.style.cssText = 'display:flex;align-items:flex-start;gap:6px;padding:2px 0;border-bottom:0.5px solid var(--border)';
-  row.innerHTML = '<i class="ti ' + (icons[tipo]||'ti-circle') + '" style="font-size:12px;color:' + (colors[tipo]||'var(--muted)') + ';margin-top:1px;flex-shrink:0"></i>'
-    + '<span style="color:var(--text);font-size:12px">' + msg + '</span>';
+  row.innerHTML = '<i class="ti '+(icons[tipo]||'ti-circle')+'" style="font-size:12px;color:'+(colors[tipo]||'var(--muted)')+';margin-top:1px;flex-shrink:0"></i>'
+    +'<span style="color:var(--text);font-size:12px">'+msg+'</span>';
   log.appendChild(row);
   log.scrollTop = log.scrollHeight;
 }
@@ -8998,268 +8977,493 @@ function compMostrarResultado(stats) {
   document.getElementById('comp-stat-pol').textContent    = stats.polizas || 0;
   document.getElementById('comp-stat-skip').textContent   = stats.skip || 0;
   var badge = document.getElementById('comp-result-badge');
-  if (stats.error) {
-    badge.textContent = 'Con errores';
-    badge.style.cssText = 'font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500;background:var(--rl);color:var(--red)';
-  } else {
-    badge.textContent = 'Completado';
-    badge.style.cssText = 'font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500;background:#EAF3DE;color:var(--green)';
-  }
-  // Guardar en historial local
-  var hist = JSON.parse(localStorage.getItem('comp_historial') || '[]');
+  badge.textContent = stats.error ? 'Con errores' : 'Completado';
+  badge.style.cssText = 'font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500;background:'
+    +(stats.error?'var(--rl);color:var(--red)':'#EAF3DE;color:var(--green)');
+  // Historial local
+  var hist = JSON.parse(localStorage.getItem('comp_historial')||'[]');
   hist.unshift({ comp: _compFormatos[_compActual].label, fecha: new Date().toLocaleDateString('es-AR'), stats: stats });
   if (hist.length > 20) hist = hist.slice(0,20);
   localStorage.setItem('comp_historial', JSON.stringify(hist));
   cargarHistorialComp();
 }
 
-function fmtDateComp(str) {
-  if (!str) return null;
-  str = String(str).trim().replace(/\//g,'-');
-  if (str.length === 8 && !str.includes('-')) {
-    return str.slice(0,4) + '-' + str.slice(4,6) + '-' + str.slice(6,8);
-  }
-  var parts = str.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return str.slice(0,10);
-  if (parts.length === 3 && parts[2].length === 4) return parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
+function fmtDateComp(val) {
+  if (!val) return null;
+  var s = String(val).trim().split('T')[0].replace(/\//g,'-');
+  if (/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  var p = s.split('-');
+  if (p.length===3 && p[2].length===4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+  if (val instanceof Date && !isNaN(val)) return val.toISOString().slice(0,10);
   return null;
 }
 
 function cargarHistorialComp() {
   var el = document.getElementById('comp-historial');
   if (!el) return;
-  var hist = JSON.parse(localStorage.getItem('comp_historial') || '[]');
+  var hist = JSON.parse(localStorage.getItem('comp_historial')||'[]');
   if (!hist.length) { el.innerHTML = '<span style="color:var(--muted)">Sin importaciones registradas.</span>'; return; }
-  el.innerHTML = hist.map(function(h) {
+  el.innerHTML = hist.map(function(h){
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:12px">'
-      + '<div><span style="font-weight:500;color:var(--text)">' + h.comp + '</span> <span style="color:var(--muted)">' + h.fecha + '</span></div>'
-      + '<div style="display:flex;gap:10px;color:var(--muted)">'
-      + '<span style="color:var(--green)">+' + (h.stats.clNew||0) + ' clientes</span>'
-      + '<span style="color:var(--med)">~' + (h.stats.polizas||0) + ' pólizas</span>'
-      + '<span>' + (h.stats.skip||0) + ' sin cambios</span>'
-      + '</div></div>';
+      +'<div><span style="font-weight:500;color:var(--text)">'+h.comp+'</span> <span style="color:var(--muted)">'+h.fecha+'</span></div>'
+      +'<div style="display:flex;gap:10px">'
+      +'<span style="color:var(--green)">+'+( h.stats.clNew||0)+' clientes</span>'
+      +'<span style="color:var(--med)">'+( h.stats.polizas||0)+' pólizas</span>'
+      +'<span style="color:var(--muted)">'+( h.stats.skip||0)+' sin cambios</span>'
+      +'</div></div>';
   }).join('');
 }
 
-// ── FEDERACIÓN PATRONAL (ZIP/XML) ──────────────────────────
-async function procesarFedPatronal(buffer, filename) {
+// ── Entrada de archivo ─────────────────────────────────────
+function handleCompFile(file) {
+  if (!file) return;
+  var dz = document.getElementById('comp-dropzone');
+  dz.style.borderColor = 'var(--blue)';
+  dz.style.background  = 'var(--light)';
+  document.getElementById('comp-drop-title').textContent = file.name + ' — leyendo...';
+  document.getElementById('comp-drop-sub').textContent = (file.size/1024).toFixed(0)+' KB';
   document.getElementById('comp-log').innerHTML = '';
-  document.getElementById('comp-result-card').style.display = 'block';
-  compLog('info', 'Leyendo ZIP: ' + filename);
-  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+  document.getElementById('comp-result-card').style.display = 'none';
 
-  try {
-    // Cargar JSZip dinámicamente
-    if (!window.JSZip) {
-      await new Promise(function(res, rej) {
-        var s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
-    var zip = await JSZip.loadAsync(buffer);
-
-    // Leer clientes
-    var clFile = zip.file('CART_CLIENTES.xml');
-    if (clFile) {
-      var xmlText = await clFile.async('string');
-      var parser = new DOMParser();
-      var xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-
-      // Parsear campos metadata
-      var fields = {};
-      xmlDoc.querySelectorAll('FIELD').forEach(function(f) {
-        fields[f.getAttribute('attrname')] = f.getAttribute('desc');
-      });
-
-      var rows = xmlDoc.querySelectorAll('ROW');
-      compLog('info', rows.length + ' clientes en el archivo');
-      var uid = user.id;
-
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var nombre = row.getAttribute('B') || '';
-        var dni    = row.getAttribute('D') || '';
-        var email  = row.getAttribute('AA') || '';
-        var tel    = row.getAttribute('K') || '';
-        var cuit   = row.getAttribute('U') || '';
-        var dir    = (row.getAttribute('E') || '') + (row.getAttribute('F') ? ' ' + row.getAttribute('F') : '');
-        if (!nombre) continue;
-
-        // Buscar si ya existe
-        var { data: existe } = await sb.from('clientes').select('id,nombre,email,telefono').eq('productor_id', uid).eq('nombre', nombre).maybeSingle();
-
-        if (!existe) {
-          var { error: errIns } = await sb.from('clientes').insert({
-            productor_id: uid, nombre: nombre, dni: dni, email: email,
-            telefono: tel, cuit: cuit, direccion: dir, tipo: 'cliente'
-          });
-          if (!errIns) { stats.clNew++; compLog('ok', 'Nuevo cliente: ' + nombre); }
-          else compLog('warn', 'Error al insertar: ' + nombre);
-        } else {
-          var cambios = {};
-          if (email && email !== existe.email) cambios.email = email;
-          if (tel && tel !== existe.telefono) cambios.telefono = tel;
-          if (Object.keys(cambios).length) {
-            await sb.from('clientes').update(cambios).eq('id', existe.id);
-            stats.clUpd++;
-            compLog('info', 'Actualizado: ' + nombre);
-          } else {
-            stats.skip++;
-          }
-        }
-      }
-    }
-
-    // Leer pólizas
-    var polFile = zip.file('CART_CERTIFICADOS.xml');
-    var ramoFile = zip.file('CART_RAMOS_POLIZAS.xml');
-    var ramos = {};
-    if (ramoFile) {
-      var ramoXml = await ramoFile.async('string');
-      var ramoDoc = new DOMParser().parseFromString(ramoXml, 'text/xml');
-      ramoDoc.querySelectorAll('ROW').forEach(function(r) {
-        ramos[r.getAttribute('A')] = r.getAttribute('B');
-      });
-    }
-
-    if (polFile) {
-      var polXml = await polFile.async('string');
-      var polDoc = new DOMParser().parseFromString(polXml, 'text/xml');
-      var polRows = polDoc.querySelectorAll('ROW');
-      compLog('info', polRows.length + ' pólizas en el archivo');
-
-      for (var j = 0; j < polRows.length; j++) {
-        var pr = polRows[j];
-        var nroPol  = pr.getAttribute('B');
-        var seccion = pr.getAttribute('A');
-        var ramo    = ramos[seccion] || 'Ramo ' + seccion;
-        var codCl   = pr.getAttribute('E');
-        var vigDesde = fmtDateComp(pr.getAttribute('I'));
-        var vigHasta = fmtDateComp(pr.getAttribute('J'));
-        if (!nroPol) continue;
-
-        var { data: polExiste } = await sb.from('polizas').select('id,estado,fecha_vencimiento').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
-        stats.polizas++;
-
-        if (!polExiste) {
-          // Buscar cliente por código
-          var { data: clPol } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('dni', codCl).maybeSingle();
-          await sb.from('polizas').insert({
-            productor_id: user.id,
-            cliente_id: clPol ? clPol.id : null,
-            numero_poliza: nroPol,
-            ramo: ramo,
-            aseguradora: 'Federación Patronal',
-            fecha_inicio: vigDesde,
-            fecha_vencimiento: vigHasta,
-            estado: 'activa'
-          });
-          compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + ramo);
-        } else {
-          var polCambios = {};
-          if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) polCambios.fecha_vencimiento = vigHasta;
-          if (Object.keys(polCambios).length) {
-            await sb.from('polizas').update(polCambios).eq('id', polExiste.id);
-            compLog('info', 'Póliza actualizada: ' + nroPol);
-          } else {
-            stats.skip++;
-          }
-        }
-      }
-    }
-
-    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
-    compMostrarResultado(stats);
-
-  } catch(e) {
-    stats.error = true;
-    compLog('error', 'Error: ' + e.message);
-    compMostrarResultado(stats);
-  }
+  var reader = new FileReader();
+  var isBinary = (_compActual !== 'la_equitativa');
+  reader.onload = function(e) {
+    if (_compActual === 'fed_patronal') normalizarYSincronizar(parseFedPatronal(e.target.result), file.name);
+    else if (_compActual === 'seguro_metal') normalizarYSincronizar(parseExcel(e.target.result, 'seguro_metal'), file.name);
+    else if (_compActual === 'provincia_art') normalizarYSincronizar(parseExcel(e.target.result, 'provincia_art'), file.name);
+    else if (_compActual === 'la_equitativa') normalizarYSincronizar(parseCSV(e.target.result), file.name);
+  };
+  if (isBinary) reader.readAsArrayBuffer(file);
+  else reader.readAsText(file, 'latin1');
 }
 
-// ── SEGURO METAL / PROVINCIA ART (XLS/XLSX) ───────────────
-async function procesarExcel(buffer, filename, comp) {
-  document.getElementById('comp-log').innerHTML = '';
+// ══════════════════════════════════════════════════════════
+// PASO 1: PARSERS — cada compañía devuelve { clientes[], polizas[] }
+// en el formato normalizado del CRM
+// ══════════════════════════════════════════════════════════
+
+function parseFedPatronal(buffer) {
+  var xmls = window._compZipXmls;
+  if (!xmls) throw new Error('ZIP no cargado');
+  var parse = function(key) {
+    return new DOMParser().parseFromString(xmls[key]||'<root/>','text/xml');
+  };
+
+  // ── Tablas de referencia ──────────────────────────────────
+  var ramos = {}, ciudades = {};
+  parse('CART_RAMOS_POLIZAS.xml').querySelectorAll('ROW').forEach(function(r){
+    ramos[r.getAttribute('A')] = r.getAttribute('B');
+  });
+  parse('CART_CIUDADES.xml').querySelectorAll('ROW').forEach(function(r){
+    ciudades[r.getAttribute('A')] = r.getAttribute('B');
+  });
+
+  // ── Comisiones por póliza (índice en memoria) ─────────────
+  var comisiones = {}; // { nroPol: { pct_normal, pct_cobranza } }
+  parse('CART_CERTIFICADOS_COMISIONES.xml').querySelectorAll('ROW').forEach(function(r){
+    var nro = r.getAttribute('B');
+    if (!nro || comisiones[nro]) return; // tomar solo la primera (rol O = original)
+    comisiones[nro] = {
+      pct_normal:   parseFloat(r.getAttribute('G')) || 0,
+      pct_cobranza: parseFloat(r.getAttribute('H')) || 0,
+    };
+  });
+
+  // ── Sumas aseguradas por póliza ───────────────────────────
+  var sumas = {}; // { nroPol: { suma, premio, prima } }
+  parse('CART_CERTIFICADOS_SUMAS.xml').querySelectorAll('ROW').forEach(function(r){
+    var nro = r.getAttribute('B');
+    if (!nro || sumas[nro]) return;
+    sumas[nro] = {
+      suma_asegurada: parseFloat(r.getAttribute('D')) || null,
+      prima_anual:    parseFloat(r.getAttribute('E')) || null,
+    };
+  });
+
+  // ── Clientes ──────────────────────────────────────────────
+  var clientes = [];
+  parse('CART_CLIENTES.xml').querySelectorAll('ROW').forEach(function(r){
+    var nombre = (r.getAttribute('B')||'').trim();
+    if (!nombre) return;
+    var codLoc  = r.getAttribute('J') || r.getAttribute('R');
+    var localidad = codLoc ? (ciudades[codLoc] || null) : null;
+    var calle   = (r.getAttribute('E')||'').trim();
+    var numero  = (r.getAttribute('F')||'').trim();
+    var piso    = (r.getAttribute('G')||'').trim();
+    var depto   = (r.getAttribute('H')||'').trim();
+    var cp      = (r.getAttribute('I')||'').trim();
+    var dir     = [calle, numero, piso?'Piso '+piso:'', depto?'Dto '+depto:'', cp?'CP '+cp:'', localidad||'']
+                    .filter(Boolean).join(' ').trim();
+    clientes.push({
+      nombre:    nombre,
+      dni:       r.getAttribute('D') || null,
+      cuit:      r.getAttribute('U') || null,
+      email:     r.getAttribute('AA')|| null,
+      telefono:  r.getAttribute('K') || null,
+      direccion: dir || null,
+      tipo:      'cliente',
+      _codComp:  r.getAttribute('A'),
+    });
+  });
+
+  // ── Pólizas ───────────────────────────────────────────────
+  var polizas = [];
+  var ESTADOS_POL = { '1':'activa','2':'activa','3':'baja','4':'baja','5':'baja','6':'cancelada' };
+  parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW').forEach(function(r){
+    var nro = r.getAttribute('B');
+    if (!nro) return;
+    var s = sumas[nro] || {};
+    var c = comisiones[nro] || {};
+    polizas.push({
+      numero_poliza:     nro,
+      ramo:              ramos[r.getAttribute('A')] || ('Ramo '+r.getAttribute('A')),
+      aseguradora:       'Federación Patronal',
+      fecha_inicio:      fmtDateComp(r.getAttribute('I')),
+      fecha_vencimiento: fmtDateComp(r.getAttribute('J')),
+      prima_anual:       s.prima_anual  || null,
+      suma_asegurada:    s.suma_asegurada || null,
+      estado:            ESTADOS_POL[r.getAttribute('F')] || 'activa',
+      _codCliente:       r.getAttribute('E'),
+      _pct_comision:     c.pct_normal || null,
+    });
+  });
+
+  // ── Cobranzas (recibos) ───────────────────────────────────
+  var cobranzas = [];
+  var ESTADOS_REC = { '1':'pendiente','2':'pagada','3':'vencida','4':'pagada' };
+  parse('CART_RECIBOS.xml').querySelectorAll('ROW').forEach(function(r){
+    var nroPol = r.getAttribute('B');
+    var nroRec = r.getAttribute('L');
+    if (!nroPol || !nroRec) return;
+    cobranzas.push({
+      numero_cuota:      parseInt(r.getAttribute('G')) || null,
+      monto:             parseFloat(r.getAttribute('J')) || null,
+      fecha_vencimiento: fmtDateComp(r.getAttribute('E')),
+      estado:            ESTADOS_REC[r.getAttribute('F')] || 'pendiente',
+      _nroPol:           nroPol,
+      _nroRecibo:        nroRec,
+    });
+  });
+
+  // ── Coberturas por póliza ─────────────────────────────────
+  var cobDescMap = {}; // { codRamo_codCob: descripcion }
+  parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
+    var key = (r.getAttribute('D')||r.getAttribute('A')) + '_' + r.getAttribute('B');
+    cobDescMap[key] = r.getAttribute('C');
+    // también por código solo por si el ramo no matchea
+    cobDescMap['_'+r.getAttribute('B')] = r.getAttribute('C');
+  });
+
+  var coberturas = [];
+  parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+    var nroPol = r.getAttribute('B');
+    var codCob = r.getAttribute('F');
+    var ramo   = r.getAttribute('E');
+    if (!nroPol || !codCob) return;
+    var desc = cobDescMap[ramo+'_'+codCob] || cobDescMap['_'+codCob] || ('Cobertura ' + codCob);
+    coberturas.push({
+      _nroPol:        nroPol,
+      descripcion:    desc,
+      suma_asegurada: parseFloat(r.getAttribute('G')) || null,
+    });
+  });
+
+  return { clientes:clientes, polizas:polizas, cobranzas:cobranzas, coberturas:coberturas };
+}
+
+function parseExcel(buffer, comp) {
+  if (!window.XLSX) throw new Error('SheetJS no cargado');
+  var wb = XLSX.read(buffer, { type:'array', cellDates:true });
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  var rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+
+  var clientes = [], polizas = [];
+
+  rows.forEach(function(row) {
+    var nombre, nroPol, ramo, vigDesde, vigHasta, aseguradora, premio;
+
+    if (comp === 'seguro_metal') {
+      nombre      = String(row['Asegurado.1'] || row['Asegurado'] || '').trim();
+      nroPol      = String(row['Póliza'] || '').trim();
+      ramo        = String(row['Rama']   || '').trim();
+      vigDesde    = fmtDateComp(row['Vig. desde']);
+      vigHasta    = fmtDateComp(row['Vig. hasta']);
+      aseguradora = 'Seguro Metal';
+      premio      = parseFloat(row['Premio Emitido']) || null;
+    } else {
+      nombre      = String(row['RAZÓN SOCIAL'] || '').trim();
+      nroPol      = String(row['CONTRATO']     || '').trim();
+      ramo        = 'ART';
+      vigDesde    = fmtDateComp(row['VIGENCIA DESDE']);
+      vigHasta    = fmtDateComp(row['VIGENCIA HASTA']);
+      aseguradora = 'Provincia ART';
+      premio      = null;
+    }
+
+    if (!nombre || !nroPol) return;
+    clientes.push({ nombre:nombre, tipo:'cliente' });
+    polizas.push({ numero_poliza:nroPol, ramo:ramo, aseguradora:aseguradora,
+      fecha_inicio:vigDesde, fecha_vencimiento:vigHasta, prima_anual:premio,
+      estado:'activa', _nombreCliente:nombre });
+  });
+
+  return { clientes:clientes, polizas:polizas };
+}
+
+function parseCSV(text) {
+  var lines = text.split('\n').filter(function(l){ return l.trim(); });
+  var headers = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
+  var clientes = [], polizas = [];
+
+  for (var i = 1; i < lines.length; i++) {
+    var vals = lines[i].split(',').map(function(v){ return v.trim().replace(/"/g,''); });
+    var row = {};
+    headers.forEach(function(h,idx){ row[h] = vals[idx]||''; });
+    var nombre  = row['Tomador']||'';
+    var nroPol  = row['Ramo póliza']||'';
+    if (!nombre||!nroPol) continue;
+    clientes.push({ nombre:nombre.trim(), tipo:'cliente' });
+    polizas.push({ numero_poliza:nroPol, ramo:row['Ramo']||'',
+      aseguradora:'La Equitativa del Plata',
+      fecha_inicio:fmtDateComp(row['Desde']), fecha_vencimiento:fmtDateComp(row['Hasta']),
+      estado:'activa', _nombreCliente:nombre.trim() });
+  }
+  return { clientes:clientes, polizas:polizas };
+}
+
+// ══════════════════════════════════════════════════════════
+// PASO 2+3+4: NORMALIZAR → COMPARAR → UPSERT EN LOTE
+// Una sola consulta a Supabase para traer todo,
+// comparación en memoria, upsert masivo al final
+// ══════════════════════════════════════════════════════════
+
+async function normalizarYSincronizar(parsed, filename) {
   document.getElementById('comp-result-card').style.display = 'block';
-  compLog('info', 'Leyendo archivo: ' + filename);
-  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+  compLog('info', 'Archivo leído: ' + parsed.clientes.length + ' clientes, ' + parsed.polizas.length + ' pólizas');
+  compLog('info', 'Consultando base de datos...');
+
+  var uid  = user.id;
+  var stats = { clNew:0, clUpd:0, polizas:0, skip:0, error:false };
 
   try {
-    if (!window.XLSX) {
-      await new Promise(function(res, rej) {
-        var s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
-    var wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-    var ws = wb.Sheets[wb.SheetNames[0]];
-    var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    compLog('info', rows.length + ' filas encontradas');
+    // ── Traer TODO de Supabase en 3 consultas ──────────────
+    var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
+      sb.from('clientes').select('id,nombre,dni,email,telefono').eq('productor_id', uid),
+      sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado').eq('productor_id', uid),
+      sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
+    ]);
 
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var nombre, nroPol, ramo, vigDesde, vigHasta, aseguradora, premio;
+    // Índices en memoria para búsqueda O(1)
+    var clPorNombre = {};
+    var clPorDni    = {};
+    (clBD||[]).forEach(function(c){
+      if (c.nombre) clPorNombre[c.nombre.trim().toUpperCase()] = c;
+      if (c.dni)    clPorDni[String(c.dni).trim()]             = c;
+    });
+    var polPorNumero = {};
+    (polBD||[]).forEach(function(p){ polPorNumero[String(p.numero_poliza)] = p; });
 
-      if (comp === 'seguro_metal') {
-        nombre     = String(row['Asegurado.1'] || row['Asegurado'] || '').trim();
-        nroPol     = String(row['Póliza'] || '').trim();
-        ramo       = String(row['Rama'] || '').trim();
-        vigDesde   = fmtDateComp(row['Vig. desde']);
-        vigHasta   = fmtDateComp(row['Vig. hasta']);
-        aseguradora = 'Seguro Metal';
-        premio     = parseFloat(row['Premio Emitido']) || null;
-      } else if (comp === 'provincia_art') {
-        nombre     = String(row['RAZÓN SOCIAL'] || '').trim();
-        nroPol     = String(row['CONTRATO'] || '').trim();
-        ramo       = 'ART';
-        vigDesde   = fmtDateComp(row['VIGENCIA DESDE']);
-        vigHasta   = fmtDateComp(row['VIGENCIA HASTA']);
-        aseguradora = 'Provincia ART';
-        premio     = null;
-      }
+    // Índice de cobranzas: poliza_id + numero_cuota
+    var cobIdx = {};
+    (cobBD||[]).forEach(function(c){ cobIdx[c.poliza_id+'_'+c.numero_cuota] = true; });
 
-      if (!nombre || !nroPol) { stats.skip++; continue; }
+    compLog('info', 'BD: ' + (clBD||[]).length + ' clientes, ' + (polBD||[]).length + ' pólizas, ' + (cobBD||[]).length + ' cobranzas existentes');
 
-      // Cliente
-      var { data: clExiste } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('nombre', nombre).maybeSingle();
-      if (!clExiste) {
-        var { data: clIns } = await sb.from('clientes').insert({ productor_id: user.id, nombre: nombre, tipo: 'cliente' }).select('id').single();
-        clExiste = clIns;
-        stats.clNew++;
-        compLog('ok', 'Nuevo cliente: ' + nombre);
-      }
+    // ── Deduplicar clientes del archivo ───────────────────
+    var clUnicos = {};
+    parsed.clientes.forEach(function(c){
+      var key = (c.dni || c.nombre||'').trim().toUpperCase();
+      if (key) clUnicos[key] = c;
+    });
 
-      // Póliza
-      var { data: polExiste } = await sb.from('polizas').select('id,fecha_vencimiento,prima_anual').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
-      stats.polizas++;
-
-      if (!polExiste) {
-        await sb.from('polizas').insert({
-          productor_id: user.id,
-          cliente_id: clExiste ? clExiste.id : null,
-          numero_poliza: nroPol, ramo: ramo,
-          aseguradora: aseguradora,
-          fecha_inicio: vigDesde, fecha_vencimiento: vigHasta,
-          prima_anual: premio, estado: 'activa'
-        });
-        compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + nombre);
+    // ── Clasificar clientes: nuevos vs actualizar ──────────
+    var clInsertar = [], clActualizar = [];
+    Object.values(clUnicos).forEach(function(c) {
+      var existe = (c.dni ? clPorDni[String(c.dni).trim()] : null)
+                || clPorNombre[(c.nombre||'').trim().toUpperCase()];
+      if (!existe) {
+        clInsertar.push({ productor_id:uid, nombre:c.nombre, dni:c.dni||null,
+          cuit:c.cuit||null, email:c.email||null, telefono:c.telefono||null,
+          direccion:c.direccion||null, tipo:'cliente' });
       } else {
-        var polCambios = {};
-        if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) polCambios.fecha_vencimiento = vigHasta;
-        if (premio && premio !== polExiste.prima_anual) polCambios.prima_anual = premio;
-        if (Object.keys(polCambios).length) {
-          await sb.from('polizas').update(polCambios).eq('id', polExiste.id);
-          compLog('info', 'Actualizada: ' + nroPol);
+        var cambios = {};
+        if (c.email    && c.email    !== existe.email)    cambios.email    = c.email;
+        if (c.telefono && c.telefono !== existe.telefono) cambios.telefono = c.telefono;
+        if (Object.keys(cambios).length) {
+          clActualizar.push({ id:existe.id, cambios:cambios });
         } else { stats.skip++; }
       }
+    });
+
+    // ── Insertar clientes nuevos en lote ──────────────────
+    if (clInsertar.length) {
+      var { error: errCl } = await sb.from('clientes').insert(clInsertar);
+      if (errCl) { compLog('error', 'Error insertando clientes: ' + errCl.message); stats.error = true; }
+      else {
+        stats.clNew = clInsertar.length;
+        compLog('ok', clInsertar.length + ' clientes nuevos insertados');
+      }
     }
 
-    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
+    // Actualizar clientes con cambios (en paralelo, máx 5 a la vez)
+    if (clActualizar.length) {
+      for (var i = 0; i < clActualizar.length; i += 5) {
+        await Promise.all(clActualizar.slice(i, i+5).map(function(u){
+          return sb.from('clientes').update(u.cambios).eq('id', u.id);
+        }));
+      }
+      stats.clUpd = clActualizar.length;
+      compLog('info', clActualizar.length + ' clientes actualizados');
+    }
+
+    // Refrescar índice de clientes con los recién insertados
+    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,dni').eq('productor_id', uid);
+    var clPorNombre2 = {}, clPorDni2 = {};
+    (clBD2||[]).forEach(function(c){
+      if (c.nombre) clPorNombre2[c.nombre.trim().toUpperCase()] = c;
+      if (c.dni)    clPorDni2[String(c.dni).trim()]             = c;
+    });
+
+    // ── Clasificar pólizas: nuevas vs actualizar ──────────
+    var polInsertar = [], polActualizar = [];
+
+    parsed.polizas.forEach(function(p) {
+      var nro     = String(p.numero_poliza||'').trim();
+      var existe  = polPorNumero[nro];
+
+      // Buscar cliente_id
+      var cl = null;
+      if (p._codCliente) cl = clPorDni2[String(p._codCliente).trim()];
+      if (!cl && p._nombreCliente) cl = clPorNombre2[(p._nombreCliente||'').trim().toUpperCase()];
+
+      if (!existe) {
+        polInsertar.push({
+          productor_id: uid,
+          cliente_id:   cl ? cl.id : null,
+          numero_poliza: nro,
+          ramo:         p.ramo || null,
+          aseguradora:  p.aseguradora || null,
+          fecha_inicio: p.fecha_inicio || null,
+          fecha_vencimiento: p.fecha_vencimiento || null,
+          prima_anual:  p.prima_anual || null,
+          estado:       p.estado || 'activa'
+        });
+      } else {
+        var cambios = {};
+        if (p.fecha_vencimiento && p.fecha_vencimiento !== existe.fecha_vencimiento)
+          cambios.fecha_vencimiento = p.fecha_vencimiento;
+        if (p.prima_anual && p.prima_anual !== existe.prima_anual)
+          cambios.prima_anual = p.prima_anual;
+        if (p.estado && p.estado !== existe.estado)
+          cambios.estado = p.estado;
+        if (Object.keys(cambios).length) polActualizar.push({ id:existe.id, cambios:cambios });
+        else stats.skip++;
+      }
+    });
+
+    stats.polizas = polInsertar.length + polActualizar.length;
+
+    // Insertar pólizas nuevas en lotes de 100
+    if (polInsertar.length) {
+      for (var j = 0; j < polInsertar.length; j += 100) {
+        var lote = polInsertar.slice(j, j+100);
+        var { error: errPol } = await sb.from('polizas').insert(lote);
+        if (errPol) { compLog('error', 'Error insertando pólizas: ' + errPol.message); stats.error = true; }
+      }
+      compLog('ok', polInsertar.length + ' pólizas nuevas insertadas');
+    }
+
+    // Actualizar pólizas con cambios (en paralelo de a 5)
+    if (polActualizar.length) {
+      for (var k = 0; k < polActualizar.length; k += 5) {
+        await Promise.all(polActualizar.slice(k, k+5).map(function(u){
+          return sb.from('polizas').update(u.cambios).eq('id', u.id);
+        }));
+      }
+      compLog('info', polActualizar.length + ' pólizas actualizadas');
+    }
+
+    // ── Cobranzas (solo Fed Patronal por ahora) ────────────
+    var cobranzasArr = parsed.cobranzas || [];
+    if (cobranzasArr.length) {
+      var { data: polBD2 } = await sb.from('polizas').select('id,numero_poliza').eq('productor_id', uid);
+      var polIdx2 = {};
+      (polBD2||[]).forEach(function(p){ polIdx2[String(p.numero_poliza)] = p.id; });
+
+      var cobInsertar = [];
+      cobranzasArr.forEach(function(c) {
+        var polId = polIdx2[String(c._nroPol)];
+        if (!polId) return;
+        var key = polId + '_' + c.numero_cuota;
+        if (cobIdx[key]) { stats.skip++; return; }
+        cobInsertar.push({
+          productor_id:      uid,
+          poliza_id:         polId,
+          numero_cuota:      c.numero_cuota,
+          monto:             c.monto,
+          fecha_vencimiento: c.fecha_vencimiento,
+          estado:            c.estado,
+        });
+      });
+
+      if (cobInsertar.length) {
+        for (var ci = 0; ci < cobInsertar.length; ci += 100) {
+          var cobLote = cobInsertar.slice(ci, ci+100);
+          var { error: errCob } = await sb.from('cobranzas').insert(cobLote);
+          if (errCob) { compLog('error', 'Error cobranzas: ' + errCob.message); stats.error = true; }
+        }
+        compLog('ok', cobInsertar.length + ' cuotas de cobranza insertadas');
+      }
+    }
+
+    // ── Coberturas (solo Fed Patronal por ahora) ───────────
+    var coberturasArr = parsed.coberturas || [];
+    if (coberturasArr.length) {
+      // Traer coberturas existentes para no duplicar
+      var { data: cobExist } = await sb.from('coberturas').select('poliza_id,descripcion').eq('productor_id', uid);
+      var cobExistIdx = {};
+      (cobExist||[]).forEach(function(c){ cobExistIdx[c.poliza_id+'_'+c.descripcion] = true; });
+
+      // Refrescar índice pólizas si no fue creado antes
+      var polBD3 = polBD2 || [];
+      if (!polBD3.length) {
+        var { data: _p } = await sb.from('polizas').select('id,numero_poliza').eq('productor_id', uid);
+        polBD3 = _p || [];
+      }
+      var polIdx3 = {};
+      polBD3.forEach(function(p){ polIdx3[String(p.numero_poliza)] = p.id; });
+
+      var cobInsert = [];
+      coberturasArr.forEach(function(c) {
+        var polId = polIdx3[String(c._nroPol)];
+        if (!polId) return;
+        var key = polId + '_' + c.descripcion;
+        if (cobExistIdx[key]) return; // ya existe
+        cobInsert.push({
+          productor_id:   uid,
+          poliza_id:      polId,
+          descripcion:    c.descripcion,
+          suma_asegurada: c.suma_asegurada,
+        });
+      });
+
+      if (cobInsert.length) {
+        for (var cbi = 0; cbi < cobInsert.length; cbi += 100) {
+          var cbLote = cobInsert.slice(cbi, cbi+100);
+          var { error: errCb } = await sb.from('coberturas').insert(cbLote);
+          if (errCb) { compLog('error', 'Error coberturas: ' + errCb.message); stats.error = true; }
+        }
+        compLog('ok', cobInsert.length + ' coberturas insertadas');
+      }
+    }
+
+    if (!stats.error && !polInsertar.length && !clInsertar.length) {
+      compLog('skip', 'Todo actualizado — sin cambios nuevos');
+    }
+
+    document.getElementById('comp-drop-title').textContent = filename + ' · sincronizado';
+    document.getElementById('comp-dropzone').style.borderColor = 'var(--green)';
     compMostrarResultado(stats);
 
   } catch(e) {
@@ -9269,67 +9473,63 @@ async function procesarExcel(buffer, filename, comp) {
   }
 }
 
-// ── LA EQUITATIVA (CSV) ────────────────────────────────────
-async function procesarCSV(text, filename) {
+// ── Loader de librerías (JSZip + SheetJS) ─────────────────
+async function cargarLib(url) {
+  return new Promise(function(res, rej) {
+    var s = document.createElement('script');
+    s.src = url; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// Override handleCompFile para cargar libs antes de parsear
+var _origHandleCompFile = handleCompFile;
+handleCompFile = async function(file) {
+  if (!file) return;
+  var dz = document.getElementById('comp-dropzone');
+  dz.style.borderColor = 'var(--blue)';
+  dz.style.background  = 'var(--light)';
+  document.getElementById('comp-drop-title').textContent = file.name + ' — cargando...';
+  document.getElementById('comp-drop-sub').textContent = (file.size/1024).toFixed(0)+' KB';
   document.getElementById('comp-log').innerHTML = '';
-  document.getElementById('comp-result-card').style.display = 'block';
-  compLog('info', 'Leyendo CSV: ' + filename);
-  var stats = { clNew: 0, clUpd: 0, polizas: 0, skip: 0, error: false };
+  document.getElementById('comp-result-card').style.display = 'none';
 
   try {
-    var lines = text.split('\n').filter(function(l){ return l.trim(); });
-    var headers = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
-    compLog('info', (lines.length - 1) + ' filas encontradas');
-
-    for (var i = 1; i < lines.length; i++) {
-      var vals = lines[i].split(',').map(function(v){ return v.trim().replace(/"/g,''); });
-      var row = {};
-      headers.forEach(function(h, idx){ row[h] = vals[idx] || ''; });
-
-      var nombre  = row['Tomador'] || '';
-      var nroPol  = row['Ramo póliza'] || '';
-      var ramo    = row['Ramo'] || '';
-      var vigDesde = fmtDateComp(row['Desde']);
-      var vigHasta = fmtDateComp(row['Hasta']);
-
-      if (!nombre || !nroPol) { stats.skip++; continue; }
-
-      var { data: clExiste } = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('nombre', nombre).maybeSingle();
-      if (!clExiste) {
-        var { data: clIns } = await sb.from('clientes').insert({ productor_id: user.id, nombre: nombre, tipo: 'cliente' }).select('id').single();
-        clExiste = clIns;
-        stats.clNew++;
-        compLog('ok', 'Nuevo cliente: ' + nombre);
-      }
-
-      var { data: polExiste } = await sb.from('polizas').select('id,fecha_vencimiento').eq('productor_id', user.id).eq('numero_poliza', nroPol).maybeSingle();
-      stats.polizas++;
-
-      if (!polExiste) {
-        await sb.from('polizas').insert({
-          productor_id: user.id, cliente_id: clExiste ? clExiste.id : null,
-          numero_poliza: nroPol, ramo: ramo,
-          aseguradora: 'La Equitativa del Plata',
-          fecha_inicio: vigDesde, fecha_vencimiento: vigHasta, estado: 'activa'
-        });
-        compLog('ok', 'Póliza nueva: ' + nroPol + ' · ' + nombre);
-      } else {
-        if (vigHasta && vigHasta !== polExiste.fecha_vencimiento) {
-          await sb.from('polizas').update({ fecha_vencimiento: vigHasta }).eq('id', polExiste.id);
-          compLog('info', 'Vencimiento actualizado: ' + nroPol);
-        } else { stats.skip++; }
-      }
+    if (_compActual === 'fed_patronal') {
+      if (!window.JSZip) await cargarLib('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      // Leer ZIP y extraer todos los XMLs sincrónicamente en memoria
+      var buf = await file.arrayBuffer();
+      var zip = await JSZip.loadAsync(buf);
+      window._compZip = zip;
+      window._compZipXmls = {};
+      var xmlFiles = ['CART_CLIENTES.xml','CART_CERTIFICADOS.xml','CART_RAMOS_POLIZAS.xml',
+        'CART_RECIBOS.xml','CART_CERTIFICADOS_COMISIONES.xml','SINT_SINIESTROS.xml',
+        'CART_CERTIFICADOS_SUMAS.xml','CART_CIUDADES.xml',
+        'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml'];
+      await Promise.all(xmlFiles.map(async function(fn){
+        var f = zip.file(fn);
+        if (f) window._compZipXmls[fn] = await f.async('string');
+      }));
+      document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
+      normalizarYSincronizar(parseFedPatronal(buf), file.name);
+    } else if (_compActual === 'la_equitativa') {
+      var text = await new Promise(function(res){
+        var r = new FileReader(); r.onload = function(e){ res(e.target.result); };
+        r.readAsText(file, 'latin1');
+      });
+      document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
+      normalizarYSincronizar(parseCSV(text), file.name);
+    } else {
+      if (!window.XLSX) await cargarLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      var buf2 = await file.arrayBuffer();
+      document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
+      normalizarYSincronizar(parseExcel(buf2, _compActual), file.name);
     }
-
-    document.getElementById('comp-drop-title').textContent = filename + ' · importado';
-    compMostrarResultado(stats);
-
   } catch(e) {
-    stats.error = true;
-    compLog('error', 'Error: ' + e.message);
-    compMostrarResultado(stats);
+    compLog('error', 'Error al leer archivo: ' + e.message);
+    document.getElementById('comp-result-card').style.display = 'block';
   }
-}
+};
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">
