@@ -9415,7 +9415,8 @@ async function normalizarYSincronizar(parsed, filename) {
           fecha_inicio: p.fecha_inicio || null,
           fecha_vencimiento: p.fecha_vencimiento || null,
           prima_anual:  p.prima_anual || null,
-          estado:       p.estado || 'activa'
+          estado:       p.estado || 'activa',
+          cod_aseg_fedpat: p._codCliente || null,
         });
       } else {
         var cambios = {};
@@ -9488,36 +9489,15 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
     // ── Cruce automático pólizas → clientes ──────────────
-    // Actualizar pólizas sin cliente_id usando cod_comp_fedpat
-    var { data: polSinCl } = await sb.from('polizas')
-      .select('id,numero_poliza')
-      .eq('productor_id', uid)
-      .is('cliente_id', null);
-
-    if (polSinCl && polSinCl.length) {
-      // Índice de pólizas por número para cruzar con _codCliente del parser
-      var polNumIdx = {};
-      (polSinCl||[]).forEach(function(p){ polNumIdx[String(p.numero_poliza)] = p.id; });
-
-      // Armar updates: poliza_id → cliente_id
-      var polClUpdates = [];
-      (parsed.polizas||[]).forEach(function(p) {
-        var nro = String(p.numero_poliza||'').trim();
-        var polId = polNumIdx[nro];
-        if (!polId) return;
-        var cl = clPorCodComp[String(p._codCliente||'')] || null;
-        if (cl) polClUpdates.push({ id: polId, cliente_id: cl.id });
-      });
-
-      // Actualizar en lotes de 50
-      var actualizados = 0;
-      for (var pi = 0; pi < polClUpdates.length; pi += 50) {
-        await Promise.all(polClUpdates.slice(pi, pi+50).map(function(u){
-          return sb.from('polizas').update({ cliente_id: u.cliente_id }).eq('id', u.id);
-        }));
-        actualizados += Math.min(50, polClUpdates.length - pi);
-      }
-      if (actualizados) compLog('ok', actualizados + ' pólizas asociadas a clientes');
+    var { error: crucErr } = await sb.rpc('cruzar_polizas_clientes_fedpat', { p_productor_id: uid });
+    if (!crucErr) {
+      // Contar cuántas se asociaron
+      var { data: asociadas } = await sb.from('polizas')
+        .select('id', { count: 'exact' })
+        .eq('productor_id', uid)
+        .not('cliente_id', 'is', null)
+        .not('cod_aseg_fedpat', 'is', null);
+      compLog('ok', (asociadas ? asociadas.length : 0) + ' pólizas asociadas a clientes');
     }
     var coberturasArr = parsed.coberturas || [];
     if (coberturasArr.length) {
