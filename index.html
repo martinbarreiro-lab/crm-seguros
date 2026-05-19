@@ -2975,7 +2975,7 @@ async function fichaPolizas(c) {
       html.push('<div class="poliza-row" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
-           +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
+           +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
            +      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Detalle de cobertura</div>'
@@ -2999,7 +2999,7 @@ async function fichaPolizas(c) {
       html.push('<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">'
            +    '<div>'
            +      '<div style="font-size:13px;color:#6B7280;text-decoration:line-through">' + (p.numero_poliza || '—') + '</div>'
-           +      '<div style="font-size:11px;color:#9CA3AF">' + p.ramo + ' · ' + (p.aseguradora || '—') + (fmtDate(p.fecha_vencimiento) ? ' · Venció ' + fmtDate(p.fecha_vencimiento) : '') + '</div>'
+           +      '<div style="font-size:11px;color:#9CA3AF">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + (fmtDate(p.fecha_vencimiento) ? ' · Venció ' + fmtDate(p.fecha_vencimiento) : '') + '</div>'
            +    '</div>'
            +    '<span style="font-size:10px;color:#6B7280;background:#F3F4F6;padding:3px 8px;border-radius:4px;font-weight:600;text-transform:uppercase">' + p.estado + '</span>'
            +  '</div>');
@@ -3030,7 +3030,7 @@ async function fichaPolizas(c) {
            +      '<span style="font-size:10px;color:' + sc.text + ';font-weight:700;text-transform:uppercase">' + d + ' ' + (d === 1 ? 'día' : 'días') + '</span>'
            +    '</div>'
            +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero_poliza || '—') + '</div>'
-           +    '<div style="font-size:11px;color:#6B7280">' + p.ramo + ' · ' + (p.aseguradora || '—') + '</div>'
+           +    '<div style="font-size:11px;color:#6B7280">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +    (p.fecha_vencimiento ? '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Vence ' + fmtDate(p.fecha_vencimiento) + '</div>' : '')
            +  '</div>');
     });
@@ -5707,7 +5707,7 @@ async function generarTareasAutoVencimiento() {
     const cl = allCl.find(function(c){return c.id===p.cliente_id;}) || {};
     const nombreCl = ((cl.apellido || '') + ', ' + (cl.nombre || '')).trim() || 'Cliente';
     const titulo = (e.key === 'vencida' ? 'Renovar póliza VENCIDA N° ' : 'Renovar póliza URGENTE N° ') + (p.numero_poliza || '') + ' - ' + nombreCl;
-    const desc = p.ramo + ' · ' + (p.aseguradora || '—') + ' · Vence ' + fmtDate(p.fecha_vencimiento) + (e.dias !== null ? ' (' + (e.dias < 0 ? 'hace ' + Math.abs(e.dias) + ' días' : 'en ' + e.dias + ' días') + ')' : '');
+    const desc = (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + ' · Vence ' + fmtDate(p.fecha_vencimiento) + (e.dias !== null ? ' (' + (e.dias < 0 ? 'hace ' + Math.abs(e.dias) + ' días' : 'en ' + e.dias + ' días') + ')' : '');
     await sb.from('tareas').insert({
       cliente_id: p.cliente_id,
       poliza_id: p.id,
