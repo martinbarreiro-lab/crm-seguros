@@ -9836,7 +9836,13 @@ handleCompFile = async function(file) {
       await extraerXmls(zip);
       compLog('info', 'XMLs extraídos: ' + Object.keys(window._compZipXmls).join(', '));
       document.getElementById('comp-drop-title').textContent = file.name + ' — procesando...';
-      normalizarYSincronizar(parseFedPatronal(buf), file.name);
+      try {
+        normalizarYSincronizar(parseFedPatronal(buf), file.name);
+      } catch(parseErr) {
+        compLog('error', 'Error en parser: ' + parseErr.message);
+        compLog('error', 'Stack: ' + (parseErr.stack||'').split('\n').slice(0,3).join(' | '));
+        document.getElementById('comp-result-card').style.display = 'block';
+      }
     } else if (_compActual === 'la_equitativa') {
       var text = await new Promise(function(res){
         var r = new FileReader(); r.onload = function(e){ res(e.target.result); };
