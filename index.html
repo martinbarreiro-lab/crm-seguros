@@ -9413,7 +9413,8 @@ async function normalizarYSincronizar(parsed, filename) {
       for (var j = 0; j < polInsertar.length; j += 100) {
         var lote = polInsertar.slice(j, j+100);
         var { error: errPol } = await sb.from('polizas').insert(lote);
-        if (errPol) { compLog('error', 'Error insertando pólizas: ' + errPol.message); stats.error = true; }
+        if (errPol) { compLog('error', 'Error insertando pólizas: ' + errPol.message); stats.error = true; break; }
+        await new Promise(function(r){ setTimeout(r, 150); });
       }
       compLog('ok', polInsertar.length + ' pólizas nuevas insertadas');
     }
@@ -9452,10 +9453,11 @@ async function normalizarYSincronizar(parsed, filename) {
       });
 
       if (cobInsertar.length) {
-        for (var ci = 0; ci < cobInsertar.length; ci += 100) {
-          var cobLote = cobInsertar.slice(ci, ci+100);
+        for (var ci = 0; ci < cobInsertar.length; ci += 500) {
+          var cobLote = cobInsertar.slice(ci, ci+500);
           var { error: errCob } = await sb.from('cobranzas').insert(cobLote);
-          if (errCob) { compLog('error', 'Error cobranzas: ' + errCob.message); stats.error = true; }
+          if (errCob) { compLog('error', 'Error cobranzas: ' + errCob.message); stats.error = true; break; }
+          await new Promise(function(r){ setTimeout(r, 200); });
         }
         compLog('ok', cobInsertar.length + ' cuotas de cobranza insertadas');
       }
@@ -9493,10 +9495,11 @@ async function normalizarYSincronizar(parsed, filename) {
       });
 
       if (cobInsert.length) {
-        for (var cbi = 0; cbi < cobInsert.length; cbi += 100) {
-          var cbLote = cobInsert.slice(cbi, cbi+100);
+        for (var cbi = 0; cbi < cobInsert.length; cbi += 500) {
+          var cbLote = cobInsert.slice(cbi, cbi+500);
           var { error: errCb } = await sb.from('coberturas').insert(cbLote);
-          if (errCb) { compLog('error', 'Error coberturas: ' + errCb.message); stats.error = true; }
+          if (errCb) { compLog('error', 'Error coberturas: ' + errCb.message); stats.error = true; break; }
+          await new Promise(function(r){ setTimeout(r, 200); });
         }
         compLog('ok', cobInsert.length + ' coberturas insertadas');
       }
