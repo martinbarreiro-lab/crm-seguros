@@ -8779,8 +8779,16 @@ function renderMpdCobertura(p) {
     var sumaVal = dr.suma_asegurada || p.suma_asegurada;
     if(sumaVal) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(sumaVal)+'</strong>']);
     if(dr.franquicia_desc || dr.franquicia_monto) {
-      var franTxt = dr.franquicia_desc || '';
-      if(dr.franquicia_monto) franTxt += (franTxt?' · ':'') + 'Mínimo: ' + fmtM(dr.franquicia_monto);
+      var franTxt = dr.franquicia_desc ? dr.franquicia_desc.trim() : '';
+      // Calcular valor real de franquicia
+      var sumaFranq = parseFloat(dr.suma_asegurada || p.suma_asegurada || 0);
+      var pctMatch = franTxt.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (pctMatch && sumaFranq) {
+        var franqReal = sumaFranq * parseFloat(pctMatch[1]) / 100;
+        franTxt = franTxt + ' · Valor de franquicia: ' + fmtM(franqReal);
+      } else if (dr.franquicia_monto) {
+        franTxt = franTxt + (franTxt ? ' · ' : '') + 'Valor de franquicia: ' + fmtM(dr.franquicia_monto);
+      }
       rows.push(['Franquicia', franTxt]);
     } else if(dr.franquicia_tipo) {
       var fran=dr.franquicia_tipo==='sin'?'Sin franquicia':dr.franquicia_tipo==='porcentaje'?(dr.franquicia_porcentaje+'%'+(dr.franquicia_monto?' = '+fmtM(dr.franquicia_monto):'')):fmtM(dr.franquicia_monto);
