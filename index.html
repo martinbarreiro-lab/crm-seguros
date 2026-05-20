@@ -8732,7 +8732,10 @@ function mpdMetric(label,val,sub,color) {
 }
 
 function renderMpdTabContent(p,tab) {
-  if (tab==='cobertura') return renderMpdCobertura(p);
+  if (tab==='cobertura') {
+    renderMpdCobertura(p).then(function(html){ var el = document.getElementById('mpd-tab-content'); if(el) el.innerHTML = html; });
+    return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando...</div>';
+  }
   if (tab==='pagos') return renderMpdPagos(p);
   if (tab==='documentos') return renderMpdDocumentos(p);
   return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando historial...</div>';
@@ -8760,7 +8763,7 @@ async function mpdSetTab(tab) {
   }
 }
 
-function renderMpdCobertura(p) {
+async function renderMpdCobertura(p) {
   var dr = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
   var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
   var rows = [];
@@ -8852,13 +8855,30 @@ function renderMpdCobertura(p) {
     if(dr.suma) rows.push(['Suma asegurada',fmtM(dr.suma)]);
   }
   if (p.notas) rows.push(['Notas internas','<span style="color:#6B7280;font-style:italic">'+p.notas+'</span>']);
-  if (!rows.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin datos de cobertura cargados.</div>';
-  return rows.map(function(r){
+
+  var html = rows.length ? rows.map(function(r){
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid #F3F4F6;gap:16px">'+
       '<span style="font-size:12px;color:#6B7280;flex-shrink:0">'+r[0]+'</span>'+
       '<span style="font-size:12px;font-weight:500;color:#111827;text-align:right">'+r[1]+'</span>'+
     '</div>';
-  }).join('');
+  }).join('') : '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin datos de cobertura cargados.</div>';
+
+  // Cargar coberturas de la tabla
+  if (p.id) {
+    try {
+      var { data: cobsDB } = await sb.from('coberturas').select('descripcion,suma_asegurada').eq('poliza_id', p.id).order('descripcion');
+      if (cobsDB && cobsDB.length) {
+        html += '<div style="margin-top:12px;font-size:11px;font-weight:500;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Coberturas incluidas</div>';
+        html += cobsDB.map(function(c){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #F3F4F6;gap:16px">'+
+            '<span style="font-size:12px;color:#374151">'+c.descripcion+'</span>'+
+            (c.suma_asegurada ? '<span style="font-size:12px;font-weight:500;color:#166534">'+'$'+parseFloat(c.suma_asegurada).toLocaleString('es-AR')+'</span>' : '')+
+          '</div>';
+        }).join('');
+      }
+    } catch(e) {}
+  }
+  return html;
 }
 
 function renderMpdPagos(p) {
@@ -9289,7 +9309,10 @@ function parseFedPatronal(buffer) {
     var cobsNro = cobsPorPol[nro] || new Set();
     var tieneCasco = false;
     cobsNro.forEach(function(cod){ if (COBS_CASCO.has(cod)) tieneCasco = true; });
-    var tipoCob = tieneCasco ? 'Todo riesgo' : (cobsNro.size > 0 ? 'Terceros completo' : null);
+    var tipoCob = null;
+    if (ramoDesc === 'Automotor') {
+      tipoCob = tieneCasco ? 'Todo riesgo' : (cobsNro.size > 0 ? 'Terceros completo' : null);
+    }
 
     // Calcular período en meses desde fechas
     var fechaI = fmtDateComp(r.getAttribute('I'));
