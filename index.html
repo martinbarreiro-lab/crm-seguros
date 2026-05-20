@@ -3067,7 +3067,7 @@ async function fichaPolizas(c) {
 }
 
 async function fichaSiniestros(c) {
-  var { data } = await sb.from('siniestros').select('*,polizas(numero,ramo)').eq('cliente_id', c.id).order('created_at', { ascending: false });
+  var { data } = await sb.from('siniestros').select('*,polizas(numero_poliza,ramo)').eq('cliente_id', c.id).order('created_at', { ascending: false });
   var sins = data || [];
   var total = sins.length;
   var abiertos = sins.filter(function(s){ return s.estado !== 'cerrado'; }).length;
@@ -6439,7 +6439,7 @@ function exportarSiniestrosCSV() {
 // ---- COBRANZAS ----
 async function cargarCobranzas() {
   const tbody = document.getElementById('tbody-cob');
-  const { data } = await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero)').eq('productor_id', user.id).order('fecha_vencimiento');
+  const { data } = await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero_poliza)').eq('productor_id', user.id).order('fecha_vencimiento');
   const venc = data ? data.filter(function(c) { return c.estado === 'vencida'; }).length : 0;
   const pend = data ? data.filter(function(c) { return c.estado === 'pendiente'; }).length : 0;
   const hoy = new Date(); const mes1 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
