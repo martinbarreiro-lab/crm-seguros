@@ -8352,13 +8352,23 @@ async function abrirEditarPoliza(polId) {
   function sv(id, val) { const el = document.getElementById(id); if (el && val != null) el.value = val; }
   sv('fp-cl', p.cliente_id);
   onClienteChange && onClienteChange();
+  function svDate(id, val) {
+    var el = document.getElementById(id);
+    if (!el || !val) return;
+    // Los inputs type=date necesitan YYYY-MM-DD
+    var s = String(val);
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) { el.value = s.slice(0,10); return; }
+    // Si viene DD/MM/YYYY convertir
+    var p = s.split('/');
+    if (p.length === 3) { el.value = (p[2].length===2?'20'+p[2]:p[2])+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'); }
+  }
   sv('fp-aseg', p.aseguradora);
   sv('fp-num-aseg', p.numero_poliza);
   sv('fp-cobertura', p.cobertura);
-  sv('fp-emision', fmtDate(p.fecha_emision));
-  sv('fp-inicio', fmtDate(p.fecha_inicio));
+  svDate('fp-emision', p.fecha_emision);
+  svDate('fp-inicio', p.fecha_inicio);
   sv('fp-periodo', p.periodo_meses);
-  sv('fp-vto', fmtDate(p.fecha_vencimiento));
+  svDate('fp-vto', p.fecha_vencimiento);
   sv('fp-premio', p.prima_anual);
   sv('fp-pago', p.forma_pago);
   sv('fp-cuotas', p.cantidad_cuotas);
