@@ -5162,7 +5162,7 @@ function getDataClavePoliza(p) {
 }
 
 async function cargarPolizas() {
-  const { data } = await sb.from('polizas').select('*').order('fecha_vencimiento');
+  const { data } = await sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento');
   _allPolizas = data || [];
   // Get clientes if needed
   if (!allCl.length) await cargarClientes();
