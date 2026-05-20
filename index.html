@@ -86,6 +86,10 @@
         Análisis
       </button>
       <div class="nav-sec">Sistema</div>
+      <button type="button" class="nav-btn" data-sec="reportes">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="12" y1="9" x2="8" y2="9"/></svg>
+        Reportes
+      </button>
       <button type="button" class="nav-btn" data-sec="companias">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
         Compañías
@@ -671,6 +675,66 @@
           <div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:11px;color:var(--med)">Potencial total</div>
             <div style="font-size:13px;font-weight:600;color:var(--med)" id="an-cross-total">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTES -->
+      <div id="sec-reportes" class="sec">
+        <div class="sec-header">
+          <div class="sec-header-left">
+            <div class="icon-card icon-card-lg ic-purple"><i class="ti ti-file-analytics" style="font-size:17px"></i></div>
+            <div><div class="sec-header-title">Reportes</div><div class="sec-header-sub">Generá y descargá reportes de tu cartera en Excel</div></div>
+          </div>
+        </div>
+
+        <div class="card" style="max-width:700px">
+          <!-- Tipo de reporte -->
+          <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Tipo de reporte</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px">
+            <div class="rep-tipo active" data-tipo="siniestros" onclick="repSelTipo(this)">
+              <i class="ti ti-alert-triangle" style="font-size:20px;color:#A32D2D;display:block;margin-bottom:5px"></i>
+              <div style="font-size:12px;font-weight:500;color:var(--text)">Siniestros</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Estado, montos y tiempos</div>
+            </div>
+            <div class="rep-tipo" data-tipo="cobranzas" onclick="repSelTipo(this)">
+              <i class="ti ti-cash" style="font-size:20px;color:#27500A;display:block;margin-bottom:5px"></i>
+              <div style="font-size:12px;font-weight:500;color:var(--text)">Cobranzas</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Cuotas, vencimientos y estado</div>
+            </div>
+            <div class="rep-tipo" data-tipo="movimientos" onclick="repSelTipo(this)">
+              <i class="ti ti-arrows-exchange" style="font-size:20px;color:#185FA5;display:block;margin-bottom:5px"></i>
+              <div style="font-size:12px;font-weight:500;color:var(--text)">Movimientos</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Altas, bajas, endosos, renov.</div>
+            </div>
+          </div>
+
+          <!-- Período -->
+          <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Período</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            <button type="button" class="rep-shortcut" onclick="repSetPeriodo('mes',this)">Este mes</button>
+            <button type="button" class="rep-shortcut active" onclick="repSetPeriodo('trim',this)">Este trimestre</button>
+            <button type="button" class="rep-shortcut" onclick="repSetPeriodo('anio',this)">Este año</button>
+            <button type="button" class="rep-shortcut" onclick="repSetPeriodo('30d',this)">Últimos 30 días</button>
+            <button type="button" class="rep-shortcut" onclick="repSetPeriodo('custom',this)">Personalizado</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+            <div class="frow"><label>Desde</label><input type="date" id="rep-desde" style="font-size:13px"></div>
+            <div class="frow"><label>Hasta</label><input type="date" id="rep-hasta" style="font-size:13px"></div>
+          </div>
+
+          <!-- Filtros dinámicos -->
+          <div id="rep-filtros" style="margin-bottom:18px"></div>
+
+          <!-- Preview -->
+          <div id="rep-preview" style="background:var(--bg);border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:12px;color:var(--muted)">Hacé click en <strong>Vista previa</strong> para ver cuántos registros hay</div>
+          </div>
+
+          <!-- Botones -->
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn" onclick="repPreview()"><i class="ti ti-eye" style="font-size:13px"></i> Vista previa</button>
+            <button type="button" class="btn btn-p" onclick="repDescargar()" style="background:#27500A;border-color:#27500A"><i class="ti ti-file-spreadsheet" style="font-size:13px"></i> Descargar Excel</button>
           </div>
         </div>
       </div>
@@ -7004,6 +7068,7 @@ function irASeccion(sec) {
   if (sec==='tareas') cargarTareas();
   if (sec==='polizas') cargarPolizas();
   if (sec==='companias') cargarHistorialComp();
+  if (sec==='reportes') repInit();
 }
 
 // Actualizar badge al iniciar
@@ -10069,6 +10134,150 @@ async function ejecutarTareasImport() {
   if (modalEl) modalEl.remove();
   mostrarAlerta('✅ '+total+' tareas creadas correctamente');
 }
+  mostrarAlerta('✅ '+total+' tareas creadas correctamente');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO REPORTES
+// ═══════════════════════════════════════════════════════════
+var _repTipo = 'siniestros';
+
+function repInit() {
+  repSetPeriodo('trim', document.querySelector('.rep-shortcut.active'));
+  repRenderFiltros();
+}
+
+function repSelTipo(el) {
+  document.querySelectorAll('.rep-tipo').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  _repTipo = el.dataset.tipo;
+  repRenderFiltros();
+  document.getElementById('rep-preview').innerHTML = '<div style="font-size:12px;color:var(--muted)">Hacé click en <strong>Vista previa</strong> para ver cuántos registros hay</div>';
+}
+
+function repSetPeriodo(tipo, el) {
+  document.querySelectorAll('.rep-shortcut').forEach(function(b){ b.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var hoy = new Date();
+  var desde, hasta = hoy.toISOString().slice(0,10);
+  if (tipo==='mes') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0,10);
+  } else if (tipo==='trim') {
+    var q = Math.floor(hoy.getMonth()/3);
+    desde = new Date(hoy.getFullYear(), q*3, 1).toISOString().slice(0,10);
+  } else if (tipo==='anio') {
+    desde = hoy.getFullYear()+'-01-01';
+  } else if (tipo==='30d') {
+    desde = new Date(hoy.getTime()-30*86400000).toISOString().slice(0,10);
+  }
+  if (desde) {
+    document.getElementById('rep-desde').value = desde;
+    document.getElementById('rep-hasta').value = hasta;
+  }
+}
+
+function repRenderFiltros() {
+  var filtros = { siniestros:['compania','estado_sin','ramo','cliente'], cobranzas:['compania','estado_cob','ramo','cliente'], movimientos:['compania','tipo_mov','ramo','cliente'] };
+  var fs = filtros[_repTipo] || [];
+  var html = '<div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Filtros</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  fs.forEach(function(f) {
+    html += '<div class="frow">';
+    if (f==='compania') {
+      html += '<label>Compañía</label><select id="rep-f-compania" style="font-size:13px"><option value="">Todas</option><option>Federación Patronal</option><option>Seguro Metal</option><option>Provincia ART</option><option>La Equitativa del Plata</option><option>Sancor Seguros</option><option>Zurich Argentina</option></select>';
+    } else if (f==='ramo') {
+      html += '<label>Ramo</label><select id="rep-f-ramo" style="font-size:13px"><option value="">Todos</option><option>Automotor</option><option>Hogar</option><option>Combinado</option><option>Vida Individual</option><option>Vida Colectiva</option><option>Accidentes Personales</option><option>Responsabilidad Civil</option><option>ART</option><option>Comercio</option><option>Otros</option></select>';
+    } else if (f==='cliente') {
+      html += '<label>Cliente</label><input type="text" id="rep-f-cliente" placeholder="Buscar cliente..." style="font-size:13px">';
+    } else if (f==='estado_sin') {
+      html += '<label>Estado</label><select id="rep-f-estado" style="font-size:13px"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Cerrado</option><option>Anulado</option></select>';
+    } else if (f==='estado_cob') {
+      html += '<label>Estado</label><select id="rep-f-estado" style="font-size:13px"><option value="">Todos</option><option>Pendiente</option><option>Pagada</option><option>Vencida</option></select>';
+    } else if (f==='tipo_mov') {
+      html += '<label>Tipo de movimiento</label><select id="rep-f-tipomov" style="font-size:13px"><option value="">Todos</option><option>Alta</option><option>Baja</option><option>Renovación</option><option>Endoso</option></select>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  document.getElementById('rep-filtros').innerHTML = html;
+}
+
+function repGetFiltros() {
+  return {
+    desde:   document.getElementById('rep-desde').value,
+    hasta:   document.getElementById('rep-hasta').value,
+    compania:(document.getElementById('rep-f-compania')||{}).value||'',
+    ramo:    (document.getElementById('rep-f-ramo')||{}).value||'',
+    cliente: (document.getElementById('rep-f-cliente')||{}).value||'',
+    estado:  (document.getElementById('rep-f-estado')||{}).value||'',
+    tipomov: (document.getElementById('rep-f-tipomov')||{}).value||'',
+  };
+}
+
+async function repPreview() {
+  var f = repGetFiltros();
+  if (!f.desde||!f.hasta) { mostrarAlerta('Seleccioná un período primero'); return; }
+  var prev = document.getElementById('rep-preview');
+  prev.innerHTML = '<div style="font-size:12px;color:var(--muted)">Consultando...</div>';
+  var count = 0;
+  if (_repTipo==='siniestros') {
+    var q = sb.from('siniestros').select('id',{count:'exact',head:true}).eq('productor_id',user.id).gte('created_at',f.desde).lte('created_at',f.hasta+'T23:59:59');
+    if (f.compania) q=q.eq('aseguradora',f.compania);
+    if (f.estado)   q=q.eq('estado',f.estado.toLowerCase());
+    var {count:c}=await q; count=c||0;
+  } else if (_repTipo==='cobranzas') {
+    var q2=sb.from('cobranzas').select('id',{count:'exact',head:true}).eq('productor_id',user.id).gte('fecha_vencimiento',f.desde).lte('fecha_vencimiento',f.hasta);
+    if (f.estado) q2=q2.eq('estado',f.estado.toLowerCase());
+    var {count:c2}=await q2; count=c2||0;
+  } else {
+    var q3=sb.from('polizas').select('id',{count:'exact',head:true}).eq('productor_id',user.id).gte('created_at',f.desde).lte('created_at',f.hasta+'T23:59:59');
+    if (f.compania) q3=q3.eq('aseguradora',f.compania);
+    if (f.ramo)     q3=q3.eq('ramo',f.ramo);
+    var {count:c3}=await q3; count=c3||0;
+  }
+  var labels={siniestros:'siniestros',cobranzas:'cuotas',movimientos:'pólizas'};
+  prev.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;width:100%">'
+    +'<div><div style="font-size:11px;color:var(--muted)">Registros encontrados</div>'
+    +'<div style="font-size:22px;font-weight:500;color:var(--text)">'+count+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">'+labels[_repTipo]+' · '+fmtDate(f.desde)+' al '+fmtDate(f.hasta)+'</div></div>'
+    +(count>0?'<span style="font-size:11px;background:#EAF3DE;color:#27500A;padding:3px 10px;border-radius:20px">Listo para descargar</span>':'<span style="font-size:11px;color:var(--muted)">Sin resultados</span>')
+    +'</div>';
+}
+
+async function repDescargar() {
+  var f=repGetFiltros();
+  if (!f.desde||!f.hasta) { mostrarAlerta('Seleccioná un período primero'); return; }
+  if (!window.XLSX) {
+    await new Promise(function(res,rej){ var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  var rows=[],filename='',sheetName='';
+  if (_repTipo==='siniestros') {
+    var q=sb.from('siniestros').select('*,clientes(nombre,apellido),polizas(numero_poliza,ramo)').eq('productor_id',user.id).gte('created_at',f.desde).lte('created_at',f.hasta+'T23:59:59');
+    if (f.compania) q=q.eq('aseguradora',f.compania);
+    if (f.estado)   q=q.eq('estado',f.estado.toLowerCase());
+    var {data}=await q; sheetName='Siniestros'; filename='siniestros_'+f.desde+'_'+f.hasta+'.xlsx';
+    rows=(data||[]).map(function(s){ var cl=s.clientes||{}; return {'Cliente':(cl.apellido?cl.apellido+', ':'')+( cl.nombre||''),'N° Siniestro':s.numero_expediente||'','Tipo':s.tipo_siniestro||'','Fecha hecho':fmtDate(s.fecha_hecho)||'','Compañía':s.aseguradora||'','Póliza':(s.polizas||{}).numero_poliza||'','Ramo':(s.polizas||{}).ramo||'','Estado':s.estado||'','Etapa':s.etapa_actual||'','Monto estimado':s.monto_estimado_dano||''}; });
+  } else if (_repTipo==='cobranzas') {
+    var q2=sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id',user.id).gte('fecha_vencimiento',f.desde).lte('fecha_vencimiento',f.hasta);
+    if (f.estado) q2=q2.eq('estado',f.estado.toLowerCase());
+    var {data:d2}=await q2; sheetName='Cobranzas'; filename='cobranzas_'+f.desde+'_'+f.hasta+'.xlsx';
+    rows=(d2||[]).map(function(c){ var cl=c.clientes||{},pol=c.polizas||{}; return {'Cliente':(cl.apellido?cl.apellido+', ':'')+( cl.nombre||''),'Póliza':pol.numero_poliza||'','Ramo':pol.ramo||'','Compañía':pol.aseguradora||'','N° Cuota':c.numero_cuota||'','Monto':c.monto||'','Vencimiento':fmtDate(c.fecha_vencimiento)||'','Fecha pago':fmtDate(c.fecha_pago)||'','Estado':c.estado||'','Medio de pago':c.medio_pago||''}; });
+  } else {
+    var q3=sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',user.id).gte('created_at',f.desde).lte('created_at',f.hasta+'T23:59:59');
+    if (f.compania) q3=q3.eq('aseguradora',f.compania);
+    if (f.ramo)     q3=q3.eq('ramo',f.ramo);
+    var {data:d3}=await q3; sheetName='Movimientos'; filename='movimientos_'+f.desde+'_'+f.hasta+'.xlsx';
+    rows=(d3||[]).map(function(p){ var cl=p.clientes||{}; var tipo=p.poliza_anterior_id?'Renovación':p.estado==='baja'||p.estado==='cancelada'?'Baja':'Alta'; return {'Cliente':(cl.apellido?cl.apellido+', ':'')+( cl.nombre||''),'N° Póliza':p.numero_poliza||'','Tipo':tipo,'Ramo':p.ramo||'','Compañía':p.aseguradora||'','Cobertura':p.cobertura||'','Vigencia desde':fmtDate(p.fecha_inicio)||'','Vigencia hasta':fmtDate(p.fecha_vencimiento)||'','Premio anual':p.prima_anual||'','Estado':p.estado||'','Patente':p.patente||''}; });
+  }
+  if (!rows.length) { mostrarAlerta('No hay registros para descargar'); return; }
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=Object.keys(rows[0]).map(function(k){ var mx=Math.max(k.length,Math.max.apply(null,rows.map(function(r){ return String(r[k]||'').length; }))); return {wch:Math.min(mx+2,40)}; });
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,filename);
+  mostrarAlerta('✅ Reporte descargado: '+filename);
+}
+
 async function cargarLib(url) {
   return new Promise(function(res, rej) {
     var s = document.createElement('script');
