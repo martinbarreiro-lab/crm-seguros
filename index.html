@@ -8380,7 +8380,8 @@ async function abrirEditarPoliza(polId) {
   if (p.ramo === 'Automotor') {
     sv('fp-auto-marca', dr.marca); if (typeof onMarcaChange === 'function') onMarcaChange();
     await new Promise(function(r){ setTimeout(r, 200); });
-    sv('fp-auto-modelo', dr.modelo); sv('fp-auto-anio', dr.anio); sv('fp-auto-patente', dr.patente);
+    sv('fp-auto-modelo', dr.modelo || dr.marca_modelo); sv('fp-auto-anio', dr.anio); 
+    sv('fp-auto-patente', dr.patente || p.patente);
     sv('fp-auto-chasis', dr.chasis); sv('fp-auto-motor', dr.motor); sv('fp-auto-color', dr.color);
     sv('fp-auto-uso', dr.uso); sv('fp-auto-cond', dr.condicion); sv('fp-auto-gnc', dr.gnc);
     sv('fp-auto-prenda', dr.acreedor_prendario); sv('fp-auto-suma', dr.suma_asegurada);
@@ -9159,6 +9160,21 @@ function parseFedPatronal(buffer) {
     });
     compLog('info', Object.keys(vehiculos).length + ' vehículos encontrados en el archivo');
   } catch(e) { compLog('warn', 'vehiculos: ' + e.message); }
+
+  // ── Mapeo de ramos Fed Patronal → CRM ────────────────────
+  var RAMO_MAP = {
+    'AUTOMOTORES':'Automotor','MOTOVEHICULOS':'Automotor',
+    'INCENDIO':'Hogar','COMBINADO FAMILIAR':'Combinado',
+    'INTEGRAL DE COMERCIO':'Comercio','RIESGOS VARIOS':'Comercio',
+    'RESPONSABILIDAD CIVIL':'Responsabilidad Civil',
+    'ACCIDENTES PERSONALES':'Accidentes Personales',
+    'ACCIDENTES A PASAJEROS':'Accidentes Personales',
+    'VIDA INDIVIDUAL':'Vida Individual','VIDA COLECTIVO':'Vida Colectiva',
+    'VIDA OBLIGATORIO':'Vida Individual','CAUCION':'Otros',
+    'TRANSPORTES':'Otros','ROBO':'Otros','CRISTALES':'Otros',
+    'ART':'ART','SEPELIO':'Otros',
+  };
+
   var multiRamo = {};
   try {
     parse('CART_MULTIRRAMICA.xml').querySelectorAll('ROW').forEach(function(r){
@@ -9193,7 +9209,8 @@ function parseFedPatronal(buffer) {
     var c = comisiones[nro] || {};
     var v = vehiculos[nro] || {};
     var secCod = r.getAttribute('A');
-    var ramoDesc = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
+    var ramoRaw = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
+    var ramoDesc = ramoRaw ? (RAMO_MAP[ramoRaw] || ramoRaw) : null;
     polNrosValidos.add(nro);
     polizas.push({
       numero_poliza:     nro,
@@ -9210,7 +9227,14 @@ function parseFedPatronal(buffer) {
       patente:           v.patente || null,
       bien_asegurado:    v.marca_modelo || null,
       datos_ramo:        Object.keys(v).length ? JSON.stringify({
-        chasis: v.chasis, motor: v.motor, anio: v.anio, marca_modelo: v.marca_modelo
+        patente:          v.patente,
+        chasis:           v.chasis,
+        motor:            v.motor,
+        anio:             v.anio,
+        marca_modelo:     v.marca_modelo,
+        // Separar marca y modelo para el formulario
+        marca:            v.marca_modelo ? v.marca_modelo.split(' ')[0] : null,
+        modelo:           v.marca_modelo || null,
       }) : null,
     });
   });
