@@ -9124,7 +9124,41 @@ function parseFedPatronal(buffer) {
   var limite60 = new Date(hoyParse.getTime() - 60 * 86400000).toISOString().slice(0,10);
   var hoyStr   = hoyParse.toISOString().slice(0,10);
 
-  // ── Índice multirrámica: poliza → ramo principal ──────────
+  // ── Datos de vehículos (CRET_PRODUCTOS_DATOS + CRET_TABLAS) ──
+  var vehiculos = {}; // { nroPol: { patente, chasis, motor, anio, marca_modelo } }
+  try {
+    var cretTablas = {};
+    parse('CRET_TABLAS.xml').querySelectorAll('ROW').forEach(function(r){
+      var cod = r.getAttribute('A');
+      var idx = r.getAttribute('B');
+      var desc = r.getAttribute('C');
+      if (!cretTablas[cod]) cretTablas[cod] = {};
+      if (cod && idx) cretTablas[cod][idx] = desc;
+    });
+
+    parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var sec  = r.getAttribute('A');
+      var nro  = r.getAttribute('B');
+      if (sec !== '4' || !nro || vehiculos[nro]) return; // solo automotores, sin duplicar
+      var patente  = r.getAttribute('C40006') || null;
+      var chasis   = r.getAttribute('C40005') || null;
+      var motor    = r.getAttribute('C40070') || null;
+      var anio     = r.getAttribute('C40004') || null;
+      var marcaCod = r.getAttribute('C45010') || null;
+      var modeloRaw= r.getAttribute('C45020') || null;
+      var marca    = marcaCod ? (cretTablas['45010']||{})[marcaCod] || null : null;
+      var modelo   = modeloRaw ? (cretTablas['45020']||{})[modeloRaw] || null : null;
+      if (!patente && !chasis) return;
+      vehiculos[nro] = {
+        patente:       patente,
+        chasis:        chasis,
+        motor:         motor,
+        anio:          anio,
+        marca_modelo:  modelo || (marca ? marca + ' ' + (modeloRaw||'') : null),
+      };
+    });
+    compLog('info', Object.keys(vehiculos).length + ' vehículos encontrados en el archivo');
+  } catch(e) { compLog('warn', 'vehiculos: ' + e.message); }
   var multiRamo = {};
   try {
     parse('CART_MULTIRRAMICA.xml').querySelectorAll('ROW').forEach(function(r){
@@ -9157,6 +9191,7 @@ function parseFedPatronal(buffer) {
     if (vto && vto < limite60) return;
     var s = sumas[nro] || {};
     var c = comisiones[nro] || {};
+    var v = vehiculos[nro] || {};
     var secCod = r.getAttribute('A');
     var ramoDesc = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
     polNrosValidos.add(nro);
@@ -9171,6 +9206,12 @@ function parseFedPatronal(buffer) {
       estado:            ESTADOS_POL[r.getAttribute('F')] || 'activa',
       _codCliente:       r.getAttribute('E'),
       _pct_comision:     c.pct_normal || null,
+      // Datos vehículo
+      patente:           v.patente || null,
+      bien_asegurado:    v.marca_modelo || null,
+      datos_ramo:        Object.keys(v).length ? JSON.stringify({
+        chasis: v.chasis, motor: v.motor, anio: v.anio, marca_modelo: v.marca_modelo
+      }) : null,
     });
   });
 
@@ -9425,6 +9466,9 @@ async function normalizarYSincronizar(parsed, filename) {
           prima_anual:  p.prima_anual || null,
           estado:       p.estado || 'activa',
           cod_aseg_fedpat: p._codCliente || null,
+          patente:      p.patente || null,
+          bien_asegurado: p.bien_asegurado || null,
+          datos_ramo:   p.datos_ramo || null,
         });
       } else {
         var cambios = {};
@@ -9809,7 +9853,8 @@ handleCompFile = async function(file) {
       var xmlFiles = ['CART_CLIENTES.xml','CART_CERTIFICADOS.xml','CART_RAMOS_POLIZAS.xml',
         'CART_RECIBOS.xml','CART_CERTIFICADOS_COMISIONES.xml','SINT_SINIESTROS.xml',
         'CART_CERTIFICADOS_SUMAS.xml','CART_CIUDADES.xml',
-        'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml','CART_MULTIRRAMICA.xml'];
+        'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml','CART_MULTIRRAMICA.xml',
+        'CRET_PRODUCTOS_DATOS.xml','CRET_TABLAS.xml'];
       window._compZipXmls = {};
 
       // Buscar XMLs en el ZIP raíz y también en ZIPs anidados (secuencial para no pisarse)
