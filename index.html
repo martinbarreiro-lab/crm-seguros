@@ -8375,7 +8375,7 @@ async function abrirEditarPoliza(polId) {
   if (franEl) franEl.addEventListener('change', toggleFranquicia);
   const cvSection = document.getElementById('fp-cv-section');
   if (cvSection) cvSection.style.display = (p.ramo === 'Automotor') ? 'block' : 'none';
-  const dr = p.datos_ramo || {};
+  const dr = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
   await new Promise(function(r){ setTimeout(r, 80); });
   if (p.ramo === 'Automotor') {
     sv('fp-auto-marca', dr.marca); if (typeof onMarcaChange === 'function') onMarcaChange();
