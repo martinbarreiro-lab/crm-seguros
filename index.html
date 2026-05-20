@@ -8778,7 +8778,11 @@ function renderMpdCobertura(p) {
     if(dr.acreedor_prendario) rows.push(['Acreedor prendario',dr.acreedor_prendario]);
     var sumaVal = dr.suma_asegurada || p.suma_asegurada;
     if(sumaVal) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(sumaVal)+'</strong>']);
-    if(dr.franquicia_tipo) {
+    if(dr.franquicia_desc || dr.franquicia_monto) {
+      var franTxt = dr.franquicia_desc || '';
+      if(dr.franquicia_monto) franTxt += (franTxt?' · ':'') + 'Mínimo: ' + fmtM(dr.franquicia_monto);
+      rows.push(['Franquicia', franTxt]);
+    } else if(dr.franquicia_tipo) {
       var fran=dr.franquicia_tipo==='sin'?'Sin franquicia':dr.franquicia_tipo==='porcentaje'?(dr.franquicia_porcentaje+'%'+(dr.franquicia_monto?' = '+fmtM(dr.franquicia_monto):'')):fmtM(dr.franquicia_monto);
       rows.push(['Franquicia',fran]);
     }
@@ -9247,6 +9251,20 @@ function parseFedPatronal(buffer) {
     var s = sumas[nro] || {};
     var c = comisiones[nro] || {};
     var v = vehiculos[nro] || {};
+    var f = franqPorPol[nro] || {};
+    var cobsNro = cobsPorPol[nro] || new Set();
+    var tieneCasco = false;
+    cobsNro.forEach(function(cod){ if (COBS_CASCO.has(cod)) tieneCasco = true; });
+    var tipoCob = tieneCasco ? 'Todo riesgo' : (cobsNro.size > 0 ? 'Terceros completo' : null);
+
+    // Calcular período en meses desde fechas
+    var fechaI = fmtDateComp(r.getAttribute('I'));
+    var periodoMeses = null;
+    if (fechaI && vto) {
+      var dI = new Date(fechaI), dV = new Date(vto);
+      periodoMeses = (dV.getFullYear() - dI.getFullYear()) * 12 + (dV.getMonth() - dI.getMonth());
+    }
+
     var secCod = r.getAttribute('A');
     var ramoRaw = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
     var ramoDesc = ramoRaw ? (RAMO_MAP[ramoRaw] || ramoRaw) : null;
@@ -9254,14 +9272,16 @@ function parseFedPatronal(buffer) {
     polizas.push({
       numero_poliza:     nro,
       ramo:              ramoDesc,
+      cobertura:         tipoCob,
       aseguradora:       'Federación Patronal',
       fecha_emision:     fmtDateComp(r.getAttribute('H')),
-      fecha_inicio:      fmtDateComp(r.getAttribute('I')),
+      fecha_inicio:      fechaI,
       fecha_vencimiento: vto,
       prima_anual:       s.prima_anual  || null,
       suma_asegurada:    s.suma_asegurada || null,
       estado:            ESTADOS_POL[r.getAttribute('F')] || 'activa',
-      cantidad_cuotas:   parseInt(r.getAttribute('W')) || null,
+      cantidad_cuotas:   periodoMeses || parseInt(r.getAttribute('W')) || null,
+      periodo_meses:     periodoMeses,
       _codCliente:       r.getAttribute('E'),
       _pct_comision:     c.pct_normal || null,
       _forma_pago:       r.getAttribute('N') || null,
@@ -9270,7 +9290,7 @@ function parseFedPatronal(buffer) {
       // Datos vehículo
       patente:           v.patente || null,
       bien_asegurado:    v.marca_modelo || null,
-      datos_ramo:        Object.keys(v).length ? JSON.stringify({
+      datos_ramo:        (Object.keys(v).length || f.desc) ? JSON.stringify({
         patente:      v.patente,
         chasis:       v.chasis,
         motor:        v.motor,
@@ -9278,6 +9298,9 @@ function parseFedPatronal(buffer) {
         marca:        v.marca,
         modelo:       v.modelo,
         marca_modelo: v.marca_modelo,
+        suma_asegurada: s.suma_asegurada || null,
+        franquicia_desc: f.desc || null,
+        franquicia_monto: f.min || null,
       }) : null,
     });
   });
@@ -9301,6 +9324,43 @@ function parseFedPatronal(buffer) {
       _nroRecibo:        nroRec,
     });
   });
+
+  // ── Tipo de cobertura y franquicia por póliza (automotores) ──
+  var COBS_CASCO = new Set(['60','70','80','90','110','120','130','140']);
+  var cobsPorPol = {}; // { nroPol: Set de cod coberturas }
+  var cobDescGlobal = {};
+  try {
+    parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
+      var cod = r.getAttribute('B');
+      var desc = r.getAttribute('C');
+      var ramo = r.getAttribute('A') || r.getAttribute('D');
+      if (cod && desc) cobDescGlobal[ramo+'_'+cod] = desc;
+      if (cod && desc) cobDescGlobal['_'+cod] = desc;
+    });
+    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var nro = r.getAttribute('B');
+      var cod = r.getAttribute('F');
+      if (!nro || !cod) return;
+      if (!cobsPorPol[nro]) cobsPorPol[nro] = new Set();
+      cobsPorPol[nro].add(cod);
+    });
+  } catch(e) { compLog('warn', 'cobsPorPol: '+e.message); }
+
+  // Franquicia por póliza de CRET_PRODUCTOS_DATOS
+  var franqPorPol = {};
+  try {
+    parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var sec = r.getAttribute('A');
+      var nro = r.getAttribute('B');
+      if (sec !== '4' || !nro || franqPorPol[nro]) return;
+      var franqDesc = r.getAttribute('C46090') || null;
+      var franqMin  = r.getAttribute('C46092') || null;
+      var franqMax  = r.getAttribute('C46093') || null;
+      if (franqDesc || franqMin) {
+        franqPorPol[nro] = { desc: franqDesc, min: franqMin, max: franqMax };
+      }
+    });
+  } catch(e) {}
 
   var cobDescMap = {};
   try {
@@ -9527,6 +9587,7 @@ async function normalizarYSincronizar(parsed, filename) {
           cliente_id:      cl ? cl.id : null,
           numero_poliza:   nro,
           ramo:            p.ramo || null,
+          cobertura:       p.cobertura || null,
           aseguradora:     p.aseguradora || null,
           fecha_emision:   p.fecha_emision || null,
           fecha_inicio:    p.fecha_inicio || null,
@@ -9536,7 +9597,7 @@ async function normalizarYSincronizar(parsed, filename) {
           cantidad_cuotas: p.cantidad_cuotas || null,
           forma_pago:      p._forma_pago === '1' ? 'Contado' : p._forma_pago === '2' ? 'Tarjeta' : p._forma_pago === '3' ? 'CBU' : null,
           medio_pago:      p._medio_pago === 'DE' ? 'Débito' : p._medio_pago === 'VI' ? 'Visa' : p._medio_pago === 'MC' ? 'Mastercard' : p._medio_pago || null,
-          periodo_meses:   p._tipo_fact === 'D' ? 1 : p._tipo_fact === 'T' ? 3 : p._tipo_fact === 'S' ? 6 : p._tipo_fact === 'A' ? 12 : null,
+          periodo_meses:   p.periodo_meses || null,
           cod_aseg_fedpat: p._codCliente || null,
           patente:         p.patente || null,
           bien_asegurado:  p.bien_asegurado || null,
