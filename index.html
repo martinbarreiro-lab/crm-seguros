@@ -9241,6 +9241,10 @@ function parseFedPatronal(buffer) {
 
   // Set de números de póliza válidas (vigentes + vencidas < 60 días)
   var polNrosValidos = new Set();
+  // franqPorPol y cobsPorPol se cargan después del loop (declarar acá para que estén disponibles)
+  var franqPorPol = {};
+  var cobsPorPol = {};
+  var COBS_CASCO = new Set(['60','70','80','90','110','120','130','140']);
 
   parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW').forEach(function(r){
     var nro = r.getAttribute('B');
@@ -9326,8 +9330,6 @@ function parseFedPatronal(buffer) {
   });
 
   // ── Tipo de cobertura y franquicia por póliza (automotores) ──
-  var COBS_CASCO = new Set(['60','70','80','90','110','120','130','140']);
-  var cobsPorPol = {}; // { nroPol: Set de cod coberturas }
   var cobDescGlobal = {};
   try {
     parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
