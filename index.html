@@ -3855,7 +3855,7 @@ function abrirEditarSiniestro(sinId) {
       });
       document.getElementById('fs-aseg').value = s.aseguradora || '';
       document.getElementById('fs-exp').value = s.numero_expediente || '';
-      document.getElementById('fs-fh').value = fmtDate(s.fecha_hecho) || '';
+      document.getElementById('fs-fh').value = (s.fecha_hecho||'').slice(0,10) || '';
       document.getElementById('fs-desc').value = s.descripcion || '';
       // Set ramo
       var grp = getSinRamoGroup(s);
