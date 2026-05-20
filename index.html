@@ -3469,23 +3469,33 @@ function sinField(label, val, pill, color) {
 }
 
 function sinFieldEdit(sinId, campo, label, val, tipo) {
-  // tipo: 'date', 'text', 'number'
   tipo = tipo || 'text';
-  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : 'Sin datos';
-  var textColor = val ? '#111827' : '#D1D5DB';
-  var inputVal = tipo==='date' ? (val||'').slice(0,10) : (val||'');
+  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : null;
   var uid = 'sin-ef-'+sinId+'-'+campo;
+  var inputVal = tipo==='date' ? (val||'').slice(0,10) : (val||'');
+
+  var dispContent = displayVal
+    ? displayVal + '<i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>'
+    : '<i class="ti ti-plus" style="font-size:12px;color:var(--med);margin-right:3px" aria-hidden="true"></i><span style="color:var(--med)">Agregar...</span><i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>';
+
   return '<div>'
-    +'<div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+label+'</div>'
-    +'<div id="'+uid+'-disp" style="font-size:12px;font-weight:500;color:'+textColor+';font-style:'+(val?'normal':'italic')+';cursor:pointer;display:flex;align-items:center;gap:5px" onclick="sinFieldEditOpen(\''+uid+'\',\''+tipo+'\')">'
-      + displayVal
-      + '<span style="opacity:0;font-size:10px;color:#9CA3AF">✏️</span>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:3px">'+label+'</div>'
+    +'<div id="'+uid+'-disp" '
+      +'style="font-size:12px;font-weight:'+(displayVal?'500':'400')+';color:'+(displayVal?'var(--text)':'var(--muted)')+';'
+      +'display:flex;align-items:center;padding:5px 8px;border-radius:var(--rsm);border:1px dashed transparent;cursor:pointer;transition:all .15s;min-height:28px" '
+      +'onmouseover="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--light)\';var ic=this.querySelectorAll(\'.ti-pencil\');ic.forEach(function(i){i.style.opacity=\'1\'})" '
+      +'onmouseout="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';var ic=this.querySelectorAll(\'.ti-pencil\');ic.forEach(function(i){i.style.opacity=\'0\'})" '
+      +'onclick="sinFieldEditOpen(\''+uid+'\',\''+tipo+'\')">'
+      +dispContent
     +'</div>'
-    +'<div id="'+uid+'-edit" style="display:none;display:none">'
-      +'<input type="'+tipo+'" id="'+uid+'-inp" value="'+inputVal+'" style="width:100%;font-size:12px;padding:4px 7px;border:1px solid #185FA5;border-radius:5px;outline:none;font-family:inherit">'
-      +'<div style="display:flex;gap:4px;margin-top:4px">'
-        +'<button type="button" onclick="sinFieldEditSave(\''+uid+'\',\''+sinId+'\',\''+campo+'\',\''+tipo+'\')" style="font-size:11px;padding:3px 10px;background:#185FA5;color:#fff;border:none;border-radius:4px;cursor:pointer">Guardar</button>'
-        +'<button type="button" onclick="sinFieldEditCancel(\''+uid+'\')" style="font-size:11px;padding:3px 8px;background:#F3F4F6;color:#374151;border:none;border-radius:4px;cursor:pointer">Cancelar</button>'
+    +'<div id="'+uid+'-edit" style="display:none">'
+      +'<input type="'+tipo+'" id="'+uid+'-inp" value="'+inputVal+'" '
+        +'style="width:100%;font-size:12px;padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--rsm);background:var(--white);color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">'
+      +'<div style="display:flex;gap:5px;margin-top:5px">'
+        +'<button type="button" onclick="sinFieldEditSave(\''+uid+'\',\''+sinId+'\',\''+campo+'\',\''+tipo+'\')" '
+          +'style="font-size:11px;padding:3px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit">Guardar</button>'
+        +'<button type="button" onclick="sinFieldEditCancel(\''+uid+'\')" '
+          +'style="font-size:11px;padding:3px 8px;background:var(--bg);color:var(--text);border:0.5px solid var(--border);border-radius:4px;cursor:pointer;font-family:inherit">Cancelar</button>'
       +'</div>'
     +'</div>'
   +'</div>';
@@ -3509,12 +3519,17 @@ async function sinFieldEditSave(uid, sinId, campo, tipo) {
   update[campo] = val || null;
   var { error } = await sb.from('siniestros').update(update).eq('id', sinId);
   if (error) { mostrarAlerta('Error al guardar'); return; }
-  // Actualizar display
   var dispEl = document.getElementById(uid+'-disp');
-  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : 'Sin datos';
-  dispEl.innerHTML = displayVal + '<span style="opacity:0;font-size:10px;color:#9CA3AF">✏️</span>';
-  dispEl.style.color = val ? '#111827' : '#D1D5DB';
-  dispEl.style.fontStyle = val ? 'normal' : 'italic';
+  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : null;
+  if (displayVal) {
+    dispEl.innerHTML = displayVal + '<i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>';
+    dispEl.style.fontWeight = '500';
+    dispEl.style.color = 'var(--text)';
+  } else {
+    dispEl.innerHTML = '<i class="ti ti-plus" style="font-size:12px;color:var(--med);margin-right:3px" aria-hidden="true"></i><span style="color:var(--muted)">Agregar...</span><i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>';
+    dispEl.style.fontWeight = '400';
+    dispEl.style.color = 'var(--muted)';
+  }
   dispEl.style.display = 'flex';
   document.getElementById(uid+'-edit').style.display = 'none';
   mostrarAlerta('✅ Guardado');
