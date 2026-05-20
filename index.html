@@ -3476,7 +3476,10 @@ function sinFieldEdit(sinId, campo, label, val, tipo) {
 
   var dispContent = displayVal
     ? displayVal + '<i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>'
-    : '<i class="ti ti-plus" style="font-size:12px;color:var(--med);margin-right:3px" aria-hidden="true"></i><span style="color:var(--med)">Agregar...</span><i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>';
+    : (tipo==='date'
+        ? '<i class="ti ti-calendar" style="font-size:13px;color:var(--med);margin-right:4px" aria-hidden="true"></i><span style="color:var(--med)">Seleccionar fecha</span>'
+        : '<i class="ti ti-plus" style="font-size:12px;color:var(--med);margin-right:3px" aria-hidden="true"></i><span style="color:var(--med)">Agregar...</span>'
+      ) + '<i class="ti ti-pencil" style="opacity:0;font-size:11px;color:var(--med);margin-left:4px;transition:opacity .15s" aria-hidden="true"></i>';
 
   return '<div>'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:3px">'+label+'</div>'
@@ -3489,8 +3492,18 @@ function sinFieldEdit(sinId, campo, label, val, tipo) {
       +dispContent
     +'</div>'
     +'<div id="'+uid+'-edit" style="display:none">'
-      +'<input type="'+tipo+'" id="'+uid+'-inp" value="'+inputVal+'" '
-        +'style="width:100%;font-size:12px;padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--rsm);background:var(--white);color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">'
+      +(tipo==='date'
+        ? '<div style="display:flex;align-items:center;gap:6px">'
+          +'<input type="date" id="'+uid+'-inp" value="'+inputVal+'" '
+            +'style="flex:1;font-size:12px;padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--rsm);background:var(--white);color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">'
+          +'<button type="button" onclick="document.getElementById(\''+uid+'-inp\').showPicker()" '
+            +'style="padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--rsm);background:var(--light);cursor:pointer;display:flex;align-items:center;color:var(--med)">'
+            +'<i class="ti ti-calendar" style="font-size:15px" aria-hidden="true"></i>'
+          +'</button>'
+          +'</div>'
+        : '<input type="'+tipo+'" id="'+uid+'-inp" value="'+inputVal+'" '
+          +'style="width:100%;font-size:12px;padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--rsm);background:var(--white);color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">'
+      )
       +'<div style="display:flex;gap:5px;margin-top:5px">'
         +'<button type="button" onclick="sinFieldEditSave(\''+uid+'\',\''+sinId+'\',\''+campo+'\',\''+tipo+'\')" '
           +'style="font-size:11px;padding:3px 10px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit">Guardar</button>'
