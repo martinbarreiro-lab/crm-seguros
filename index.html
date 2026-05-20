@@ -2932,13 +2932,27 @@ async function fichaPolizas(c) {
       // Cobertura por ramo
       const cobPartes = [];
       if (p.cobertura) cobPartes.push(p.cobertura);
-      const drC = p.datos_ramo || {};
+      const drC = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
       if (p.ramo === 'Automotor') {
-        if (drC.suma_asegurada) cobPartes.push('Suma asegurada ' + fmtMoney(drC.suma_asegurada));
-        if (drC.franquicia_tipo === 'sin') cobPartes.push('Sin franquicia');
+        // Modelo y patente
+        var vehStr = [drC.marca, drC.modelo, drC.anio].filter(Boolean).join(' ');
+        if (vehStr) cobPartes.push(vehStr);
+        if (drC.patente || p.patente) cobPartes.push('Patente: ' + (drC.patente || p.patente));
+        // Suma asegurada
+        var sumaC = drC.suma_asegurada || p.suma_asegurada;
+        if (sumaC) cobPartes.push('Suma: ' + fmtMoney(sumaC));
+        // Franquicia
+        if (drC.franquicia_desc) {
+          var pctM = drC.franquicia_desc.match(/(\d+(?:\.\d+)?)\s*%/);
+          if (pctM && sumaC) {
+            var franqV = parseFloat(sumaC) * parseFloat(pctM[1]) / 100;
+            cobPartes.push('Franquicia ' + pctM[1] + '% = ' + fmtMoney(franqV));
+          } else {
+            cobPartes.push(drC.franquicia_desc.trim());
+          }
+        } else if (drC.franquicia_tipo === 'sin') cobPartes.push('Sin franquicia');
         else if (drC.franquicia_tipo === 'porcentaje' && drC.franquicia_porcentaje) cobPartes.push('Franquicia ' + drC.franquicia_porcentaje + '%');
         else if (drC.franquicia_tipo === 'valor' && drC.franquicia_monto) cobPartes.push('Franquicia ' + fmtMoney(drC.franquicia_monto));
-        if (drC.uso) cobPartes.push(drC.uso);
         if (drC.gnc === 'si') cobPartes.push('GNC');
       } else if (p.ramo === 'Hogar' || p.ramo === 'Combinado') {
         if (drC.tipo_vivienda) cobPartes.push(drC.tipo_vivienda);
@@ -8733,7 +8747,7 @@ function mpdMetric(label,val,sub,color) {
 
 function renderMpdTabContent(p,tab) {
   if (tab==='cobertura') {
-    renderMpdCobertura(p).then(function(html){ var el = document.getElementById('mpd-tab-content'); if(el) el.innerHTML = html; });
+    renderMpdCobertura(p).then(function(html){ var el = document.getElementById('mpd-tab-cont'); if(el) el.innerHTML = html; });
     return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando...</div>';
   }
   if (tab==='pagos') return renderMpdPagos(p);
