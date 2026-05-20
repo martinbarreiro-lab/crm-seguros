@@ -492,3 +492,12 @@ tr:hover td{background:var(--bg)}
 .comp-btn{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rsm);padding:10px 12px;cursor:pointer;transition:all .15s}
 .comp-btn:hover{border-color:var(--med)}
 .comp-btn.active{border:1.5px solid var(--med);background:var(--light)}
+
+/* Reportes */
+.rep-tipo{padding:12px;border-radius:var(--rsm);border:1.5px solid var(--border);background:var(--bg);cursor:pointer;text-align:center;transition:all .15s}
+.rep-tipo:hover{border-color:var(--blue)}
+.rep-tipo.active{border-color:#3C3489;background:#EEEDFE}
+.rep-tipo.active .ti{color:#3C3489!important}
+.rep-shortcut{font-size:12px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
+.rep-shortcut:hover{border-color:var(--blue);color:var(--blue);background:var(--light)}
+.rep-shortcut.active{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489}
