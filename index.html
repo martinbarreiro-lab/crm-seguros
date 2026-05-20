@@ -9155,8 +9155,8 @@ function parseFedPatronal(buffer) {
     'ALFA ROMEO':'Alfa Romeo',
   };
   var vehiculos = {}; // { nroPol: { patente, chasis, motor, anio, marca, modelo } }
+  var cretTablas = {};
   try {
-    var cretTablas = {};
     parse('CRET_TABLAS.xml').querySelectorAll('ROW').forEach(function(r){
       var cod = r.getAttribute('A');
       var idx = r.getAttribute('B');
@@ -9260,7 +9260,8 @@ function parseFedPatronal(buffer) {
       var sec = r.getAttribute('A');
       var nro = r.getAttribute('B');
       if (sec !== '4' || !nro || franqPorPol[nro]) return;
-      var franqDesc = r.getAttribute('C46090') || null;
+      var franqCod  = r.getAttribute('C46090') || null;
+      var franqDesc = franqCod ? (cretTablas['46090']||{})[franqCod] || franqCod : null;
       var franqMin  = r.getAttribute('C46092') || null;
       var franqMax  = r.getAttribute('C46093') || null;
       if (franqDesc || franqMin) franqPorPol[nro] = { desc: franqDesc, min: franqMin, max: franqMax };
