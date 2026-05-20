@@ -9126,7 +9126,20 @@ function parseFedPatronal(buffer) {
   var hoyStr   = hoyParse.toISOString().slice(0,10);
 
   // ── Datos de vehículos (CRET_PRODUCTOS_DATOS + CRET_TABLAS) ──
-  var vehiculos = {}; // { nroPol: { patente, chasis, motor, anio, marca_modelo } }
+  var MARCA_MAP = {
+    'VOLKSWAGEN':'Volkswagen','VW':'Volkswagen','FORD':'Ford','CHEVROLET':'Chevrolet',
+    'RENAULT':'Renault','PEUGEOT':'Peugeot','FIAT':'Fiat','TOYOTA':'Toyota',
+    'HONDA':'Honda','NISSAN':'Nissan','HYUNDAI':'Hyundai','KIA':'Kia',
+    'CITROEN':'Citroën','CITROËN':'Citroën','BMW':'BMW','MERCEDES-BENZ':'Mercedes-Benz',
+    'MERCEDES BENZ':'Mercedes-Benz','AUDI':'Audi','JEEP':'Jeep','RAM':'RAM',
+    'MITSUBISHI':'Mitsubishi','SUZUKI':'Suzuki','SUBARU':'Subaru','VOLVO':'Volvo',
+    'MAZDA':'Mazda','SEAT':'Seat','MINI':'Mini','DODGE':'Dodge','DS':'DS',
+    'LAND ROVER':'Land Rover','LEXUS':'Lexus','MG':'MG','SMART':'Smart',
+    'BYD':'BYD','CHERY':'Chery','HAVAL':'Haval','JAC':'JAC','GEELY':'Geely',
+    'GREAT WALL':'Great Wall (GWM)','GWM':'Great Wall (GWM)','BAIC':'BAIC',
+    'ALFA ROMEO':'Alfa Romeo',
+  };
+  var vehiculos = {}; // { nroPol: { patente, chasis, motor, anio, marca, modelo } }
   try {
     var cretTablas = {};
     parse('CRET_TABLAS.xml').querySelectorAll('ROW').forEach(function(r){
@@ -9149,13 +9162,26 @@ function parseFedPatronal(buffer) {
       var modeloRaw= r.getAttribute('C45020') || null;
       var marca    = marcaCod ? (cretTablas['45010']||{})[marcaCod] || null : null;
       var modelo   = modeloRaw ? (cretTablas['45020']||{})[modeloRaw] || null : null;
+      // modelo completo viene como "VW GOL 1.6..." — separar marca del modelo
+      var marcaNorm = null, modeloSolo = null;
+      if (modelo) {
+        var partes = modelo.split(' ');
+        var marcaRaw = partes[0].toUpperCase();
+        marcaNorm = MARCA_MAP[marcaRaw] || MARCA_MAP[marca ? marca.toUpperCase() : ''] || marca || null;
+        // Quitar la marca del inicio del modelo
+        modeloSolo = modelo.replace(/^[^\s]+\s/, '').trim();
+      } else if (marca) {
+        marcaNorm = MARCA_MAP[marca.toUpperCase()] || marca;
+      }
       if (!patente && !chasis) return;
       vehiculos[nro] = {
         patente:       patente,
         chasis:        chasis,
         motor:         motor,
         anio:          anio,
-        marca_modelo:  modelo || (marca ? marca + ' ' + (modeloRaw||'') : null),
+        marca:         marcaNorm,
+        modelo:        modeloSolo || modelo,
+        marca_modelo:  modelo,
       };
     });
     compLog('info', Object.keys(vehiculos).length + ' vehículos encontrados en el archivo');
@@ -9227,14 +9253,13 @@ function parseFedPatronal(buffer) {
       patente:           v.patente || null,
       bien_asegurado:    v.marca_modelo || null,
       datos_ramo:        Object.keys(v).length ? JSON.stringify({
-        patente:          v.patente,
-        chasis:           v.chasis,
-        motor:            v.motor,
-        anio:             v.anio,
-        marca_modelo:     v.marca_modelo,
-        // Separar marca y modelo para el formulario
-        marca:            v.marca_modelo ? v.marca_modelo.split(' ')[0] : null,
-        modelo:           v.marca_modelo || null,
+        patente:      v.patente,
+        chasis:       v.chasis,
+        motor:        v.motor,
+        anio:         v.anio,
+        marca:        v.marca,
+        modelo:       v.modelo,
+        marca_modelo: v.marca_modelo,
       }) : null,
     });
   });
