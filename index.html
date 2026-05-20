@@ -9241,10 +9241,31 @@ function parseFedPatronal(buffer) {
 
   // Set de números de póliza válidas (vigentes + vencidas < 60 días)
   var polNrosValidos = new Set();
-  // franqPorPol y cobsPorPol se cargan después del loop (declarar acá para que estén disponibles)
   var franqPorPol = {};
   var cobsPorPol = {};
   var COBS_CASCO = new Set(['60','70','80','90','110','120','130','140']);
+
+  // Llenar cobsPorPol y franqPorPol ANTES del loop de certificados
+  try {
+    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var nro = r.getAttribute('B');
+      var cod = r.getAttribute('F');
+      if (!nro || !cod) return;
+      if (!cobsPorPol[nro]) cobsPorPol[nro] = new Set();
+      cobsPorPol[nro].add(cod);
+    });
+  } catch(e) { compLog('warn', 'cobsPorPol: '+e.message); }
+  try {
+    parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var sec = r.getAttribute('A');
+      var nro = r.getAttribute('B');
+      if (sec !== '4' || !nro || franqPorPol[nro]) return;
+      var franqDesc = r.getAttribute('C46090') || null;
+      var franqMin  = r.getAttribute('C46092') || null;
+      var franqMax  = r.getAttribute('C46093') || null;
+      if (franqDesc || franqMin) franqPorPol[nro] = { desc: franqDesc, min: franqMin, max: franqMax };
+    });
+  } catch(e) {}
 
   parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW').forEach(function(r){
     var nro = r.getAttribute('B');
@@ -9328,41 +9349,6 @@ function parseFedPatronal(buffer) {
       _nroRecibo:        nroRec,
     });
   });
-
-  // ── Tipo de cobertura y franquicia por póliza (automotores) ──
-  var cobDescGlobal = {};
-  try {
-    parse('CART_COBERTURAS.xml').querySelectorAll('ROW').forEach(function(r){
-      var cod = r.getAttribute('B');
-      var desc = r.getAttribute('C');
-      var ramo = r.getAttribute('A') || r.getAttribute('D');
-      if (cod && desc) cobDescGlobal[ramo+'_'+cod] = desc;
-      if (cod && desc) cobDescGlobal['_'+cod] = desc;
-    });
-    parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
-      var nro = r.getAttribute('B');
-      var cod = r.getAttribute('F');
-      if (!nro || !cod) return;
-      if (!cobsPorPol[nro]) cobsPorPol[nro] = new Set();
-      cobsPorPol[nro].add(cod);
-    });
-  } catch(e) { compLog('warn', 'cobsPorPol: '+e.message); }
-
-  // Franquicia por póliza de CRET_PRODUCTOS_DATOS
-  var franqPorPol = {};
-  try {
-    parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
-      var sec = r.getAttribute('A');
-      var nro = r.getAttribute('B');
-      if (sec !== '4' || !nro || franqPorPol[nro]) return;
-      var franqDesc = r.getAttribute('C46090') || null;
-      var franqMin  = r.getAttribute('C46092') || null;
-      var franqMax  = r.getAttribute('C46093') || null;
-      if (franqDesc || franqMin) {
-        franqPorPol[nro] = { desc: franqDesc, min: franqMin, max: franqMax };
-      }
-    });
-  } catch(e) {}
 
   var cobDescMap = {};
   try {
