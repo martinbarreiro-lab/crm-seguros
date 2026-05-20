@@ -3299,11 +3299,11 @@ function renderSinEtapaPanel(s, etapa) {
     var lbl = etapa==='peritaje'?'Peritaje':'Inspección';
     html.push(sinSeccion('Datos de '+lbl.toLowerCase()));
     html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
-    html.push(sinField('Fecha de '+lbl.toLowerCase(), fmtDate(s.fecha_inspeccion)||''));
-    html.push(sinField(etapa==='peritaje'?'Perito asignado':'Inspector asignado', s.inspector||''));
-    html.push(sinField('Resultado', s.resultado_inspeccion||''));
-    html.push(sinField('Observaciones', s.obs_inspeccion||''));
-    if (isHogar||isComercio) html.push(sinField('Monto estimado del daño', s.monto_estimado_dano?fmtM(s.monto_estimado_dano):''));
+    html.push(sinFieldEdit(s.id, 'fecha_inspeccion', 'Fecha de '+lbl.toLowerCase(), s.fecha_inspeccion, 'date'));
+    html.push(sinFieldEdit(s.id, 'inspector', etapa==='peritaje'?'Perito asignado':'Inspector asignado', s.inspector, 'text'));
+    html.push(sinFieldEdit(s.id, 'resultado_inspeccion', 'Resultado', s.resultado_inspeccion, 'text'));
+    html.push(sinFieldEdit(s.id, 'obs_inspeccion', 'Observaciones', s.obs_inspeccion, 'text'));
+    if (isHogar||isComercio) html.push(sinFieldEdit(s.id, 'monto_estimado_dano', 'Monto estimado del daño', s.monto_estimado_dano, 'number'));
     html.push('</div>');
     html.push(sinSeccion('Informe de '+lbl.toLowerCase()));
     html.push(sinFileZone(s, 'inspeccion_url', 'Informe de '+lbl.toLowerCase()));
@@ -3314,12 +3314,12 @@ function renderSinEtapaPanel(s, etapa) {
     var lbl2 = isHogar||isComercio ? 'empresa de reparación' : 'taller';
     html.push(sinSeccion('Datos del taller / empresa'));
     html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
-    html.push(sinField('Taller / Empresa', (isHogar||isComercio)?s.empresa_reparacion||'':s.taller||''));
-    html.push(sinField('Fecha de ingreso', fmtDate(s.fecha_ingreso_taller)||''));
-    html.push(sinField('Fecha estimada entrega', fmtDate(s.fecha_entrega_taller)||''));
-    html.push(sinField('Fecha real de entrega', fmtDate(s.fecha_entrega_real)||''));
-    html.push(sinField('N° orden de reparación', s.orden_reparacion||''));
-    html.push(sinField('Presupuesto aprobado', s.presupuesto_taller?fmtM(s.presupuesto_taller):''));
+    html.push(sinFieldEdit(s.id, isHogar||isComercio?'empresa_reparacion':'taller', 'Taller / Empresa', (isHogar||isComercio)?s.empresa_reparacion||'':s.taller||'', 'text'));
+    html.push(sinFieldEdit(s.id, 'fecha_ingreso_taller', 'Fecha de ingreso', s.fecha_ingreso_taller, 'date'));
+    html.push(sinFieldEdit(s.id, 'fecha_entrega_taller', 'Fecha estimada entrega', s.fecha_entrega_taller, 'date'));
+    html.push(sinFieldEdit(s.id, 'fecha_entrega_real', 'Fecha real de entrega', s.fecha_entrega_real, 'date'));
+    html.push(sinFieldEdit(s.id, 'orden_reparacion', 'N° orden de reparación', s.orden_reparacion, 'text'));
+    html.push(sinFieldEdit(s.id, 'presupuesto_taller', 'Presupuesto aprobado', s.presupuesto_taller, 'number'));
     html.push('</div>');
     html.push(sinSeccion('Presupuesto'));
     html.push(sinFileZone(s, 'presupuesto_url', 'Presupuesto del taller'));
@@ -3466,6 +3466,58 @@ function sinField(label, val, pill, color) {
   var textColor = val ? (color||'#111827') : '#D1D5DB';
   var style = val && pill ? 'background:#E6F1FB;color:#0C447C;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;letter-spacing:.06em' : 'font-size:12px;font-weight:500';
   return '<div><div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+label+'</div>'+(val&&pill?'<span style="'+style+'">'+displayVal+'</span>':'<div style="'+style+';color:'+textColor+';font-style:'+(val?'normal':'italic')+'">'+displayVal+'</div>')+'</div>';
+}
+
+function sinFieldEdit(sinId, campo, label, val, tipo) {
+  // tipo: 'date', 'text', 'number'
+  tipo = tipo || 'text';
+  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : 'Sin datos';
+  var textColor = val ? '#111827' : '#D1D5DB';
+  var inputVal = tipo==='date' ? (val||'').slice(0,10) : (val||'');
+  var uid = 'sin-ef-'+sinId+'-'+campo;
+  return '<div>'
+    +'<div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">'+label+'</div>'
+    +'<div id="'+uid+'-disp" style="font-size:12px;font-weight:500;color:'+textColor+';font-style:'+(val?'normal':'italic')+';cursor:pointer;display:flex;align-items:center;gap:5px" onclick="sinFieldEditOpen(\''+uid+'\',\''+tipo+'\')">'
+      + displayVal
+      + '<span style="opacity:0;font-size:10px;color:#9CA3AF">✏️</span>'
+    +'</div>'
+    +'<div id="'+uid+'-edit" style="display:none;display:none">'
+      +'<input type="'+tipo+'" id="'+uid+'-inp" value="'+inputVal+'" style="width:100%;font-size:12px;padding:4px 7px;border:1px solid #185FA5;border-radius:5px;outline:none;font-family:inherit">'
+      +'<div style="display:flex;gap:4px;margin-top:4px">'
+        +'<button type="button" onclick="sinFieldEditSave(\''+uid+'\',\''+sinId+'\',\''+campo+'\',\''+tipo+'\')" style="font-size:11px;padding:3px 10px;background:#185FA5;color:#fff;border:none;border-radius:4px;cursor:pointer">Guardar</button>'
+        +'<button type="button" onclick="sinFieldEditCancel(\''+uid+'\')" style="font-size:11px;padding:3px 8px;background:#F3F4F6;color:#374151;border:none;border-radius:4px;cursor:pointer">Cancelar</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+
+function sinFieldEditOpen(uid, tipo) {
+  document.getElementById(uid+'-disp').style.display = 'none';
+  var editEl = document.getElementById(uid+'-edit');
+  editEl.style.display = 'block';
+  document.getElementById(uid+'-inp').focus();
+}
+
+function sinFieldEditCancel(uid) {
+  document.getElementById(uid+'-disp').style.display = 'flex';
+  document.getElementById(uid+'-edit').style.display = 'none';
+}
+
+async function sinFieldEditSave(uid, sinId, campo, tipo) {
+  var val = document.getElementById(uid+'-inp').value;
+  var update = {};
+  update[campo] = val || null;
+  var { error } = await sb.from('siniestros').update(update).eq('id', sinId);
+  if (error) { mostrarAlerta('Error al guardar'); return; }
+  // Actualizar display
+  var dispEl = document.getElementById(uid+'-disp');
+  var displayVal = val ? (tipo==='date' ? fmtDate(val) : val) : 'Sin datos';
+  dispEl.innerHTML = displayVal + '<span style="opacity:0;font-size:10px;color:#9CA3AF">✏️</span>';
+  dispEl.style.color = val ? '#111827' : '#D1D5DB';
+  dispEl.style.fontStyle = val ? 'normal' : 'italic';
+  dispEl.style.display = 'flex';
+  document.getElementById(uid+'-edit').style.display = 'none';
+  mostrarAlerta('✅ Guardado');
 }
 function sinFileZone(s, campo, label) {
   var url = s[campo];
