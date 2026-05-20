@@ -9150,6 +9150,8 @@ function parseFedPatronal(buffer) {
       if (cod && idx) cretTablas[cod][idx] = desc;
     });
 
+    var totalRows = parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').length;
+    compLog('info', 'CRET_PRODUCTOS_DATOS: ' + totalRows + ' filas');
     parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
       var sec  = r.getAttribute('A');
       var nro  = r.getAttribute('B');
