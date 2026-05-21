@@ -9939,22 +9939,25 @@ async function normalizarYSincronizar(parsed, filename) {
             var nuevaPol = parsed.polizas.find(function(np){ return np._renueva_a === pAnt.numero_poliza; });
             // Historial
             if (pAnt.cliente_id) {
-              await sb.from('interacciones').insert({
-                cliente_id:   pAnt.cliente_id,
-                productor_id: uid,
-                tipo:         'sistema',
-                canal:        'sistema',
-                resumen:      'Póliza ' + pAnt.numero_poliza + ' (' + (pAnt.ramo||'') + ') renovada' + (nuevaPol ? ' → ' + nuevaPol.numero_poliza : '') + ' · Importación Fed. Patronal',
-                es_automatico: true,
-              }).catch(function(){});
+              try {
+                await sb.from('interacciones').insert({
+                  cliente_id:   pAnt.cliente_id,
+                  productor_id: uid,
+                  tipo:         'sistema',
+                  canal:        'sistema',
+                  resumen:      'Póliza ' + pAnt.numero_poliza + ' (' + (pAnt.ramo||'') + ') renovada' + (nuevaPol ? ' → ' + nuevaPol.numero_poliza : '') + ' · Importación Fed. Patronal',
+                  es_automatico: true,
+                });
+              } catch(e) {}
             }
             // Cerrar tarea de renovación pendiente para esta póliza
-            await sb.from('tareas').update({ estado: 'completada' })
-              .eq('productor_id', uid)
-              .eq('poliza_id', pAnt.id)
-              .eq('tablero', 'renovaciones')
-              .in('estado', ['pendiente','encurso'])
-              .catch(function(){});
+            try {
+              await sb.from('tareas').update({ estado: 'completada' })
+                .eq('productor_id', uid)
+                .eq('poliza_id', pAnt.id)
+                .eq('tablero', 'renovaciones')
+                .in('estado', ['pendiente','encurso']);
+            } catch(e) {}
           }
         }
       }
