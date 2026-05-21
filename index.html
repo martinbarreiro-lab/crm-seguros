@@ -2901,6 +2901,17 @@ async function fichaPolizas(c) {
   const { data } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const polizas = data || [];
 
+  // Cargar coberturas de la tabla para mostrar detalle
+  const polIds = polizas.map(function(p){ return p.id; });
+  var cobsPorPolId = {};
+  if (polIds.length) {
+    var { data: cobsDB } = await sb.from('coberturas').select('poliza_id,descripcion,suma_asegurada').in('poliza_id', polIds);
+    (cobsDB||[]).forEach(function(c){
+      if (!cobsPorPolId[c.poliza_id]) cobsPorPolId[c.poliza_id] = [];
+      cobsPorPolId[c.poliza_id].push(c);
+    });
+  }
+
   // Calcular métricas
   const today = new Date();
   let vigentes = 0;
@@ -3008,56 +3019,72 @@ async function fichaPolizas(c) {
       const cobPartes = [];
       if (p.cobertura && p.ramo === 'Automotor') cobPartes.push(p.cobertura);
       const drC = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
+      const cobsPoliza = cobsPorPolId[p.id] || [];
+
       if (p.ramo === 'Automotor') {
-        // Modelo y patente
+        if (p.cobertura) cobPartes.push(p.cobertura);
         var vehStr = [drC.marca, drC.modelo, drC.anio].filter(Boolean).join(' ');
         if (vehStr) cobPartes.push(vehStr);
         if (drC.patente || p.patente) cobPartes.push('Patente: ' + (drC.patente || p.patente));
-        // Suma asegurada
         var sumaC = drC.suma_asegurada || p.suma_asegurada;
         if (sumaC) cobPartes.push('Suma: ' + fmtMoney(sumaC));
-        // Franquicia
         if (drC.franquicia_desc) {
           var pctM = drC.franquicia_desc.match(/(\d+(?:\.\d+)?)\s*%/);
-          if (pctM && sumaC) {
-            var franqV = parseFloat(sumaC) * parseFloat(pctM[1]) / 100;
-            cobPartes.push('Franquicia ' + pctM[1] + '% = ' + fmtMoney(franqV));
-          } else {
-            cobPartes.push(drC.franquicia_desc.trim());
+          if (pctM && sumaC) cobPartes.push('Franquicia ' + pctM[1] + '% = ' + fmtMoney(parseFloat(sumaC) * parseFloat(pctM[1]) / 100));
+          else cobPartes.push(drC.franquicia_desc.trim());
+        }
+      } else if (p.ramo === 'Combinado' || p.ramo === 'Hogar') {
+        // Dirección de riesgo
+        var dirRiesgo = drC.direccion_riesgo || drC.direccion || p.bien_asegurado;
+        if (dirRiesgo) cobPartes.push(dirRiesgo);
+        // Coberturas de la BD con suma
+        var cobsRelevantes = ['INCENDIO EDIFICIO','INCENDIO CONTENIDO','ROBO','CRISTALES','TODO RIESGO'];
+        cobsPoliza.forEach(function(cb){
+          var desc = cb.descripcion.toUpperCase();
+          var esRelevante = cobsRelevantes.some(function(r){ return desc.indexOf(r) !== -1; });
+          if (esRelevante && cb.suma_asegurada) {
+            var nomina = desc.indexOf('SIN NOMINA') !== -1 ? ' s/nómina' : desc.indexOf('CON NOMINA') !== -1 ? ' c/nómina' : '';
+            var nombre = desc.replace(' - SIN NOMINA','').replace(' - CON NOMINA','').replace(' EN DOMICILIO','');
+            cobPartes.push(nombre + nomina + ': ' + fmtMoney(cb.suma_asegurada));
           }
-        } else if (drC.franquicia_tipo === 'sin') cobPartes.push('Sin franquicia');
-        else if (drC.franquicia_tipo === 'porcentaje' && drC.franquicia_porcentaje) cobPartes.push('Franquicia ' + drC.franquicia_porcentaje + '%');
-        else if (drC.franquicia_tipo === 'valor' && drC.franquicia_monto) cobPartes.push('Franquicia ' + fmtMoney(drC.franquicia_monto));
-        if (drC.gnc === 'si') cobPartes.push('GNC');
-      } else if (p.ramo === 'Hogar' || p.ramo === 'Combinado') {
-        if (drC.tipo_vivienda) cobPartes.push(drC.tipo_vivienda);
-        if (drC.uso) cobPartes.push(drC.uso);
-        if (drC.suma_edificio) cobPartes.push('Edificio ' + fmtMoney(drC.suma_edificio));
-        if (drC.suma_contenido) cobPartes.push('Contenido ' + fmtMoney(drC.suma_contenido));
-        if (drC.seguridad) cobPartes.push(drC.seguridad);
-      } else if (p.ramo === 'Comercio') {
-        if (drC.actividad) cobPartes.push(drC.actividad);
-        if (drC.suma_contenido) cobPartes.push('Contenido ' + fmtMoney(drC.suma_contenido));
-        if (drC.suma_edificio) cobPartes.push('Edificio ' + fmtMoney(drC.suma_edificio));
+        });
       } else if (p.ramo === 'Accidentes Personales') {
-        if (drC.actividad) cobPartes.push(drC.actividad);
-        if (drC.cobertura_muerte) cobPartes.push('Muerte ' + fmtMoney(drC.cobertura_muerte));
-        if (drC.cobertura_invalidez) cobPartes.push('Invalidez ' + fmtMoney(drC.cobertura_invalidez));
+        // Cantidad de personas y coberturas principales
+        var cantPersonas = cobsPoliza.length ? cobsPoliza[0].suma_asegurada : null;
+        cobsPoliza.forEach(function(cb){
+          var desc = cb.descripcion;
+          if (['MUERTE','INVALIDEZ','RENTA','ASIST'].some(function(k){ return desc.toUpperCase().indexOf(k) !== -1; })) {
+            if (cb.suma_asegurada) cobPartes.push(desc + ': ' + fmtMoney(cb.suma_asegurada));
+          }
+        });
+        if (!cobPartes.length && p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
       } else if (p.ramo === 'Responsabilidad Civil') {
-        if (drC.actividad) cobPartes.push(drC.actividad);
-        if (drC.suma) cobPartes.push('Suma ' + fmtMoney(drC.suma));
+        // Suma asegurada + coberturas
+        if (p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
+        cobsPoliza.slice(0,3).forEach(function(cb){
+          if (cb.suma_asegurada) cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada));
+        });
       } else if (p.ramo === 'Vida Individual') {
         if (drC.plan) cobPartes.push(drC.plan);
-        if (drC.capital) cobPartes.push('Capital ' + fmtMoney(drC.capital));
+        // Coberturas principales
+        cobsPoliza.forEach(function(cb){
+          if (['VIDA','MUERTE','CAPITAL'].some(function(k){ return cb.descripcion.toUpperCase().indexOf(k) !== -1; })) {
+            if (cb.suma_asegurada) cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada));
+          }
+        });
+        if (!cobPartes.length && p.suma_asegurada) cobPartes.push('Capital: ' + fmtMoney(p.suma_asegurada));
       } else if (p.ramo === 'Vida Colectiva') {
         if (drC.cantidad) cobPartes.push(drC.cantidad + ' asegurados');
-        if (drC.capital) cobPartes.push('Capital ' + fmtMoney(drC.capital));
+        if (p.suma_asegurada) cobPartes.push('Capital: ' + fmtMoney(p.suma_asegurada));
       } else if (p.ramo === 'ART') {
         if (drC.actividad) cobPartes.push(drC.actividad);
         if (drC.empleados) cobPartes.push(drC.empleados + ' empleados');
-      } else if (p.ramo === 'Otros') {
-        if (drC.descripcion) cobPartes.push(drC.descripcion);
-        if (drC.suma) cobPartes.push('Suma ' + fmtMoney(drC.suma));
+      } else {
+        // Genérico — suma asegurada
+        if (p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
+        cobsPoliza.slice(0,2).forEach(function(cb){
+          if (cb.suma_asegurada) cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada));
+        });
       }
       const cobTexto = cobPartes.join(' · ');
 
@@ -9591,18 +9618,27 @@ function parseFedPatronal(buffer) {
 
   var coberturas = [];
   try {
+    // Deduplicar: por cada poliza+codCobertura quedarse con el último endoso
+    var cobIdx = {}; // key: nroPol_codCob → { endoso, desc, suma, prima }
     parse('CARH_RIESGOS_CUBIERTOS.xml').querySelectorAll('ROW').forEach(function(r){
       var nroPol = r.getAttribute('B');
       var codCob = r.getAttribute('F');
       var ramo   = r.getAttribute('E');
       if (!nroPol || !codCob) return;
-      var desc = cobDescMap[ramo+'_'+codCob] || cobDescMap['_'+codCob] || ('Cobertura ' + codCob);
-      coberturas.push({
-        _nroPol:        nroPol,
-        descripcion:    desc,
-        suma_asegurada: parseFloat(r.getAttribute('G')) || null,
-      });
+      var endoso = parseInt(r.getAttribute('D') || '0');
+      var key    = nroPol + '_' + codCob;
+      var desc   = cobDescMap[ramo+'_'+codCob] || cobDescMap['_'+codCob] || ('Cobertura ' + codCob);
+      // Solo guardar si es el endoso más reciente para esa cobertura
+      if (!cobIdx[key] || endoso >= cobIdx[key].endoso) {
+        cobIdx[key] = {
+          _nroPol:        nroPol,
+          descripcion:    desc,
+          suma_asegurada: parseFloat(r.getAttribute('G')) || null,
+          endoso:         endoso,
+        };
+      }
     });
+    coberturas = Object.values(cobIdx);
   } catch(e) { compLog('warn', 'coberturas: ' + e.message); }
 
   return { clientes:clientes, polizas:polizas, cobranzas:cobranzas, coberturas:coberturas };
