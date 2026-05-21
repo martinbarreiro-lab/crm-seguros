@@ -2457,7 +2457,7 @@ async function fichaResumen(c) {
       var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
       html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
       html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>');
-      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura?' · '+p.cobertura:'')+'</div>');
+      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
       html.push('<div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
@@ -3006,7 +3006,7 @@ async function fichaPolizas(c) {
       const info = dataVehiculoOrInfo(p);
       // Cobertura por ramo
       const cobPartes = [];
-      if (p.cobertura) cobPartes.push(p.cobertura);
+      if (p.cobertura && p.ramo === 'Automotor') cobPartes.push(p.cobertura);
       const drC = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
       if (p.ramo === 'Automotor') {
         // Modelo y patente
