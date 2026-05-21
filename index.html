@@ -2414,7 +2414,10 @@ async function renderFichaTab(c) {
 async function fichaResumen(c) {
   const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const { data: sins } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).neq('estado', 'cerrado');
-  const polsActivas = (pols||[]).filter(function(p){return p.estado==='activa';});
+  const polsActivas   = (pols||[]).filter(function(p){ return p.estado==='activa'; });
+  const polsRenovadas = (pols||[]).filter(function(p){ return p.estado==='renovada'; });
+  const polsVencidas  = (pols||[]).filter(function(p){ return p.estado==='vencida' || (p.estado==='activa' && p.fecha_vencimiento && new Date(p.fecha_vencimiento) < new Date() ); });
+  const polsAnuladas  = (pols||[]).filter(function(p){ return p.estado==='baja'||p.estado==='cancelada'||p.estado==='anulada'||p.estado==='no_renueva'; });
   const premioAnual = polsActivas.reduce(function(s,p){return s+(p.prima_anual||0);},0);
   const hoy = new Date();
   const en60 = new Date(Date.now()+60*864e5);
@@ -2445,16 +2448,81 @@ async function fichaResumen(c) {
   // LEFT: actividad dinámica
   html.push('<div style="display:flex;flex-direction:column;gap:12px">');
 
-  // Pólizas vigentes
-  if(polsActivas.length){
-    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div>');
+  // Pólizas vigentes + históricas en acordeones
+  html.push('<div class="ficha-card">');
+  html.push('<div class="ficha-card-title" style="display:flex;align-items:center;gap:6px">Pólizas vigentes <span style="background:#EAF3DE;color:#27500A;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsActivas.length+'</span></div>');
+  if (polsActivas.length) {
     polsActivas.forEach(function(p){
-      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6"><div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div><div style="font-size:12px;color:#6B7280;margin-top:2px">'+p.ramo+' \u00b7 '+p.aseguradora+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div><div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
+      var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
+      var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
+      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
+      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>');
+      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura?' · '+p.cobertura:'')+'</div>');
+      if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
+      html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
+      html.push('<div style="font-size:15px;font-weight:700;color:#166534">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div></div>');
     });
-    html.push('</div>');
   } else {
-    html.push('<div class="ficha-card"><div class="ficha-card-title">P\u00f3lizas vigentes</div><div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin p\u00f3lizas activas<br><button type="button" class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva p\u00f3liza</button></div></div>');
+    html.push('<div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin pólizas activas<br><button type="button" class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva póliza</button></div>');
   }
+
+  // Función helper para card histórica
+  function polHistCard(p, badgeClass, badgeTxt) {
+    var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
+    var sub = p.ramo==='Automotor' && dr.patente ? (dr.marca||'')+' '+(dr.modelo||'')+' · '+(dr.patente||p.patente||'') : '';
+    var sumaFranq = '';
+    if (dr.franquicia_desc && (dr.suma_asegurada||p.suma_asegurada)) {
+      var pctM = dr.franquicia_desc.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (pctM) sumaFranq = ' · Franquicia '+pctM[1]+'%';
+    }
+    return '<div style="background:var(--white);border:0.5px solid #F3F4F6;border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#374151">'+p.numero_poliza
+        +' <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;'+badgeClass+'">'+badgeTxt+'</span></div>'
+      +'<div style="font-size:11px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura?' · '+p.cobertura:'')+'</div>'
+      +(sub?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub+'</div>':'')
+      +(p.suma_asegurada?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Suma: $'+parseFloat(p.suma_asegurada).toLocaleString('es-AR')+sumaFranq+'</div>':'')
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;margin-left:12px">'
+        +'<div style="font-size:12px;font-weight:500;color:#6B7280">$'+(p.prima_anual||0).toLocaleString('es-AR')+'</div>'
+        +'<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+fmtDate(p.fecha_inicio)+' → '+fmtDate(p.fecha_vencimiento)+'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  // Acordeón: Renovadas
+  if (polsRenovadas.length) {
+    html.push('<div style="margin-top:10px;border:0.5px solid #E5E7EB;border-radius:8px;overflow:hidden">');
+    html.push('<div style="padding:9px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--white)" onclick="this.nextElementSibling.classList.toggle(\'open\');this.querySelector(\'.chv\').classList.toggle(\'open\')">');
+    html.push('<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#374151"><i class="ti ti-refresh" style="color:#185FA5;font-size:13px"></i> Renovadas <span style="background:#EEF4FB;color:#185FA5;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsRenovadas.length+'</span></div>');
+    html.push('<i class="ti ti-chevron-down chv" style="font-size:12px;color:#9CA3AF;transition:transform .2s"></i></div>');
+    html.push('<div class="sin-acord-body" style="padding:8px;background:#F9FAFB;border-top:0.5px solid #E5E7EB">');
+    polsRenovadas.forEach(function(p){ html.push(polHistCard(p,'background:#EEF4FB;color:#185FA5','Renovada')); });
+    html.push('</div></div>');
+  }
+
+  // Acordeón: Vencidas
+  if (polsVencidas.length) {
+    html.push('<div style="margin-top:6px;border:0.5px solid #E5E7EB;border-radius:8px;overflow:hidden">');
+    html.push('<div style="padding:9px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--white)" onclick="this.nextElementSibling.classList.toggle(\'open\');this.querySelector(\'.chv\').classList.toggle(\'open\')">');
+    html.push('<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#374151"><i class="ti ti-clock-off" style="color:#A32D2D;font-size:13px"></i> Vencidas sin renovar <span style="background:#FCEBEB;color:#A32D2D;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsVencidas.length+'</span></div>');
+    html.push('<i class="ti ti-chevron-down chv" style="font-size:12px;color:#9CA3AF;transition:transform .2s"></i></div>');
+    html.push('<div class="sin-acord-body" style="padding:8px;background:#F9FAFB;border-top:0.5px solid #E5E7EB">');
+    polsVencidas.forEach(function(p){ html.push(polHistCard(p,'background:#FCEBEB;color:#A32D2D','Vencida')); });
+    html.push('</div></div>');
+  }
+
+  // Acordeón: Anuladas
+  if (polsAnuladas.length) {
+    html.push('<div style="margin-top:6px;border:0.5px solid #E5E7EB;border-radius:8px;overflow:hidden">');
+    html.push('<div style="padding:9px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--white)" onclick="this.nextElementSibling.classList.toggle(\'open\');this.querySelector(\'.chv\').classList.toggle(\'open\')">');
+    html.push('<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#374151"><i class="ti ti-ban" style="color:#6B7280;font-size:13px"></i> Anuladas / Bajas <span style="background:#F3F4F6;color:#6B7280;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsAnuladas.length+'</span></div>');
+    html.push('<i class="ti ti-chevron-down chv" style="font-size:12px;color:#9CA3AF;transition:transform .2s"></i></div>');
+    html.push('<div class="sin-acord-body" style="padding:8px;background:#F9FAFB;border-top:0.5px solid #E5E7EB">');
+    polsAnuladas.forEach(function(p){ html.push(polHistCard(p,'background:#F3F4F6;color:#6B7280',p.estado==='no_renueva'?'No renovó':'Anulada')); });
+    html.push('</div></div>');
+  }
+
+  html.push('</div>');
 
   // Vencimientos próximos
   if(polsVenc.length){
