@@ -2912,7 +2912,7 @@ async function fichaPolizas(c) {
   const proximosVtos = [];
 
   polizas.forEach(function(p) {
-    const isVigente = p.estado === 'activa' || p.estado === 'renovacion';
+    const isVigente = p.estado === 'activa' && (!p.fecha_vencimiento || new Date(p.fecha_vencimiento) >= today);
     if (isVigente) {
       vigentes++;
       premioTotal += parseFloat(p.prima_anual) || 0;
