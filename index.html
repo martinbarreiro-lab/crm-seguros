@@ -2906,9 +2906,9 @@ async function fichaPolizas(c) {
   var cobsPorPolId = {};
   if (polIds.length) {
     var { data: cobsDB } = await sb.from('coberturas').select('poliza_id,descripcion,suma_asegurada').in('poliza_id', polIds);
-    (cobsDB||[]).forEach(function(c){
-      if (!cobsPorPolId[c.poliza_id]) cobsPorPolId[c.poliza_id] = [];
-      cobsPorPolId[c.poliza_id].push(c);
+    (cobsDB||[]).forEach(function(cb){
+      if (!cobsPorPolId[cb.poliza_id]) cobsPorPolId[cb.poliza_id] = [];
+      cobsPorPolId[cb.poliza_id].push(cb);
     });
   }
 
