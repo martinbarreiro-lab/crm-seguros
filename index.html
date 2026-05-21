@@ -9571,6 +9571,8 @@ function parseFedPatronal(buffer) {
       _forma_pago:       r.getAttribute('N') || null,
       _tipo_fact:        r.getAttribute('V') || null,
       _medio_pago:       r.getAttribute('P') || null,
+      _renueva_a:        r.getAttribute('U') || null, // número de póliza anterior que esta renueva
+      _renovada_por:     r.getAttribute('S') || null, // número de póliza nueva que renovó esta
       // Datos vehículo
       patente:           v.patente || null,
       bien_asegurado:    v.marca_modelo || null,
@@ -9946,6 +9948,22 @@ async function normalizarYSincronizar(parsed, filename) {
       }
       var polIdx3 = {};
       polBD3.forEach(function(p){ polIdx3[String(p.numero_poliza)] = p.id; });
+
+    // ── Marcar pólizas anteriores como renovadas ──────────
+    var renovaciones = parsed.polizas.filter(function(p){ return p._renueva_a; });
+    if (renovaciones.length) {
+      var nrosAnt = renovaciones.map(function(p){ return p._renueva_a; });
+      var { data: polsAnt } = await sb.from('polizas').select('id,numero_poliza,estado').eq('productor_id', uid).in('numero_poliza', nrosAnt);
+      if (polsAnt && polsAnt.length) {
+        var renovarIds = polsAnt.filter(function(p){ return p.estado !== 'renovada'; }).map(function(p){ return p.id; });
+        if (renovarIds.length) {
+          for (var ri = 0; ri < renovarIds.length; ri += 50) {
+            await sb.from('polizas').update({ estado: 'renovada' }).in('id', renovarIds.slice(ri, ri+50));
+          }
+          compLog('ok', renovarIds.length + ' pólizas marcadas como renovadas');
+        }
+      }
+    }
 
       var cobInsert = [];
       coberturasArr.forEach(function(c) {
