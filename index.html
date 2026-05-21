@@ -3077,10 +3077,10 @@ async function fichaPolizas(c) {
            +    '</div>'
            +  '</div>');
     });
-    html.push('</div>');
+    html.push('</div>'); // cierra card polActivas
   }
 
-  // Acordeones históricos
+  // Acordeones históricos — dentro de la columna izquierda
   function polHistCard2(p, badgeStyle, badgeTxt) {
     var dr2 = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
     var sub2 = p.ramo==='Automotor' && (dr2.patente||p.patente) ? (dr2.marca||'')+' '+(dr2.modelo||'')+' · '+(dr2.patente||p.patente) : '';
@@ -3122,7 +3122,7 @@ async function fichaPolizas(c) {
   acordeon2('Vencidas',      'ti-clock-off', '#A32D2D', '#FCEBEB', polsVenc2,  'background:#FCEBEB;color:#A32D2D', function(){ return 'Vencida'; });
   acordeon2('Anuladas/Bajas','ti-ban',        '#6B7280', '#F3F4F6', polsAnul2,  'background:#F3F4F6;color:#6B7280', function(p){ return p.estado==='no_renueva'?'No renovó':'Anulada'; });
 
-  html.push('</div>'); // fin col izq
+  html.push('</div>'); // fin ficha-pol-left
 
   // === SIDEBAR DERECHO: PRÓXIMOS VENCIMIENTOS ===
   html.push('<div id="ficha-pol-right" class="card-resumen" style="position:sticky;top:20px">'
@@ -9922,7 +9922,7 @@ async function normalizarYSincronizar(parsed, filename) {
     var renovaciones = parsed.polizas.filter(function(p){ return p._renueva_a; });
     if (renovaciones.length) {
       var nrosAnt = renovaciones.map(function(p){ return p._renueva_a; });
-      var { data: polsAnt } = await sb.from('polizas').select('id,numero_poliza,estado').eq('productor_id', uid).in('numero_poliza', nrosAnt);
+      var { data: polsAnt } = await sb.from('polizas').select('id,numero_poliza,estado,cliente_id,ramo').eq('productor_id', uid).in('numero_poliza', nrosAnt);
       if (polsAnt && polsAnt.length) {
         var renovarIds = polsAnt.filter(function(p){ return p.estado !== 'renovada'; }).map(function(p){ return p.id; });
         if (renovarIds.length) {
@@ -9930,6 +9930,32 @@ async function normalizarYSincronizar(parsed, filename) {
             await sb.from('polizas').update({ estado: 'renovada' }).in('id', renovarIds.slice(ri, ri+50));
           }
           compLog('ok', renovarIds.length + ' pólizas marcadas como renovadas');
+
+          // Registrar en historial y cerrar tareas de renovación
+          for (var hi = 0; hi < polsAnt.length; hi++) {
+            var pAnt = polsAnt[hi];
+            if (pAnt.estado === 'renovada') continue;
+            // Buscar nueva póliza que la renovó
+            var nuevaPol = parsed.polizas.find(function(np){ return np._renueva_a === pAnt.numero_poliza; });
+            // Historial
+            if (pAnt.cliente_id) {
+              await sb.from('interacciones').insert({
+                cliente_id:   pAnt.cliente_id,
+                productor_id: uid,
+                tipo:         'sistema',
+                canal:        'sistema',
+                resumen:      'Póliza ' + pAnt.numero_poliza + ' (' + (pAnt.ramo||'') + ') renovada' + (nuevaPol ? ' → ' + nuevaPol.numero_poliza : '') + ' · Importación Fed. Patronal',
+                es_automatico: true,
+              }).catch(function(){});
+            }
+            // Cerrar tarea de renovación pendiente para esta póliza
+            await sb.from('tareas').update({ estado: 'completada' })
+              .eq('productor_id', uid)
+              .eq('poliza_id', pAnt.id)
+              .eq('tablero', 'renovaciones')
+              .in('estado', ['pendiente','encurso'])
+              .catch(function(){});
+          }
         }
       }
     }
