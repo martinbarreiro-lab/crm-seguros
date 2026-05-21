@@ -501,3 +501,8 @@ tr:hover td{background:var(--bg)}
 .rep-shortcut{font-size:12px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
 .rep-shortcut:hover{border-color:var(--blue);color:var(--blue);background:var(--light)}
 .rep-shortcut.active{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489}
+
+/* Acordeón histórico pólizas */
+.sin-acord-body { display: none; }
+.sin-acord-body.open { display: block; }
+.chv.open { transform: rotate(180deg); }
