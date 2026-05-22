@@ -833,7 +833,13 @@
 
         <!-- Historial de importaciones -->
         <div class="card" style="margin-top:12px">
-          <div class="card-t" style="margin-bottom:10px">Historial de importaciones</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-t" style="margin:0">Historial de importaciones</div>
+            <button type="button" class="btn btn-sm" onclick="recalcularCuotasVigentes()" title="Recalcula valor_cuota y prima_anual proyectada para todas las pólizas con cobranzas">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+              Recalcular cuotas vigentes
+            </button>
+          </div>
           <div id="comp-historial" style="font-size:12px;color:var(--muted)">Sin importaciones registradas.</div>
         </div>
       </div>
@@ -9247,10 +9253,29 @@ async function renderMpdPagosAsync(p) {
 
   // ── Plan de cuotas desde tabla cobranzas ──────────────
   try {
-    var { data: cobs } = await sb.from('cobranzas')
+    var { data: cobsRaw } = await sb.from('cobranzas')
       .select('*')
       .eq('poliza_id', p.id)
-      .order('numero_cuota', {ascending: true});
+      .order('fecha_vencimiento', {ascending: true});
+
+    // Deduplicar por fecha_vencimiento (pueden existir duplicados de importaciones anteriores)
+    var cobsMap = {};
+    (cobsRaw||[]).forEach(function(c) {
+      var k = c.fecha_vencimiento || c.id;
+      // Si ya existe, preferir el de mayor número de cuota o el más reciente
+      if (!cobsMap[k] || (c.numero_cuota && c.numero_cuota > cobsMap[k].numero_cuota)) {
+        cobsMap[k] = c;
+      }
+    });
+    var cobs = Object.values(cobsMap).sort(function(a,b){
+      return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
+    });
+    // Reasignar número de cuota correcto según orden cronológico (por si llegó mal del XML)
+    var allSameNum = cobs.every(function(c){ return (c.numero_cuota||1) === (cobs[0].numero_cuota||1); });
+    cobs.forEach(function(c, i) {
+      if (allSameNum || !c.numero_cuota) c._cuotaDisplay = i + 1;
+      else c._cuotaDisplay = c.numero_cuota;
+    });
 
     if (cobs && cobs.length) {
       var pagadas = cobs.filter(function(c){ return c.estado === 'pagada' || c.estado === 'cancelado'; });
@@ -9286,7 +9311,7 @@ async function renderMpdPagosAsync(p) {
         var border = i < cobs.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
         var fw = esPend ? '600' : '400';
         html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:9px 12px;background:' + rowBg + ';' + border + 'align-items:center">');
-        html.push('<div style="font-size:12px;font-weight:' + fw + ';color:var(--text)">' + (c.numero_cuota||i+1) + '/' + total + '</div>');
+        html.push('<div style="font-size:12px;font-weight:' + fw + ';color:var(--text)">' + c._cuotaDisplay + '/' + total + '</div>');
         html.push('<div style="font-size:12px;color:var(--muted)">Vto. ' + vtoFmt + '</div>');
         html.push('<div>' + estadoHtml + '</div>');
         html.push('<div style="font-size:12px;font-weight:500;color:var(--text);text-align:right">' + fmtM(c.monto) + '</div>');
@@ -9315,7 +9340,7 @@ async function renderMpdPagosAsync(p) {
           var border = i < pagadas.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
           var pagoFmt = c.fecha_pago ? c.fecha_pago.slice(0,10).split('-').reverse().join('/') : '—';
           html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;' + border + 'align-items:center">');
-          html.push('<div style="font-size:12px;color:var(--muted)">' + (c.numero_cuota||i+1) + '/' + cobs.length + ' · ' + (c.fecha_vencimiento ? 'Vto '+c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '') + '</div>');
+          html.push('<div style="font-size:12px;color:var(--muted)">' + c._cuotaDisplay + '/' + cobs.length + ' · ' + (c.fecha_vencimiento ? 'Vto '+c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '') + '</div>');
           html.push('<div style="font-size:12px;color:var(--text)">' + pagoFmt + '</div>');
           html.push('<div style="font-size:12px;font-weight:600;color:#166534">' + fmtM(c.monto) + '</div>');
           html.push('</div>');
@@ -9487,6 +9512,92 @@ function fmtDateComp(val) {
   if (p.length===3 && p[2].length===4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
   if (val instanceof Date && !isNaN(val)) return val.toISOString().slice(0,10);
   return null;
+}
+
+
+// ── Recalcular cuotas vigentes para toda la cartera ──────
+// Repara pólizas importadas antes de tener el post-proceso.
+// Útil cuando prima_anual muestra el acumulado YTD en lugar del proyectado anual.
+async function recalcularCuotasVigentes() {
+  var btn = event && event.target ? event.target.closest('button') : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Calculando...'; }
+  var uid = user.id;
+  var log = document.getElementById('comp-historial');
+  if (log) log.innerHTML = '<span style="color:var(--med)">Recalculando cuotas vigentes...</span>';
+
+  try {
+    var { data: todasCobs } = await sb.from('cobranzas')
+      .select('poliza_id, monto, fecha_vencimiento, estado, numero_cuota')
+      .eq('productor_id', uid);
+
+    if (!todasCobs || !todasCobs.length) {
+      if (log) log.innerHTML = '<span style="color:var(--muted)">No hay cobranzas registradas.</span>';
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Recalcular cuotas vigentes'; }
+      return;
+    }
+
+    // Agrupar por poliza_id, deduplicando por fecha_vencimiento
+    var cobsPorPol = {};
+    todasCobs.forEach(function(c) {
+      if (!cobsPorPol[c.poliza_id]) cobsPorPol[c.poliza_id] = {};
+      var k = c.fecha_vencimiento || (c.numero_cuota + '_' + c.monto);
+      if (!cobsPorPol[c.poliza_id][k]) cobsPorPol[c.poliza_id][k] = c;
+    });
+
+    var updates = [];
+    var refactCount = 0;
+
+    Object.keys(cobsPorPol).forEach(function(polId) {
+      var cs = Object.values(cobsPorPol[polId]).sort(function(a,b){
+        return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
+      });
+      if (!cs.length) return;
+
+      // Cuota vigente: pendiente más próxima, si no la más reciente
+      var latestPend = cs.find(function(c){ return c.estado === 'pendiente'; });
+      var latest = latestPend || cs[cs.length - 1];
+      if (!latest || !latest.monto) return;
+
+      var monto = parseFloat(latest.monto);
+      var montos = cs.map(function(c){ return Math.round(parseFloat(c.monto)||0); });
+      var montosUnicos = new Set(montos);
+      var esRefact = montosUnicos.size > 1;
+
+      if (esRefact) {
+        refactCount++;
+        updates.push({ id: polId, valor_cuota: monto, prima_anual: Math.round(monto * 12), forma_pago: 'Anual ref. mensual' });
+      } else {
+        updates.push({ id: polId, valor_cuota: monto });
+      }
+    });
+
+    // Aplicar updates en lotes de 10
+    var updated = 0;
+    for (var i = 0; i < updates.length; i += 10) {
+      await Promise.all(updates.slice(i, i+10).map(function(u) {
+        var upd = { valor_cuota: u.valor_cuota };
+        if (u.prima_anual) upd.prima_anual = u.prima_anual;
+        if (u.forma_pago) upd.forma_pago = u.forma_pago;
+        return sb.from('polizas').update(upd).eq('id', u.id);
+      }));
+      updated += Math.min(10, updates.length - i);
+    }
+
+    var msg = '✅ ' + updated + ' pólizas actualizadas'
+      + (refactCount ? ' · ' + refactCount + ' de refacturación mensual (prima anual recalculada como cuota × 12)' : '');
+    if (log) log.innerHTML = '<div style="color:var(--green);font-weight:500;padding:8px 0">' + msg + '</div>';
+    mostrarAlerta(msg);
+
+    // Recargar módulos afectados
+    if (typeof cargarAnalisis === 'function') cargarAnalisis();
+    if (typeof cargarPolizas === 'function' && document.getElementById('sec-polizas').classList.contains('active')) cargarPolizas();
+
+  } catch(e) {
+    if (log) log.innerHTML = '<span style="color:var(--red)">Error: ' + e.message + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Recalcular cuotas vigentes'; }
+    setTimeout(cargarHistorialComp, 500);
+  }
 }
 
 function cargarHistorialComp() {
@@ -9970,7 +10081,13 @@ async function normalizarYSincronizar(parsed, filename) {
 
     // Índice de cobranzas: poliza_id + numero_cuota
     var cobIdx = {};
-    (cobBD||[]).forEach(function(c){ cobIdx[c.poliza_id+'_'+c.numero_cuota] = true; });
+    (cobBD||[]).forEach(function(c){
+      // Dedup por poliza_id + fecha_vencimiento (más confiable que numero_cuota que a veces llega null del XML)
+      var k1 = c.poliza_id+'_'+(c.fecha_vencimiento||'');
+      var k2 = c.poliza_id+'_'+(c.numero_cuota||'');
+      cobIdx[k1] = true;
+      if (c.numero_cuota) cobIdx[k2] = true;
+    });
 
     compLog('info', 'BD: ' + (clBD||[]).length + ' clientes, ' + (polBD||[]).length + ' pólizas, ' + (cobBD||[]).length + ' cobranzas existentes');
 
@@ -10127,8 +10244,13 @@ async function normalizarYSincronizar(parsed, filename) {
       cobranzasArr.forEach(function(c) {
         var polId = polIdx2[String(c._nroPol)];
         if (!polId) return;
-        var key = polId + '_' + c.numero_cuota;
-        if (cobIdx[key]) { stats.skip++; return; }
+        // Dedup: preferir por fecha_vencimiento (evita duplicados si numero_cuota llega como null)
+        var keyFecha = polId + '_' + (c.fecha_vencimiento||'');
+        var keyCuota = polId + '_' + (c.numero_cuota||'');
+        if (cobIdx[keyFecha] || (c.numero_cuota && cobIdx[keyCuota])) { stats.skip++; return; }
+        // Marcar como procesado
+        cobIdx[keyFecha] = true;
+        if (c.numero_cuota) cobIdx[keyCuota] = true;
         cobInsertar.push({
           productor_id:      uid,
           poliza_id:         polId,
