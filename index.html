@@ -2498,7 +2498,7 @@ async function fichaResumen(c) {
       html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
-      html.push('<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#166534">'+fmtPremioMes(p.prima_anual,p)+'/mes</div><div style="font-size:10px;color:#9CA3AF;margin-top:1px">'+getPeriodoLabel(p)+'</div></div></div>');
+      html.push('<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#166534">'+fmtCuota(p)+'</div></div></div>');
     });
   } else {
     html.push('<div style="text-align:center;padding:20px;color:#9CA3AF;font-size:13px">Sin pólizas activas<br><button type="button" class="fqa-btn fqa-pol" style="margin-top:10px" data-cid="'+c.id+'" onclick="fichaAbrirPoliza(this)">+ Nueva póliza</button></div>');
@@ -3144,8 +3144,7 @@ async function fichaPolizas(c) {
            +      (cobTexto ? '<div style="font-size:12px;color:#9CA3AF;line-height:1.6">' + cobTexto + '</div>' : '<div style="font-size:12px;color:#D1D5DB;font-style:italic">Sin datos de cobertura cargados</div>')
            +    '</div>'
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
-           +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtPremioMes(p.prima_anual, p) + '/mes</div>'
-           +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">' + getPeriodoLabel(p) + '</div>'
+           +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtCuota(p) + '</div>'
            +      '<div style="font-size:11px;color:#4A90D9;margin-top:6px;font-weight:500">Ver detalle →</div>'
            +    '</div>'
            +  '</div>');
@@ -5273,17 +5272,22 @@ function getMensualNum(poliza) {
   return Math.round((parseFloat(poliza ? poliza.prima_anual : 0) || 0) / 12);
 }
 function getPeriodoLabel(p) {
-  var meses = parseInt(p.periodo_meses) || 0;
   var fp = (p.forma_pago || '').toLowerCase();
-  if (fp.indexOf('mensual') !== -1 || fp.indexOf('ref') !== -1) return 'Refacturación mensual';
-  if (meses === 1) return 'Cuota mensual';
-  if (meses === 2) return 'Cuota bimestral';
-  if (meses === 3) return 'Cuota trimestral';
-  if (meses === 4) return 'Cuota cuatrimestral';
-  if (meses === 6) return 'Cuota semestral';
-  if (meses === 12) return 'Pago anual';
-  if (p.cantidad_cuotas && p.cantidad_cuotas > 1) return p.cantidad_cuotas + ' cuotas';
-  return 'Cuota';
+  if (fp.indexOf('ref') !== -1) return 'Refacturación mensual';
+  // Frecuencia real: periodo_meses / cantidad_cuotas
+  var meses = parseInt(p.periodo_meses) || 12;
+  var cuotas = parseInt(p.cantidad_cuotas) || 1;
+  var freq = cuotas > 0 ? Math.round(meses / cuotas) : meses;
+  if (freq <= 1) return '/mes';
+  if (freq === 2) return '/2 meses';
+  if (freq === 3) return '/trimestre';
+  if (freq === 4) return '/4 meses';
+  if (freq === 6) return '/semestre';
+  if (freq >= 12) return '/año';
+  return '/'+freq+' meses';
+}
+function fmtCuota(p) {
+  return fmtPremioMes(p.prima_anual, p) + ' ' + getPeriodoLabel(p);
 }
 function calcComisionMensual(prima_anual, aseguradora, ramo) {
   // Busca % en _cfg.comisiones (por compañía > por ramo > promedio general)
@@ -5440,7 +5444,7 @@ function filtrarPolizasPanel() {
     return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
-      +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtPremioMes(p.prima_anual,p)+'/mes':'—')+'</div>'+(p.prima_anual?'<div style="font-size:10px;color:var(--muted)">'+getPeriodoLabel(p)+'</div>':'')+'</div>'
+      +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
       +'<div><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
@@ -5904,7 +5908,7 @@ async function abrirRefacturarPoliza(polId) {
       '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores actuales — N° '+(p.numero_poliza||'—')+'</div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500">'+(fmtDate(p.fecha_inicio)||'—')+' → '+(fmtDate(p.fecha_vencimiento)||'—')+'</span></div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio anual</span><span style="font-weight:600;color:#166534">'+fmtMoney(p.prima_anual)+'</span></div>'+
-      '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio mensual</span><span style="font-weight:600;color:#27AE60">'+fmtPremioMes(p.prima_anual,p)+'/mes</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Cuota vigente</span><span style="font-weight:600;color:#27AE60">'+fmtCuota(p)+'</span></div>'+
       (p.valor_cuota||p.cantidad_cuotas?'<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Cuota</span><span style="font-weight:500">'+fmtMoney(p.valor_cuota||(p.prima_anual&&p.cantidad_cuotas?Math.round(p.prima_anual/p.cantidad_cuotas):null))+' / '+(p.forma_pago||'mes')+'</span></div>':'');
   }
   var fechaEl = document.getElementById('refact-fecha');
@@ -8807,7 +8811,7 @@ async function anularPoliza(polId) {
         + (p.ramo||'') + ' · N° ' + (p.numero_poliza||'—') + ' · ' + (p.aseguradora||'—')
       + '</div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500;color:#111827">' + fmtF(fmtDate(p.fecha_inicio)) + ' → ' + fmtF(fmtDate(p.fecha_vencimiento)) + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Premio anual</span><span style="font-weight:500;color:#16A34A">' + fmtMoney(p.prima_anual) + ' <span style="color:#27AE60">· '+fmtPremioMes(p.prima_anual,p)+'/mes</span></span></div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Cuota vigente</span><span style="font-weight:500;color:#16A34A">' + fmtCuota(p) + '</span></div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Forma de pago</span><span style="font-weight:500;color:#111827">' + fmtF(p.forma_pago) + '</span></div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px"><span style="color:#6B7280">Cobertura</span><span style="font-weight:500;color:#111827">' + fmtF(p.cobertura) + '</span></div>';
   }
@@ -9072,7 +9076,7 @@ function renderDetallePol() {
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){verFicha(\''+p.cliente_id+'\')},100)" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151">Ver ficha →</button>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
-        mpdMetric('Cuota vigente',fmtPremioMes(p.prima_anual,p),getPeriodoLabel(p),'#166534')+
+        mpdMetric('Cuota vigente',fmtCuota(p),getPeriodoLabel(p),'#166534')+
         mpdMetric(cuotaMetricLabel,cuotaVal,p.medio_pago||'—','#111827')+
         mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
         mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
@@ -9350,17 +9354,16 @@ async function renderMpdPagosAsync(p) {
   ];
   if (cobs.length > 0) {
     filas.push(['Premio total', fmtM(p.prima_anual)]);
+    filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaVigenteReal) + '</strong> &nbsp;<span style="color:var(--muted);font-size:11px;font-weight:400">' + getPeriodoLabel(p) + '</span>']);
     if (esRefact) {
-      filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaVigenteReal) + '</strong>']);
       filas.push(['Cuotas facturadas', cobs.length + (p.cantidad_cuotas ? ' de ' + p.cantidad_cuotas : '')]);
     } else {
-      filas.push(['Valor de cuota', fmtM(cuotaVigenteReal)]);
-      filas.push(['Cantidad de cuotas', p.cantidad_cuotas || cobs.length]);
+      filas.push(['Cantidad de cuotas', (p.cantidad_cuotas || cobs.length)]);
     }
   } else {
     filas.push(['Premio total', fmtM(p.prima_anual)]);
     var cuotaFb = p.valor_cuota && parseFloat(p.valor_cuota) > 0 ? parseFloat(p.valor_cuota) : (p.prima_anual && p.cantidad_cuotas ? Math.round(p.prima_anual/p.cantidad_cuotas) : null);
-    if (cuotaFb) filas.push(['Valor de cuota', fmtM(cuotaFb)]);
+    if (cuotaFb) filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaFb) + '</strong> &nbsp;<span style="color:var(--muted);font-size:11px;font-weight:400">' + getPeriodoLabel(p) + '</span>']);
     if (p.cantidad_cuotas) filas.push(['Cantidad de cuotas', p.cantidad_cuotas]);
   }
   filas.push(['Emisión', p.fecha_emision ? p.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—']);
