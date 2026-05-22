@@ -3130,7 +3130,7 @@ async function fichaPolizas(c) {
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
            +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
            +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Premio anual</div>'
-           +      '<div style="font-size:12px;font-weight:600;color:#27AE60;margin-top:3px">' + fmtPremioMes(p.prima_anual) + '/mes</div>'
+           +      '<div style="font-size:12px;font-weight:600;color:#27AE60;margin-top:3px">' + fmtPremioMes(p.prima_anual, p) + '/mes</div>'
            +      '<div style="font-size:11px;color:#4A90D9;margin-top:6px;font-weight:500">Ver detalle →</div>'
            +    '</div>'
            +  '</div>');
@@ -5243,9 +5243,19 @@ function fmtMoney(n) { return '$' + (parseFloat(n) || 0).toLocaleString('es-AR')
 function premioMensual(prima_anual) {
   return Math.round((parseFloat(prima_anual) || 0) / 12);
 }
-function fmtPremioMes(prima_anual) {
+// Si la póliza tiene valor_cuota (cuota real, actualizada en cada importación),
+// la usamos. Si no, caemos a prima_anual/12.
+function fmtPremioMes(prima_anual, poliza) {
+  if (poliza && poliza.valor_cuota && parseFloat(poliza.valor_cuota) > 0) {
+    return '$' + Math.round(parseFloat(poliza.valor_cuota)).toLocaleString('es-AR');
+  }
   var m = premioMensual(prima_anual);
   return m ? '$' + m.toLocaleString('es-AR') : '—';
+}
+function getMensualNum(poliza) {
+  if (poliza && poliza.valor_cuota && parseFloat(poliza.valor_cuota) > 0)
+    return Math.round(parseFloat(poliza.valor_cuota));
+  return Math.round((parseFloat(poliza ? poliza.prima_anual : 0) || 0) / 12);
 }
 function calcComisionMensual(prima_anual, aseguradora, ramo) {
   // Busca % en _cfg.comisiones (por compañía > por ramo > promedio general)
@@ -5266,6 +5276,12 @@ function getTotalComisionMensual(polizas) {
   return polizas.reduce(function(acc, p) {
     var c = calcComisionMensual(p.prima_anual, p.aseguradora, p.ramo);
     return acc + (c ? c.monto : 0);
+  }, 0);
+}
+function getTotalPremioMensual(polizas) {
+  // Suma correcta del premio mensual: usa valor_cuota si existe
+  return polizas.reduce(function(acc, p) {
+    return acc + getMensualNum(p);
   }, 0);
 }
 
@@ -5395,7 +5411,7 @@ function filtrarPolizasPanel() {
     return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
-      +'<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+(p.prima_anual?'$'+Number(p.prima_anual).toLocaleString('es-AR'):'—')+'</div>'+(p.prima_anual?'<div style="font-size:10px;color:var(--green);font-weight:500">'+fmtPremioMes(p.prima_anual)+'/mes</div>':'')+'</div>'
+      +'<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+(p.prima_anual?'$'+Number(p.prima_anual).toLocaleString('es-AR'):'—')+'</div>'+(p.prima_anual?'<div style="font-size:10px;color:var(--green);font-weight:500">'+fmtPremioMes(p.prima_anual,p)+'/mes</div>':'')+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
       +'<div><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
@@ -5859,7 +5875,7 @@ async function abrirRefacturarPoliza(polId) {
       '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores actuales — N° '+(p.numero_poliza||'—')+'</div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500">'+(fmtDate(p.fecha_inicio)||'—')+' → '+(fmtDate(p.fecha_vencimiento)||'—')+'</span></div>'+
       '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio anual</span><span style="font-weight:600;color:#166534">'+fmtMoney(p.prima_anual)+'</span></div>'+
-      '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio mensual</span><span style="font-weight:600;color:#27AE60">'+fmtPremioMes(p.prima_anual)+'/mes</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Premio mensual</span><span style="font-weight:600;color:#27AE60">'+fmtPremioMes(p.prima_anual,p)+'/mes</span></div>'+
       (p.valor_cuota||p.cantidad_cuotas?'<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#6B7280">Cuota</span><span style="font-weight:500">'+fmtMoney(p.valor_cuota||(p.prima_anual&&p.cantidad_cuotas?Math.round(p.prima_anual/p.cantidad_cuotas):null))+' / '+(p.forma_pago||'mes')+'</span></div>':'');
   }
   var fechaEl = document.getElementById('refact-fecha');
@@ -7365,7 +7381,8 @@ async function cargarAnalisis() {
 
   // Llenar cards rápidas
   if(el('an-premio-anual')) el('an-premio-anual').textContent = '$'+Math.round(premioTotal).toLocaleString('es-AR');
-  if(el('an-premio-mensual')) el('an-premio-mensual').textContent = '$'+Math.round(premioTotal/12).toLocaleString('es-AR');
+  var premioMensualTotal = getTotalPremioMensual(activas);
+  if(el('an-premio-mensual')) el('an-premio-mensual').textContent = '$'+Math.round(premioMensualTotal).toLocaleString('es-AR');
   // Comisión mensual — usa _cfg.comisiones si están configuradas
   var comisionTotalMes = getTotalComisionMensual(activas);
   if(el('an-comision-mensual')) {
@@ -8747,7 +8764,7 @@ async function anularPoliza(polId) {
         + (p.ramo||'') + ' · N° ' + (p.numero_poliza||'—') + ' · ' + (p.aseguradora||'—')
       + '</div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Vigencia</span><span style="font-weight:500;color:#111827">' + fmtF(fmtDate(p.fecha_inicio)) + ' → ' + fmtF(fmtDate(p.fecha_vencimiento)) + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Premio anual</span><span style="font-weight:500;color:#16A34A">' + fmtMoney(p.prima_anual) + ' <span style="color:#27AE60">· '+fmtPremioMes(p.prima_anual)+'/mes</span></span></div>'
+      + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Premio anual</span><span style="font-weight:500;color:#16A34A">' + fmtMoney(p.prima_anual) + ' <span style="color:#27AE60">· '+fmtPremioMes(p.prima_anual,p)+'/mes</span></span></div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px;border-bottom:0.5px solid #F3F4F6"><span style="color:#6B7280">Forma de pago</span><span style="font-weight:500;color:#111827">' + fmtF(p.forma_pago) + '</span></div>'
       + '<div style="display:flex;justify-content:space-between;padding:7px 12px;font-size:12px"><span style="color:#6B7280">Cobertura</span><span style="font-weight:500;color:#111827">' + fmtF(p.cobertura) + '</span></div>';
   }
@@ -9003,7 +9020,7 @@ function renderDetallePol() {
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){verFicha(\''+p.cliente_id+'\')},100)" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151">Ver ficha →</button>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
-        mpdMetric('Premio anual',fmtMoney(p.prima_anual),'→ '+fmtPremioMes(p.prima_anual)+'/mes','#166534')+
+        mpdMetric('Premio anual',fmtMoney(p.prima_anual),'→ '+fmtPremioMes(p.prima_anual,p)+'/mes','#166534')+
         mpdMetric('Cuota',cuotaVal,p.medio_pago||'—','#111827')+
         mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
         mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
@@ -9187,23 +9204,147 @@ async function renderMpdCobertura(p) {
 }
 
 function renderMpdPagos(p) {
-  var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
-  var rows = [
-    ['Premio total',fmtM(p.prima_anual)],
-    ['Forma de pago',p.forma_pago||'—'],
-    ['Cantidad de cuotas',p.cantidad_cuotas||'—'],
-    ['Valor de cuota',fmtM(p.valor_cuota)],
-    ['Medio de pago',p.medio_pago||'—'],
-    ['Día de débito',p.dia_debito?'Día '+p.dia_debito:'—'],
-    ['Período de vigencia',p.periodo_meses?p.periodo_meses+' meses':'—'],
-    ['Fecha de emisión',fmtDate(p.fecha_emision)||'—'],
+  // Disparar carga async y devolver placeholder
+  renderMpdPagosAsync(p);
+  return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando plan de pagos...</div>';
+}
+
+async function renderMpdPagosAsync(p) {
+  var cont = document.getElementById('mpd-tab-cont');
+  if (!cont) return;
+  var fmtM = function(n){ return n ? '$' + Math.round(parseFloat(n)).toLocaleString('es-AR') : '—'; };
+  var esRefact = p.forma_pago === 'Anual ref. mensual' || p.forma_pago === 'Mensual';
+  var cuotaVigente = p.valor_cuota ? parseFloat(p.valor_cuota) : null;
+  var html = [];
+
+  // ── Datos generales de la póliza ──────────────────────
+  html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:14px;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
+  var filas = [
+    ['Forma de pago', p.forma_pago || '—'],
+    ['Medio de pago', p.medio_pago || '—'],
+    ['Período', p.periodo_meses ? p.periodo_meses + ' meses' : '—'],
+    ['Día de débito', p.dia_debito ? 'Día ' + p.dia_debito : '—'],
   ];
-  return rows.map(function(r){
-    return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid #F3F4F6">'+
-      '<span style="font-size:12px;color:#6B7280">'+r[0]+'</span>'+
-      '<span style="font-size:12px;font-weight:500;color:#111827">'+r[1]+'</span>'+
-    '</div>';
-  }).join('');
+  // Premio: discriminar acumulado vs cuota según tipo
+  if (esRefact && cuotaVigente) {
+    filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaVigente) + '</strong>']);
+    filas.push(['Premio anual proyectado', '<span style="color:#6B7280">' + fmtM(cuotaVigente * 12) + ' (× 12)</span>']);
+  } else {
+    filas.push(['Premio total', fmtM(p.prima_anual)]);
+    var cuota = p.valor_cuota ? parseFloat(p.valor_cuota) : (p.prima_anual && p.cantidad_cuotas ? Math.round(p.prima_anual / p.cantidad_cuotas) : null);
+    if (cuota) filas.push(['Valor de cuota', fmtM(cuota)]);
+    if (p.cantidad_cuotas) filas.push(['Cantidad de cuotas', p.cantidad_cuotas]);
+  }
+  filas.push(['Emisión', p.fecha_emision ? p.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—']);
+  filas.forEach(function(f, i) {
+    var bg = i % 2 === 0 ? 'var(--bg)' : 'var(--white)';
+    html.push('<div style="padding:8px 12px;font-size:12px;background:' + bg + ';border-bottom:0.5px solid var(--border)">'
+      + '<span style="color:var(--muted)">' + f[0] + '</span></div>');
+    html.push('<div style="padding:8px 12px;font-size:12px;background:' + bg + ';border-bottom:0.5px solid var(--border);font-weight:500;color:var(--text)">'
+      + f[1] + '</div>');
+  });
+  html.push('</div>');
+
+  // ── Plan de cuotas desde tabla cobranzas ──────────────
+  try {
+    var { data: cobs } = await sb.from('cobranzas')
+      .select('*')
+      .eq('poliza_id', p.id)
+      .order('numero_cuota', {ascending: true});
+
+    if (cobs && cobs.length) {
+      var pagadas = cobs.filter(function(c){ return c.estado === 'pagada' || c.estado === 'cancelado'; });
+      var pendientes = cobs.filter(function(c){ return c.estado === 'pendiente'; });
+      var vencidas = cobs.filter(function(c){ return c.estado === 'vencida'; });
+      var totalFacturado = cobs.reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
+      var totalPagado = pagadas.reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
+
+      html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Plan de cuotas</div>');
+
+      // Header
+      html.push('<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
+      html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
+      ['Cuota', 'Vencimiento', 'Estado', 'Importe', 'Saldo'].forEach(function(h) {
+        html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + h + '</div>');
+      });
+      html.push('</div>');
+
+      // Rows
+      cobs.forEach(function(c, i) {
+        var esPend = c.estado === 'pendiente' || c.estado === 'vencida';
+        var esVenc = c.estado === 'vencida';
+        var esPag = c.estado === 'pagada' || c.estado === 'cancelado';
+        var rowBg = esPend ? (esVenc ? '#FEF2F2' : '#FFFBEB') : 'var(--white)';
+        var estadoHtml = esPag
+          ? '<span style="background:#EAF3DE;color:#166534;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">✓ Cancelado</span>'
+          : esVenc
+            ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vencido</span>'
+            : '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Pendiente</span>';
+        var saldo = esPag ? '0,00' : fmtM(c.monto);
+        var vtoFmt = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '—';
+        var total = cobs.length;
+        var border = i < cobs.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
+        var fw = esPend ? '600' : '400';
+        html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:9px 12px;background:' + rowBg + ';' + border + 'align-items:center">');
+        html.push('<div style="font-size:12px;font-weight:' + fw + ';color:var(--text)">' + (c.numero_cuota||i+1) + '/' + total + '</div>');
+        html.push('<div style="font-size:12px;color:var(--muted)">Vto. ' + vtoFmt + '</div>');
+        html.push('<div>' + estadoHtml + '</div>');
+        html.push('<div style="font-size:12px;font-weight:500;color:var(--text);text-align:right">' + fmtM(c.monto) + '</div>');
+        html.push('<div style="font-size:12px;color:' + (esPag ? 'var(--muted)' : '#991B1B') + ';text-align:right;font-weight:' + (esPag?'400':'600') + '">' + saldo + '</div>');
+        html.push('</div>');
+      });
+
+      // Footer con totales
+      html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
+      html.push('<div></div><div></div><div></div>');
+      html.push('<div style="font-size:11px;font-weight:600;color:var(--text);text-align:right">' + fmtM(totalFacturado) + '</div>');
+      var saldoPendiente = (pendientes.concat(vencidas)).reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
+      html.push('<div style="font-size:11px;font-weight:600;color:' + (saldoPendiente ? '#991B1B' : 'var(--green)') + ';text-align:right">' + (saldoPendiente ? fmtM(saldoPendiente) : '✓ Al día') + '</div>');
+      html.push('</div></div>'); // fin tabla
+
+      // Resumen pagos
+      if (pagadas.length) {
+        html.push('<div style="margin-top:12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pagos realizados</div>');
+        html.push('<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
+        html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
+        ['Cuota', 'Fecha de cobro', 'Importe'].forEach(function(h) {
+          html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + h + '</div>');
+        });
+        html.push('</div>');
+        pagadas.forEach(function(c, i) {
+          var border = i < pagadas.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
+          var pagoFmt = c.fecha_pago ? c.fecha_pago.slice(0,10).split('-').reverse().join('/') : '—';
+          html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;' + border + 'align-items:center">');
+          html.push('<div style="font-size:12px;color:var(--muted)">' + (c.numero_cuota||i+1) + '/' + cobs.length + ' · ' + (c.fecha_vencimiento ? 'Vto '+c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '') + '</div>');
+          html.push('<div style="font-size:12px;color:var(--text)">' + pagoFmt + '</div>');
+          html.push('<div style="font-size:12px;font-weight:600;color:#166534">' + fmtM(c.monto) + '</div>');
+          html.push('</div>');
+        });
+        // Total pagado
+        html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
+        html.push('<div></div><div style="font-size:11px;font-weight:600;color:var(--text)">Total pagado</div>');
+        html.push('<div style="font-size:11px;font-weight:600;color:#166534">' + fmtM(totalPagado) + '</div>');
+        html.push('</div></div>');
+      }
+
+      // Nota para refacturación mensual
+      if (esRefact) {
+        html.push('<div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);font-size:11px;color:var(--med);display:flex;align-items:center;gap:6px">'
+          + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+          + 'Refacturación mensual — el importe de cada cuota se ajusta mensualmente. La cuota vigente es <strong>'
+          + fmtM(cuotaVigente || (cobs[cobs.length-1] ? cobs[cobs.length-1].monto : null))
+          + '</strong>.'
+          + '</div>');
+      }
+
+    } else {
+      html.push('<div style="padding:20px;text-align:center;color:var(--lt);font-size:13px">Sin cuotas registradas en el sistema.<br><span style="font-size:11px">Se registran automáticamente al importar el ZIP de la compañía.</span></div>');
+    }
+  } catch(e) {
+    html.push('<div style="padding:16px;color:var(--red);font-size:12px">Error al cargar plan de pagos: ' + e.message + '</div>');
+  }
+
+  cont.innerHTML = html.join('');
 }
 
 function renderMpdDocumentos(p) {
@@ -10007,6 +10148,58 @@ async function normalizarYSincronizar(parsed, filename) {
         }
         compLog('ok', cobInsertar.length + ' cuotas de cobranza insertadas');
       }
+
+      // ── Post-proceso: actualizar valor_cuota y prima_anual ─
+      // Para pólizas de refacturación mensual el XML acumula el total YTD.
+      // Corregimos: valor_cuota = última cuota real, prima_anual = cuota × 12 (proyectado anual)
+      compLog('info', 'Calculando cuotas vigentes...');
+      try {
+        var { data: todasCobs } = await sb.from('cobranzas')
+          .select('poliza_id, monto, fecha_vencimiento, estado, numero_cuota')
+          .eq('productor_id', uid);
+        // Agrupar por poliza_id
+        var cobsPorPol2 = {};
+        (todasCobs||[]).forEach(function(c) {
+          if (!cobsPorPol2[c.poliza_id]) cobsPorPol2[c.poliza_id] = [];
+          cobsPorPol2[c.poliza_id].push(c);
+        });
+        var polVCUpdates = [];
+        Object.keys(cobsPorPol2).forEach(function(polId) {
+          var cs = cobsPorPol2[polId].slice().sort(function(a,b){
+            return (b.fecha_vencimiento||'') > (a.fecha_vencimiento||'') ? 1 : -1;
+          });
+          // Cuota más reciente (pendiente primero, luego la última en fecha)
+          var latestPend = cs.find(function(c){ return c.estado==='pendiente'; });
+          var latest = latestPend || cs[0];
+          if (!latest || !latest.monto) return;
+          var monto = parseFloat(latest.monto);
+          // Detectar si los montos varían (refacturación mensual) o son fijos
+          var montos = cs.map(function(c){ return Math.round(parseFloat(c.monto)||0); });
+          var montosUnicos = new Set(montos);
+          var esRefactMensual = montosUnicos.size > 1; // montos distintos → refacturación mensual
+          if (esRefactMensual) {
+            // prima_anual = cuota vigente × 12 (proyectado, no acumulado)
+            polVCUpdates.push({ id: polId, valor_cuota: monto, prima_anual: Math.round(monto * 12), forma_pago: 'Anual ref. mensual' });
+          } else {
+            // Montos fijos: solo actualizar valor_cuota
+            polVCUpdates.push({ id: polId, valor_cuota: monto });
+          }
+        });
+        if (polVCUpdates.length) {
+          for (var vi = 0; vi < polVCUpdates.length; vi += 10) {
+            await Promise.all(polVCUpdates.slice(vi, vi+10).map(function(u) {
+              var upd = { valor_cuota: u.valor_cuota };
+              if (u.prima_anual) upd.prima_anual = u.prima_anual;
+              if (u.forma_pago) upd.forma_pago = u.forma_pago;
+              return sb.from('polizas').update(upd).eq('id', u.id);
+            }));
+          }
+          var refactCount = polVCUpdates.filter(function(u){ return u.forma_pago; }).length;
+          compLog('ok', polVCUpdates.length + ' pólizas con cuota vigente actualizada'
+            + (refactCount ? ' · ' + refactCount + ' de refacturación mensual detectadas' : ''));
+        }
+      } catch(evc) { compLog('warn', 'Post-proceso cuotas: ' + evc.message); }
+      // ── Fin post-proceso ───────────────────────────────────
     }
 
     // ── Cruce automático pólizas → clientes ──────────────
