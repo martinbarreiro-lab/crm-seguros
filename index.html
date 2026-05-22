@@ -9000,7 +9000,13 @@ function renderDetallePol() {
   else { badgeBg='#EAF3DE'; badgeColor='#27500A'; badgeText='Vigente'+(e.dias!==null?' · '+e.dias+'d':''); }
   var initials = (((cl.nombre||'?')[0]||'')+((cl.apellido||'?')[0]||'')).toUpperCase() || '??';
   var nombreCl = ((cl.apellido||'')+(cl.apellido&&cl.nombre?', ':'')+( cl.nombre||'')).trim()||'(sin nombre)';
+  var esRefact = p.forma_pago === 'Anual ref. mensual' || p.forma_pago === 'Mensual';
+  var cuotaMetricLabel = esRefact ? 'Cuota vigente' : 'Valor de cuota';
   var cuotaVal = p.valor_cuota ? fmtMoney(p.valor_cuota) : (p.cantidad_cuotas && p.prima_anual ? fmtMoney(Math.round(p.prima_anual/p.cantidad_cuotas)) : '—');
+  // Reset expand al renderizar
+  _mpdExpanded = false;
+  var boxEl = document.getElementById('mpd-box');
+  if (boxEl) { boxEl.style.maxWidth = '720px'; boxEl.style.width = ''; }
   var vtoColor = e.key==='vencida'?'#A32D2D':e.key==='urgente'?'#854F0B':'#111827';
   var tabs = [{id:'cobertura',label:'Cobertura'},{id:'pagos',label:'Datos de pago'},{id:'documentos',label:'Documentos'},{id:'historial',label:'Historial'}];
 
@@ -9016,6 +9022,9 @@ function renderDetallePol() {
           '<div style="font-size:13px;color:#6B7280">'+p.ramo+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
         '</div>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\')" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;padding:4px;line-height:1">✕</button>'+
+        '<button type="button" id="mpd-expand-btn" onclick="toggleMpdExpand()" title="Ampliar modal" style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:4px;line-height:1;margin-right:4px">'+
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'+
+        '</button>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F9FAFB;border-radius:8px;margin-bottom:12px">'+
         '<div style="width:34px;height:34px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#0C447C;flex-shrink:0">'+initials+'</div>'+
@@ -9027,7 +9036,7 @@ function renderDetallePol() {
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
         mpdMetric('Premio anual',fmtMoney(p.prima_anual),'→ '+fmtPremioMes(p.prima_anual,p)+'/mes','#166534')+
-        mpdMetric('Cuota',cuotaVal,p.medio_pago||'—','#111827')+
+        mpdMetric(cuotaMetricLabel,cuotaVal,p.medio_pago||'—','#111827')+
         mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
         mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
       '</div>'+
@@ -9046,9 +9055,31 @@ function renderDetallePol() {
         }).join('')+
       '</div>'+
     '</div>'+
-    '<div id="mpd-tab-cont" style="padding:16px 22px;max-height:340px;overflow-y:auto">'+
+    '<div id="mpd-tab-cont" style="padding:16px 22px;max-height:340px;overflow-y:auto;transition:max-height .2s">'+
       renderMpdTabContent(p,_mpdTab)+
     '</div>';
+}
+
+var _mpdExpanded = false;
+function toggleMpdExpand() {
+  _mpdExpanded = !_mpdExpanded;
+  var box = document.getElementById('mpd-box');
+  var cont = document.getElementById('mpd-tab-cont');
+  var btn = document.getElementById('mpd-expand-btn');
+  if (!box || !cont) return;
+  if (_mpdExpanded) {
+    box.style.maxWidth = '95vw';
+    box.style.width = '95vw';
+    cont.style.maxHeight = 'calc(80vh - 280px)';
+    if (btn) btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>';
+    btn.title = 'Reducir modal';
+  } else {
+    box.style.maxWidth = '720px';
+    box.style.width = '';
+    cont.style.maxHeight = '340px';
+    if (btn) btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+    btn.title = 'Ampliar modal';
+  }
 }
 
 function mpdMetric(label,val,sub,color) {
@@ -9219,11 +9250,37 @@ async function renderMpdPagosAsync(p) {
   var cont = document.getElementById('mpd-tab-cont');
   if (!cont) return;
   var fmtM = function(n){ return n ? '$' + Math.round(parseFloat(n)).toLocaleString('es-AR') : '—'; };
-  var esRefact = p.forma_pago === 'Anual ref. mensual' || p.forma_pago === 'Mensual';
-  var cuotaVigente = p.valor_cuota ? parseFloat(p.valor_cuota) : null;
   var html = [];
 
-  // ── Datos generales de la póliza ──────────────────────
+  // ── 1. Cargar cobranzas PRIMERO ───────────────────────
+  var cobs = [];
+  try {
+    var { data: cobsRaw } = await sb.from('cobranzas')
+      .select('*').eq('poliza_id', p.id).order('fecha_vencimiento', {ascending: true});
+    var cobsMap = {};
+    (cobsRaw||[]).forEach(function(c) {
+      var k = c.fecha_vencimiento || c.id;
+      if (!cobsMap[k] || (c.numero_cuota && c.numero_cuota > cobsMap[k].numero_cuota)) cobsMap[k] = c;
+    });
+    cobs = Object.values(cobsMap).sort(function(a,b){
+      return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
+    });
+    var allSameNum = cobs.length > 0 && cobs.every(function(c){ return (c.numero_cuota||1) === (cobs[0].numero_cuota||1); });
+    cobs.forEach(function(c, i){ c._cuotaDisplay = (allSameNum || !c.numero_cuota) ? i+1 : c.numero_cuota; });
+  } catch(e2) { /* sin cobranzas */ }
+
+  // ── 2. Cuota vigente desde el plan real (no desde p.valor_cuota) ──
+  var cuotaVigenteReal = null;
+  var esRefactReal = false;
+  if (cobs.length > 0) {
+    var montos = cobs.map(function(c){ return Math.round(parseFloat(c.monto)||0); });
+    esRefactReal = (new Set(montos)).size > 1;
+    var latestPend = cobs.slice().reverse().find(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
+    cuotaVigenteReal = parseFloat((latestPend || cobs[cobs.length-1]).monto);
+  }
+  var esRefact = esRefactReal || p.forma_pago === 'Anual ref. mensual' || p.forma_pago === 'Mensual';
+
+  // ── 3. Info general ───────────────────────────────────
   html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:14px;border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
   var filas = [
     ['Forma de pago', p.forma_pago || '—'],
@@ -9231,142 +9288,101 @@ async function renderMpdPagosAsync(p) {
     ['Período', p.periodo_meses ? p.periodo_meses + ' meses' : '—'],
     ['Día de débito', p.dia_debito ? 'Día ' + p.dia_debito : '—'],
   ];
-  // Premio: discriminar acumulado vs cuota según tipo
-  if (esRefact && cuotaVigente) {
-    filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaVigente) + '</strong>']);
-    filas.push(['Premio anual proyectado', '<span style="color:#6B7280">' + fmtM(cuotaVigente * 12) + ' (× 12)</span>']);
+  if (cobs.length > 0) {
+    filas.push(['Premio total', fmtM(p.prima_anual)]);
+    if (esRefact) {
+      filas.push(['Cuota vigente', '<strong style="color:#27AE60">' + fmtM(cuotaVigenteReal) + '</strong>']);
+      filas.push(['Cuotas facturadas', cobs.length + (p.cantidad_cuotas ? ' de ' + p.cantidad_cuotas : '')]);
+    } else {
+      filas.push(['Valor de cuota', fmtM(cuotaVigenteReal)]);
+      filas.push(['Cantidad de cuotas', p.cantidad_cuotas || cobs.length]);
+    }
   } else {
     filas.push(['Premio total', fmtM(p.prima_anual)]);
-    var cuota = p.valor_cuota ? parseFloat(p.valor_cuota) : (p.prima_anual && p.cantidad_cuotas ? Math.round(p.prima_anual / p.cantidad_cuotas) : null);
-    if (cuota) filas.push(['Valor de cuota', fmtM(cuota)]);
+    var cuotaFb = p.valor_cuota && parseFloat(p.valor_cuota) > 0 ? parseFloat(p.valor_cuota) : (p.prima_anual && p.cantidad_cuotas ? Math.round(p.prima_anual/p.cantidad_cuotas) : null);
+    if (cuotaFb) filas.push(['Valor de cuota', fmtM(cuotaFb)]);
     if (p.cantidad_cuotas) filas.push(['Cantidad de cuotas', p.cantidad_cuotas]);
   }
   filas.push(['Emisión', p.fecha_emision ? p.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—']);
   filas.forEach(function(f, i) {
-    var bg = i % 2 === 0 ? 'var(--bg)' : 'var(--white)';
-    html.push('<div style="padding:8px 12px;font-size:12px;background:' + bg + ';border-bottom:0.5px solid var(--border)">'
-      + '<span style="color:var(--muted)">' + f[0] + '</span></div>');
-    html.push('<div style="padding:8px 12px;font-size:12px;background:' + bg + ';border-bottom:0.5px solid var(--border);font-weight:500;color:var(--text)">'
-      + f[1] + '</div>');
+    var bg = i%2===0 ? 'var(--bg)' : 'var(--white)';
+    html.push('<div style="padding:8px 12px;font-size:12px;background:'+bg+';border-bottom:0.5px solid var(--border)"><span style="color:var(--muted)">'+f[0]+'</span></div>');
+    html.push('<div style="padding:8px 12px;font-size:12px;background:'+bg+';border-bottom:0.5px solid var(--border);font-weight:500;color:var(--text)">'+f[1]+'</div>');
   });
   html.push('</div>');
 
-  // ── Plan de cuotas desde tabla cobranzas ──────────────
-  try {
-    var { data: cobsRaw } = await sb.from('cobranzas')
-      .select('*')
-      .eq('poliza_id', p.id)
-      .order('fecha_vencimiento', {ascending: true});
+  // ── 4. Plan de cuotas ─────────────────────────────────
+  if (cobs.length) {
+    var pagadas = cobs.filter(function(c){ return c.estado==='pagada'||c.estado==='cancelado'; });
+    var pendientes = cobs.filter(function(c){ return c.estado==='pendiente'; });
+    var vencidas = cobs.filter(function(c){ return c.estado==='vencida'; });
+    var totalFacturado = cobs.reduce(function(a,c){ return a+(parseFloat(c.monto)||0); }, 0);
+    var totalPagado = pagadas.reduce(function(a,c){ return a+(parseFloat(c.monto)||0); }, 0);
 
-    // Deduplicar por fecha_vencimiento (pueden existir duplicados de importaciones anteriores)
-    var cobsMap = {};
-    (cobsRaw||[]).forEach(function(c) {
-      var k = c.fecha_vencimiento || c.id;
-      // Si ya existe, preferir el de mayor número de cuota o el más reciente
-      if (!cobsMap[k] || (c.numero_cuota && c.numero_cuota > cobsMap[k].numero_cuota)) {
-        cobsMap[k] = c;
-      }
+    html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Plan de cuotas</div>');
+    html.push('<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
+    html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
+    ['Cuota','Vencimiento','Estado','Importe','Saldo'].forEach(function(h){
+      html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">'+h+'</div>');
     });
-    var cobs = Object.values(cobsMap).sort(function(a,b){
-      return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
+    html.push('</div>');
+    cobs.forEach(function(c,i){
+      var esPag=c.estado==='pagada'||c.estado==='cancelado';
+      var esVenc=c.estado==='vencida';
+      var esPend=!esPag;
+      var rowBg=esPend?(esVenc?'#FEF2F2':'#FFFBEB'):'var(--white)';
+      var estadoHtml=esPag
+        ?'<span style="background:#EAF3DE;color:#166534;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">✓ Cancelado</span>'
+        :esVenc
+          ?'<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vencido</span>'
+          :'<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Pendiente</span>';
+      var vtoFmt=c.fecha_vencimiento?c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/'):'—';
+      var border=i<cobs.length-1?'border-bottom:0.5px solid var(--border);':'';
+      html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:9px 12px;background:'+rowBg+';'+border+'align-items:center">');
+      html.push('<div style="font-size:12px;font-weight:'+(esPend?'600':'400')+';color:var(--text)">'+c._cuotaDisplay+'/'+cobs.length+'</div>');
+      html.push('<div style="font-size:12px;color:var(--muted)">Vto. '+vtoFmt+'</div>');
+      html.push('<div>'+estadoHtml+'</div>');
+      html.push('<div style="font-size:12px;font-weight:500;color:var(--text);text-align:right">'+fmtM(c.monto)+'</div>');
+      html.push('<div style="font-size:12px;color:'+(esPag?'var(--muted)':'#991B1B')+';text-align:right;font-weight:'+(esPag?'400':'600')+'">'+(esPag?'—':fmtM(c.monto))+'</div>');
+      html.push('</div>');
     });
-    // Reasignar número de cuota correcto según orden cronológico (por si llegó mal del XML)
-    var allSameNum = cobs.every(function(c){ return (c.numero_cuota||1) === (cobs[0].numero_cuota||1); });
-    cobs.forEach(function(c, i) {
-      if (allSameNum || !c.numero_cuota) c._cuotaDisplay = i + 1;
-      else c._cuotaDisplay = c.numero_cuota;
-    });
+    html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
+    html.push('<div></div><div></div><div></div>');
+    html.push('<div style="font-size:11px;font-weight:600;color:var(--text);text-align:right">'+fmtM(totalFacturado)+'</div>');
+    var saldoPend=(pendientes.concat(vencidas)).reduce(function(a,c){ return a+(parseFloat(c.monto)||0); },0);
+    html.push('<div style="font-size:11px;font-weight:600;color:'+(saldoPend?'#991B1B':'var(--green)')+';text-align:right">'+(saldoPend?fmtM(saldoPend):'✓ Al día')+'</div>');
+    html.push('</div></div>');
 
-    if (cobs && cobs.length) {
-      var pagadas = cobs.filter(function(c){ return c.estado === 'pagada' || c.estado === 'cancelado'; });
-      var pendientes = cobs.filter(function(c){ return c.estado === 'pendiente'; });
-      var vencidas = cobs.filter(function(c){ return c.estado === 'vencida'; });
-      var totalFacturado = cobs.reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
-      var totalPagado = pagadas.reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
-
-      html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Plan de cuotas</div>');
-
-      // Header
+    if (pagadas.length) {
+      html.push('<div style="margin-top:12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pagos realizados</div>');
       html.push('<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
-      html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
-      ['Cuota', 'Vencimiento', 'Estado', 'Importe', 'Saldo'].forEach(function(h) {
-        html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + h + '</div>');
+      html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
+      ['Cuota','Fecha de cobro','Importe'].forEach(function(h){
+        html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">'+h+'</div>');
       });
       html.push('</div>');
-
-      // Rows
-      cobs.forEach(function(c, i) {
-        var esPend = c.estado === 'pendiente' || c.estado === 'vencida';
-        var esVenc = c.estado === 'vencida';
-        var esPag = c.estado === 'pagada' || c.estado === 'cancelado';
-        var rowBg = esPend ? (esVenc ? '#FEF2F2' : '#FFFBEB') : 'var(--white)';
-        var estadoHtml = esPag
-          ? '<span style="background:#EAF3DE;color:#166534;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">✓ Cancelado</span>'
-          : esVenc
-            ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vencido</span>'
-            : '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Pendiente</span>';
-        var saldo = esPag ? '0,00' : fmtM(c.monto);
-        var vtoFmt = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '—';
-        var total = cobs.length;
-        var border = i < cobs.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
-        var fw = esPend ? '600' : '400';
-        html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:9px 12px;background:' + rowBg + ';' + border + 'align-items:center">');
-        html.push('<div style="font-size:12px;font-weight:' + fw + ';color:var(--text)">' + c._cuotaDisplay + '/' + total + '</div>');
-        html.push('<div style="font-size:12px;color:var(--muted)">Vto. ' + vtoFmt + '</div>');
-        html.push('<div>' + estadoHtml + '</div>');
-        html.push('<div style="font-size:12px;font-weight:500;color:var(--text);text-align:right">' + fmtM(c.monto) + '</div>');
-        html.push('<div style="font-size:12px;color:' + (esPag ? 'var(--muted)' : '#991B1B') + ';text-align:right;font-weight:' + (esPag?'400':'600') + '">' + saldo + '</div>');
+      pagadas.forEach(function(c,i){
+        var border=i<pagadas.length-1?'border-bottom:0.5px solid var(--border);':'';
+        var pagoFmt=c.fecha_pago?c.fecha_pago.slice(0,10).split('-').reverse().join('/'):'—';
+        html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;'+border+'align-items:center">');
+        html.push('<div style="font-size:12px;color:var(--muted)">'+c._cuotaDisplay+'/'+cobs.length+' · Vto '+(c.fecha_vencimiento?c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/'):'—')+'</div>');
+        html.push('<div style="font-size:12px;color:var(--text)">'+pagoFmt+'</div>');
+        html.push('<div style="font-size:12px;font-weight:600;color:#166534">'+fmtM(c.monto)+'</div>');
         html.push('</div>');
       });
-
-      // Footer con totales
-      html.push('<div style="display:grid;grid-template-columns:80px 1fr 1fr 90px 90px;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
-      html.push('<div></div><div></div><div></div>');
-      html.push('<div style="font-size:11px;font-weight:600;color:var(--text);text-align:right">' + fmtM(totalFacturado) + '</div>');
-      var saldoPendiente = (pendientes.concat(vencidas)).reduce(function(a,c){ return a + (parseFloat(c.monto)||0); }, 0);
-      html.push('<div style="font-size:11px;font-weight:600;color:' + (saldoPendiente ? '#991B1B' : 'var(--green)') + ';text-align:right">' + (saldoPendiente ? fmtM(saldoPendiente) : '✓ Al día') + '</div>');
-      html.push('</div></div>'); // fin tabla
-
-      // Resumen pagos
-      if (pagadas.length) {
-        html.push('<div style="margin-top:12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pagos realizados</div>');
-        html.push('<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">');
-        html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">');
-        ['Cuota', 'Fecha de cobro', 'Importe'].forEach(function(h) {
-          html.push('<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + h + '</div>');
-        });
-        html.push('</div>');
-        pagadas.forEach(function(c, i) {
-          var border = i < pagadas.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
-          var pagoFmt = c.fecha_pago ? c.fecha_pago.slice(0,10).split('-').reverse().join('/') : '—';
-          html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;' + border + 'align-items:center">');
-          html.push('<div style="font-size:12px;color:var(--muted)">' + c._cuotaDisplay + '/' + cobs.length + ' · ' + (c.fecha_vencimiento ? 'Vto '+c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '') + '</div>');
-          html.push('<div style="font-size:12px;color:var(--text)">' + pagoFmt + '</div>');
-          html.push('<div style="font-size:12px;font-weight:600;color:#166534">' + fmtM(c.monto) + '</div>');
-          html.push('</div>');
-        });
-        // Total pagado
-        html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
-        html.push('<div></div><div style="font-size:11px;font-weight:600;color:var(--text)">Total pagado</div>');
-        html.push('<div style="font-size:11px;font-weight:600;color:#166534">' + fmtM(totalPagado) + '</div>');
-        html.push('</div></div>');
-      }
-
-      // Nota para refacturación mensual
-      if (esRefact) {
-        html.push('<div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);font-size:11px;color:var(--med);display:flex;align-items:center;gap:6px">'
-          + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-          + 'Refacturación mensual — el importe de cada cuota se ajusta mensualmente. La cuota vigente es <strong>'
-          + fmtM(cuotaVigente || (cobs[cobs.length-1] ? cobs[cobs.length-1].monto : null))
-          + '</strong>.'
-          + '</div>');
-      }
-
-    } else {
-      html.push('<div style="padding:20px;text-align:center;color:var(--lt);font-size:13px">Sin cuotas registradas en el sistema.<br><span style="font-size:11px">Se registran automáticamente al importar el ZIP de la compañía.</span></div>');
+      html.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 12px;background:var(--bg);border-top:0.5px solid var(--border)">');
+      html.push('<div></div><div style="font-size:11px;font-weight:600;color:var(--text)">Total pagado</div>');
+      html.push('<div style="font-size:11px;font-weight:600;color:#166534">'+fmtM(totalPagado)+'</div>');
+      html.push('</div></div>');
     }
-  } catch(e) {
-    html.push('<div style="padding:16px;color:var(--red);font-size:12px">Error al cargar plan de pagos: ' + e.message + '</div>');
+    if (esRefact) {
+      html.push('<div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:var(--rsm);font-size:11px;color:var(--med);display:flex;align-items:center;gap:6px">'
+        +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        +'Refacturación mensual — el importe se ajusta cada mes. Cuota vigente: <strong style="color:#27AE60">'+fmtM(cuotaVigenteReal)+'</strong>'
+        +'</div>');
+    }
+  } else {
+    html.push('<div style="padding:20px;text-align:center;color:var(--lt);font-size:13px">Sin cuotas registradas.<br><span style="font-size:11px">Se registran automáticamente al importar el ZIP de la compañía.</span></div>');
   }
 
   cont.innerHTML = html.join('');
