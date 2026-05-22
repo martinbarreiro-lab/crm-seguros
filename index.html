@@ -2944,8 +2944,7 @@ async function fichaPolizas(c) {
   var cobsPorPolId = {};
   if (polIds.length) {
     var { data: cobsDB } = await sb.from('coberturas').select('poliza_id,descripcion,suma_asegurada')
-      .in('poliza_id', polIds)
-      .eq('productor_id', user.id);
+      .in('poliza_id', polIds);
     (cobsDB||[]).forEach(function(cb){
       if (!cobsPorPolId[cb.poliza_id]) cobsPorPolId[cb.poliza_id] = [];
       cobsPorPolId[cb.poliza_id].push(cb);
@@ -3015,6 +3014,8 @@ async function fichaPolizas(c) {
        +  '<button type="button" class="btn btn-p" onclick="abrirModalPolizaParaCliente(\'' + c.id + '\')">+ Nueva póliza</button>'
        +  '</div>');
 
+  var ingresoMesFichaTab = polActivas.reduce(function(a,p){ return a+getMensualNum(p); }, 0);
+
   // Cards de métricas
   html.push('<div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:12px;row-gap:12px">'
        +  '<div class="metric-card" style="border-left-color:#16A34A">'
@@ -3023,9 +3024,9 @@ async function fichaPolizas(c) {
        +    '<div class="metric-sub">Activas</div>'
        +  '</div>'
        +  '<div class="metric-card" style="border-left-color:#4A90D9">'
-       +    '<div class="metric-label">Premio anual</div>'
-       +    '<div class="metric-num">' + fmtMoney(premioTotal) + '</div>'
-       +    '<div class="metric-sub">Cartera total</div>'
+       +    '<div class="metric-label">Ingreso mensual</div>'
+       +    '<div class="metric-num" style="font-size:16px">' + (ingresoMesFichaTab ? '$'+Math.round(ingresoMesFichaTab).toLocaleString('es-AR') : '—') + '</div>'
+       +    '<div class="metric-sub">Cuotas vigentes</div>'
        +  '</div>'
        +  '<div class="metric-card" style="border-left-color:#F59E0B">'
        +    '<div class="metric-label">Por vencer</div>'
@@ -3115,7 +3116,12 @@ async function fichaPolizas(c) {
         if (!cobPartes.length && p.suma_asegurada) cobPartes.push('Capital: ' + fmtMoney(p.suma_asegurada));
       } else if (p.ramo === 'Vida Colectiva') {
         if (drC.cantidad) cobPartes.push(drC.cantidad + ' asegurados');
-        if (p.suma_asegurada) cobPartes.push('Capital: ' + fmtMoney(p.suma_asegurada));
+        if (drC.capital) cobPartes.push('Capital: ' + fmtMoney(drC.capital) + ' p/persona');
+        else if (p.suma_asegurada) cobPartes.push('Capital: ' + fmtMoney(p.suma_asegurada));
+        if (drC.plan) cobPartes.push('Plan: ' + drC.plan);
+        cobsPoliza.slice(0,2).forEach(function(cb){
+          if (cb.suma_asegurada) cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada));
+        });
       } else if (p.ramo === 'ART') {
         if (drC.actividad) cobPartes.push(drC.actividad);
         if (drC.empleados) cobPartes.push(drC.empleados + ' empleados');
@@ -9158,6 +9164,21 @@ async function renderMpdCobertura(p) {
   var fmtM = function(n){ return n?'$'+parseFloat(n).toLocaleString('es-AR'):'--'; };
   var rows = [];
   if (p.cobertura) rows.push(['Tipo de cobertura','<span style="background:#E6F1FB;color:#0C447C;padding:2px 9px;border-radius:10px;font-weight:500;font-size:11px">'+p.cobertura+'</span>']);
+  // Vigencia siempre al principio
+  var fmtD = function(d){ return d ? d.slice(0,10).split('-').reverse().join('/') : '—'; };
+  if (p.fecha_inicio || p.fecha_vencimiento) {
+    var hoy = new Date();
+    var vto = p.fecha_vencimiento ? new Date(p.fecha_vencimiento) : null;
+    var diasRest = vto ? Math.round((vto - hoy) / 864e5) : null;
+    var vigBadge = diasRest !== null
+      ? (diasRest < 0
+          ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vencida</span>'
+          : diasRest <= 60
+            ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vence en '+diasRest+'d</span>'
+            : '<span style="background:#EAF3DE;color:#166534;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Vigente</span>')
+      : '';
+    rows.unshift(['Vigencia', fmtD(p.fecha_inicio) + ' → ' + fmtD(p.fecha_vencimiento) + '&nbsp;&nbsp;' + vigBadge]);
+  }
   if (p.ramo==='Automotor') {
     var veh=[dr.marca,dr.modelo,dr.anio].filter(Boolean).join(' ');
     if(veh) rows.push(['Vehículo','<strong style="color:#111827">'+veh+'</strong>']);
@@ -10458,11 +10479,13 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
       var cobInsert = [];
+      var cobBatchIdx = {}; // dedup dentro del mismo batch
       coberturasArr.forEach(function(c) {
         var polId = polIdx3[String(c._nroPol)];
         if (!polId) return;
         var key = polId + '_' + c.descripcion;
-        if (cobExistIdx[key]) return; // ya existe
+        if (cobBatchIdx[key]) return; // dedup dentro del batch
+        cobBatchIdx[key] = true;
         cobInsert.push({
           productor_id:   uid,
           poliza_id:      polId,
@@ -10474,11 +10497,17 @@ async function normalizarYSincronizar(parsed, filename) {
       if (cobInsert.length) {
         for (var cbi = 0; cbi < cobInsert.length; cbi += 500) {
           var cbLote = cobInsert.slice(cbi, cbi+500);
-          var { error: errCb } = await sb.from('coberturas').insert(cbLote);
-          if (errCb) { compLog('error', 'Error coberturas: ' + errCb.message); stats.error = true; break; }
+          // Upsert: si ya existe poliza_id+descripcion, actualiza la suma_asegurada
+          var { error: errCb } = await sb.from('coberturas')
+            .upsert(cbLote, { onConflict: 'poliza_id,descripcion', ignoreDuplicates: false });
+          if (errCb) {
+            // Fallback: insert ignorando duplicados
+            var { error: errCb2 } = await sb.from('coberturas').insert(cbLote, { ignoreDuplicates: true });
+            if (errCb2) { compLog('warn', 'Coberturas: ' + errCb2.message); }
+          }
           await new Promise(function(r){ setTimeout(r, 200); });
         }
-        compLog('ok', cobInsert.length + ' coberturas insertadas');
+        compLog('ok', cobInsert.length + ' coberturas sincronizadas');
       }
     }
 
