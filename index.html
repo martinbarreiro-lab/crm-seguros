@@ -343,7 +343,7 @@
         </div>
         <div class="g4">
           <div class="metric"><div class="lbl">Total pólizas</div><div class="val" id="pol-total">—</div></div>
-          <div class="metric"><div class="lbl">Premio anual cartera</div><div class="val" style="font-size:16px" id="pol-premio">—</div><div class="sub" id="pol-premio-mes" style="color:var(--green);font-weight:500"></div></div>
+          <div class="metric"><div class="lbl">Ingreso mensual real</div><div class="val" style="font-size:16px" id="pol-premio">—</div><div class="sub" id="pol-premio-mes" style="color:var(--green);font-weight:500"></div></div>
           <div class="metric"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div></div>
           <div class="metric"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div></div>
         </div>
@@ -578,20 +578,20 @@
           </div>
         </div>
 
-        <!-- Cards rápidas: Premio anual | Premio mensual | Comisión mensual -->
+        <!-- Cards rápidas: Premio emitido | Ingreso mensual real | Comisión mensual -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
           <div class="metric" style="border-top:3px solid var(--blue)">
             <div class="m-body">
-              <div class="lbl">Premio anual cartera</div>
+              <div class="lbl">Premio emitido <span id="an-anio-label">2026</span></div>
               <div class="val" id="an-premio-anual" style="font-size:20px">—</div>
-              <div class="sub">Pólizas activas</div>
+              <div class="sub" id="an-premio-anual-sub">Cobranzas del año</div>
             </div>
           </div>
           <div class="metric" style="border-top:3px solid var(--green)">
             <div class="m-body">
-              <div class="lbl">Premio mensual</div>
+              <div class="lbl">Ingreso mensual real</div>
               <div class="val" id="an-premio-mensual" style="font-size:20px;color:var(--green)">—</div>
-              <div class="sub">Prima anual ÷ 12</div>
+              <div class="sub">Cuota vigente · pólizas activas</div>
             </div>
           </div>
           <div class="metric" style="border-top:3px solid var(--amber)">
@@ -1826,9 +1826,10 @@ async function cargarDashboard() {
     sb.from('siniestros').select('id',{count:'exact'}).eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id',{count:'exact'}).eq('productor_id',uid).not('estado','in','("cerrada","cancelada")'),
-    sb.from('polizas').select('prima_anual').eq('productor_id',uid).eq('estado','activa'),
+    sb.from('polizas').select('prima_anual,valor_cuota,forma_pago').eq('productor_id',uid).eq('estado','activa'),
   ]);
   var premioTotal = (premioData.data||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
+  var ingresoMesReal = Math.round((premioData.data||[]).reduce(function(a,p){ return a+getMensualNum(p); }, 0));
   var sinMovim = 0;
   var hoyDate = new Date(); var limite30 = new Date(); limite30.setDate(hoyDate.getDate()-30);
   var {data: sinData} = await sb.from('siniestros').select('created_at').eq('productor_id',uid).neq('estado','cerrado');
@@ -1840,8 +1841,8 @@ async function cargarDashboard() {
 
   var el = function(id){ return document.getElementById(id); };
   if(el('m-pol')) el('m-pol').textContent = pol.count||0;
-  if(el('m-pol-sub')) el('m-pol-sub').innerHTML = premioTotal
-    ? '$'+Math.round(premioTotal).toLocaleString('es-AR')+' anual &nbsp;<span style="color:var(--green);font-weight:600">· $'+Math.round(premioTotal/12).toLocaleString('es-AR')+'/mes</span>'
+  if(el('m-pol-sub')) el('m-pol-sub').innerHTML = ingresoMesReal
+    ? '<span style="color:var(--green);font-weight:600">$'+ingresoMesReal.toLocaleString('es-AR')+'/mes</span> · ingreso mensual real'
     : '';
   if(el('m-sin')) el('m-sin').textContent = sin.count||0;
   if(el('m-sin-sub')) el('m-sin-sub').textContent = sinMovim ? sinMovim+' sin movimiento +30d' : '';
@@ -2473,7 +2474,8 @@ async function fichaResumen(c) {
 
   // Metric cards
   html.push('<div class="ficha-fin-cards">');
-  html.push('<div class="ficha-fin-card green"><div class="ficha-fin-label">Premio anual</div><div class="ficha-fin-val">$'+premioAnual.toLocaleString('es-AR')+'</div><div class="ficha-fin-sub">$'+Math.round(premioAnual/12).toLocaleString('es-AR')+'/mes · Cartera activa</div></div>');
+  var ingresoMesFicha = polActivas.reduce(function(a,p){ return a+getMensualNum(p); }, 0);
+  html.push('<div class="ficha-fin-card green"><div class="ficha-fin-label">Ingreso mensual</div><div class="ficha-fin-val">$'+Math.round(ingresoMesFicha).toLocaleString('es-AR')+'/mes</div><div class="ficha-fin-sub">Cuotas vigentes · '+polActivas.length+' póliza'+(polActivas.length!==1?'s':'')+' activa'+(polActivas.length!==1?'s':'')+'</div></div>');
   html.push('<div class="ficha-fin-card blue"><div class="ficha-fin-label">P\u00f3lizas activas</div><div class="ficha-fin-val">'+polsActivas.length+'</div><div class="ficha-fin-sub">Vigentes</div></div>');
   html.push('<div class="ficha-fin-card red"><div class="ficha-fin-label">Siniestros</div><div class="ficha-fin-val">'+(sins||[]).length+'</div><div class="ficha-fin-sub">Abiertos</div></div>');
   html.push('</div>');
@@ -3134,9 +3136,8 @@ async function fichaPolizas(c) {
            +      (cobTexto ? '<div style="font-size:12px;color:#9CA3AF;line-height:1.6">' + cobTexto + '</div>' : '<div style="font-size:12px;color:#D1D5DB;font-style:italic">Sin datos de cobertura cargados</div>')
            +    '</div>'
            +    '<div style="text-align:right;flex-shrink:0;padding-left:16px">'
-           +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtMoney(p.prima_anual) + '</div>'
-           +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Premio anual</div>'
-           +      '<div style="font-size:12px;font-weight:600;color:#27AE60;margin-top:3px">' + fmtPremioMes(p.prima_anual, p) + '/mes</div>'
+           +      '<div style="font-size:14px;font-weight:600;color:#16A34A">' + fmtPremioMes(p.prima_anual, p) + '/mes</div>'
+           +      '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">' + getPeriodoLabel(p) + '</div>'
            +      '<div style="font-size:11px;color:#4A90D9;margin-top:6px;font-weight:500">Ver detalle →</div>'
            +    '</div>'
            +  '</div>');
@@ -5263,6 +5264,19 @@ function getMensualNum(poliza) {
     return Math.round(parseFloat(poliza.valor_cuota));
   return Math.round((parseFloat(poliza ? poliza.prima_anual : 0) || 0) / 12);
 }
+function getPeriodoLabel(p) {
+  var meses = parseInt(p.periodo_meses) || 0;
+  var fp = (p.forma_pago || '').toLowerCase();
+  if (fp.indexOf('mensual') !== -1 || fp.indexOf('ref') !== -1) return 'Refacturación mensual';
+  if (meses === 1) return 'Cuota mensual';
+  if (meses === 2) return 'Cuota bimestral';
+  if (meses === 3) return 'Cuota trimestral';
+  if (meses === 4) return 'Cuota cuatrimestral';
+  if (meses === 6) return 'Cuota semestral';
+  if (meses === 12) return 'Pago anual';
+  if (p.cantidad_cuotas && p.cantidad_cuotas > 1) return p.cantidad_cuotas + ' cuotas';
+  return 'Cuota';
+}
 function calcComisionMensual(prima_anual, aseguradora, ramo) {
   // Busca % en _cfg.comisiones (por compañía > por ramo > promedio general)
   var cfg = _cfg || {};
@@ -5335,8 +5349,9 @@ function renderPanelPolizas() {
   });
   var el = function(id){ return document.getElementById(id); };
   if(el('pol-total'))    el('pol-total').textContent = total;
-  if(el('pol-premio'))   el('pol-premio').textContent = premioTotal ? '$'+Math.round(premioTotal).toLocaleString('es-AR') : '—';
-  if(el('pol-premio-mes')) el('pol-premio-mes').textContent = premioTotal ? fmtPremioMes(premioTotal)+'/mes' : '';
+  var ingresoMesListado = (allPol||[]).filter(function(p){ return p.estado==='activa'||!p.estado; }).reduce(function(a,p){ return a+getMensualNum(p); }, 0);
+  if(el('pol-premio'))   el('pol-premio').textContent = ingresoMesListado ? '$'+Math.round(ingresoMesListado).toLocaleString('es-AR') : '—';
+  if(el('pol-premio-mes')) el('pol-premio-mes').textContent = ingresoMesListado ? 'ingreso mensual real' : '';
   if(el('pol-proximas')) el('pol-proximas').textContent = proximas;
   if(el('pol-vencidas')) el('pol-vencidas').textContent = vencidas;
 
@@ -5417,7 +5432,7 @@ function filtrarPolizasPanel() {
     return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
-      +'<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+(p.prima_anual?'$'+Number(p.prima_anual).toLocaleString('es-AR'):'—')+'</div>'+(p.prima_anual?'<div style="font-size:10px;color:var(--green);font-weight:500">'+fmtPremioMes(p.prima_anual,p)+'/mes</div>':'')+'</div>'
+      +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtPremioMes(p.prima_anual,p)+'/mes':'—')+'</div>'+(p.prima_anual?'<div style="font-size:10px;color:var(--muted)">'+getPeriodoLabel(p)+'</div>':'')+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
       +'<div><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
@@ -7380,23 +7395,37 @@ async function cargarAnalisis() {
   ]);
 
   var activas = polActivas.data || [];
+  var anioActual = new Date().getFullYear();
+  var ingresoMensualReal = getTotalPremioMensual(activas);
+
+  // Premio emitido del año = suma de cobranzas con fecha_vencimiento en el año actual
+  var { data: cobsAnio } = await sb.from('cobranzas')
+    .select('monto')
+    .eq('productor_id', uid)
+    .gte('fecha_vencimiento', anioActual + '-01-01')
+    .lte('fecha_vencimiento', anioActual + '-12-31');
+  var premioEmitidoAnio = (cobsAnio||[]).reduce(function(a,c){ return a+(parseFloat(c.monto)||0); }, 0);
+
+  // Card "Valor actual de cartera" — usamos ingreso mensual real como base
   var premioTotal = activas.reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
 
-  if(el('an-cartera-val')) el('an-cartera-val').textContent = '$'+Math.round(premioTotal).toLocaleString('es-AR');
-  if(el('an-cartera-mensual')) el('an-cartera-mensual').textContent = premioTotal ? fmtPremioMes(premioTotal)+'/mes estimado' : '';
+  if(el('an-cartera-val')) el('an-cartera-val').textContent = '$'+Math.round(ingresoMensualReal).toLocaleString('es-AR');
+  if(el('an-cartera-mensual')) el('an-cartera-mensual').textContent = 'ingreso mensual real';
+  if(el('an-anio-label')) el('an-anio-label').textContent = anioActual;
 
-  // Llenar cards rápidas
-  if(el('an-premio-anual')) el('an-premio-anual').textContent = '$'+Math.round(premioTotal).toLocaleString('es-AR');
-  var premioMensualTotal = getTotalPremioMensual(activas);
-  if(el('an-premio-mensual')) el('an-premio-mensual').textContent = '$'+Math.round(premioMensualTotal).toLocaleString('es-AR');
-  // Comisión mensual — usa _cfg.comisiones si están configuradas
+  // Llenar cards
+  if(el('an-premio-anual')) el('an-premio-anual').textContent = '$'+Math.round(premioEmitidoAnio).toLocaleString('es-AR');
+  if(el('an-premio-anual-sub')) el('an-premio-anual-sub').textContent = (cobsAnio||[]).length + ' cuotas emitidas en ' + anioActual;
+  if(el('an-premio-mensual')) el('an-premio-mensual').textContent = '$'+Math.round(ingresoMensualReal).toLocaleString('es-AR');
+
+  // Comisión mensual
   var comisionTotalMes = getTotalComisionMensual(activas);
   if(el('an-comision-mensual')) {
     el('an-comision-mensual').textContent = comisionTotalMes ? '$'+Math.round(comisionTotalMes).toLocaleString('es-AR') : '—';
   }
   if(el('an-comision-sub')) {
     if (comisionTotalMes) {
-      var comPct = Math.round(comisionTotalMes / (premioTotal/12) * 100);
+      var comPct = ingresoMensualReal ? Math.round(comisionTotalMes / ingresoMensualReal * 100) : 0;
       el('an-comision-sub').innerHTML = 'Al ~'+comPct+'% promedio';
     } else {
       el('an-comision-sub').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Configurar % en Ajustes';
@@ -9035,7 +9064,7 @@ function renderDetallePol() {
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){verFicha(\''+p.cliente_id+'\')},100)" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151">Ver ficha →</button>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
-        mpdMetric('Premio anual',fmtMoney(p.prima_anual),'→ '+fmtPremioMes(p.prima_anual,p)+'/mes','#166534')+
+        mpdMetric('Cuota vigente',fmtPremioMes(p.prima_anual,p),getPeriodoLabel(p),'#166534')+
         mpdMetric(cuotaMetricLabel,cuotaVal,p.medio_pago||'—','#111827')+
         mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
         mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
@@ -9227,13 +9256,21 @@ async function renderMpdCobertura(p) {
     try {
       var { data: cobsDB } = await sb.from('coberturas').select('descripcion,suma_asegurada').eq('poliza_id', p.id).order('descripcion');
       if (cobsDB && cobsDB.length) {
-        html += '<div style="margin-top:12px;font-size:11px;font-weight:500;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Coberturas incluidas</div>';
-        html += cobsDB.map(function(c){
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #F3F4F6;gap:16px">'+
-            '<span style="font-size:12px;color:#374151">'+c.descripcion+'</span>'+
-            (c.suma_asegurada ? '<span style="font-size:12px;font-weight:500;color:#166534">'+'$'+parseFloat(c.suma_asegurada).toLocaleString('es-AR')+'</span>' : '')+
-          '</div>';
-        }).join('');
+        html += '<div style="margin-top:14px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Coberturas incluidas</div>';
+        html += '<div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">';
+        html += '<div style="display:grid;grid-template-columns:1fr 140px;padding:7px 12px;background:var(--bg);border-bottom:0.5px solid var(--border)">';
+        html += '<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Cobertura</div>';
+        html += '<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;text-align:right">Suma asegurada</div>';
+        html += '</div>';
+        cobsDB.forEach(function(c, i) {
+          var border = i < cobsDB.length - 1 ? 'border-bottom:0.5px solid var(--border);' : '';
+          var bg = i % 2 === 0 ? 'var(--white)' : 'var(--bg)';
+          html += '<div style="display:grid;grid-template-columns:1fr 140px;padding:8px 12px;background:'+bg+';'+border+'align-items:center">';
+          html += '<div style="font-size:12px;color:var(--text)">' + c.descripcion + '</div>';
+          html += '<div style="font-size:12px;font-weight:500;color:#166534;text-align:right">' + (c.suma_asegurada ? '$'+parseFloat(c.suma_asegurada).toLocaleString('es-AR') : '—') + '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
       }
     } catch(e) {}
   }
