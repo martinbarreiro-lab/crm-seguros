@@ -9569,8 +9569,8 @@ async function recalcularCuotasVigentes() {
       });
       if (!cs.length) return;
 
-      // Cuota vigente: pendiente más próxima, si no la más reciente
-      var latestPend = cs.find(function(c){ return c.estado === 'pendiente'; });
+      // Cuota vigente: última pendiente/vencida, si no la más reciente
+      var latestPend = cs.slice().reverse().find(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
       var latest = latestPend || cs[cs.length - 1];
       if (!latest || !latest.monto) return;
 
@@ -10289,40 +10289,46 @@ async function normalizarYSincronizar(parsed, filename) {
 
       // ── Post-proceso: actualizar valor_cuota y prima_anual ─
       // Para pólizas de refacturación mensual el XML acumula el total YTD.
-      // Corregimos: valor_cuota = última cuota real, prima_anual = cuota × 12 (proyectado anual)
+      // Corregimos: valor_cuota = cuota vigente real, prima_anual = cuota × 12
       compLog('info', 'Calculando cuotas vigentes...');
       try {
         var { data: todasCobs } = await sb.from('cobranzas')
           .select('poliza_id, monto, fecha_vencimiento, estado, numero_cuota')
           .eq('productor_id', uid);
-        // Agrupar por poliza_id
+
+        // Agrupar por poliza_id + deduplicar por fecha_vencimiento
         var cobsPorPol2 = {};
         (todasCobs||[]).forEach(function(c) {
-          if (!cobsPorPol2[c.poliza_id]) cobsPorPol2[c.poliza_id] = [];
-          cobsPorPol2[c.poliza_id].push(c);
+          if (!cobsPorPol2[c.poliza_id]) cobsPorPol2[c.poliza_id] = {};
+          var k = c.fecha_vencimiento || (c.numero_cuota + '_' + c.monto);
+          if (!cobsPorPol2[c.poliza_id][k]) cobsPorPol2[c.poliza_id][k] = c;
         });
+
         var polVCUpdates = [];
         Object.keys(cobsPorPol2).forEach(function(polId) {
-          var cs = cobsPorPol2[polId].slice().sort(function(a,b){
-            return (b.fecha_vencimiento||'') > (a.fecha_vencimiento||'') ? 1 : -1;
+          // Ordenar cronológicamente ASC
+          var cs = Object.values(cobsPorPol2[polId]).sort(function(a,b){
+            return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
           });
-          // Cuota más reciente (pendiente primero, luego la última en fecha)
-          var latestPend = cs.find(function(c){ return c.estado==='pendiente'; });
-          var latest = latestPend || cs[0];
+          if (!cs.length) return;
+
+          // Cuota vigente: última pendiente, o la más reciente si todas canceladas
+          var latestPend = cs.slice().reverse().find(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
+          var latest = latestPend || cs[cs.length-1];
           if (!latest || !latest.monto) return;
           var monto = parseFloat(latest.monto);
-          // Detectar si los montos varían (refacturación mensual) o son fijos
+
+          // Detectar refacturación mensual: montos distintos entre cuotas
           var montos = cs.map(function(c){ return Math.round(parseFloat(c.monto)||0); });
-          var montosUnicos = new Set(montos);
-          var esRefactMensual = montosUnicos.size > 1; // montos distintos → refacturación mensual
+          var esRefactMensual = (new Set(montos)).size > 1;
+
           if (esRefactMensual) {
-            // prima_anual = cuota vigente × 12 (proyectado, no acumulado)
             polVCUpdates.push({ id: polId, valor_cuota: monto, prima_anual: Math.round(monto * 12), forma_pago: 'Anual ref. mensual' });
           } else {
-            // Montos fijos: solo actualizar valor_cuota
             polVCUpdates.push({ id: polId, valor_cuota: monto });
           }
         });
+
         if (polVCUpdates.length) {
           for (var vi = 0; vi < polVCUpdates.length; vi += 10) {
             await Promise.all(polVCUpdates.slice(vi, vi+10).map(function(u) {
