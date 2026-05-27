@@ -2253,9 +2253,8 @@ var CL_ALL = [];
 
 
 async function cargarClientesSilente() {
-  // Carga allCl en memoria sin tocar el DOM — para uso desde otros módulos
-  if (allCl.length) return; // ya cargados
-  var res = await sb.from('clientes').select('*').eq('productor_id', user.id).order('apellido');
+  if (allCl.length) return;
+  var res = await sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id).order('apellido');
   allCl = res.data || [];
   CL_ALL = allCl;
 }
@@ -7011,7 +7010,10 @@ function cobRender() {
 }
 
 async function cargarCobranzas() {
-  await cargarClientesSilente();
+  // Forzar recarga de clientes con campos de contacto
+  var res = await sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id).order('apellido');
+  allCl = res.data || [];
+  CL_ALL = allCl;
   var sel = document.getElementById('cob-mes-sel');
   var hoy = new Date();
 
