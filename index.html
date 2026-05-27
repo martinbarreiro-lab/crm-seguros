@@ -2177,6 +2177,14 @@ var CL_PER_PAGE = 10;
 var CL_ALL = [];
 
 
+async function cargarClientesSilente() {
+  // Carga allCl en memoria sin tocar el DOM — para uso desde otros módulos
+  if (allCl.length) return; // ya cargados
+  var res = await sb.from('clientes').select('*').eq('productor_id', user.id).order('apellido');
+  allCl = res.data || [];
+  CL_ALL = allCl;
+}
+
 async function cargarClientes(filtro, estado) {
   filtro = filtro || '';
   estado = estado || '';
@@ -5337,8 +5345,8 @@ function getDataClavePoliza(p) {
 }
 
 async function cargarPolizas() {
-  // Cargar clientes primero — filtrarPolizasPanel los necesita para mostrar nombres
-  if (!allCl.length) await cargarClientes();
+  // Cargar clientes en memoria primero — filtrarPolizasPanel los necesita para nombres
+  await cargarClientesSilente();
   const { data } = await sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento');
   _allPolizas = data || [];
   // Generate auto tasks for urgent/expired (silent, async)
