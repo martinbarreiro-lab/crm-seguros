@@ -1778,7 +1778,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       if (secSub) secSub.textContent = 'Buscá clientes, consultá datos y accedé a su ficha 360';
       cargarClientes();
     }
-    if (sec === 'polizas') cargarPolizas();
+    if (sec === 'polizas') { _polCache = {}; _polActualEstado = 'activa'; cargarPolizas('activa'); }
     if (sec === 'cotizaciones') cargarCotizaciones();
     if (sec === 'siniestros') cargarSiniestros();
     if (sec === 'cobranzas') cargarCobranzas();
@@ -5344,30 +5344,57 @@ function getDataClavePoliza(p) {
   return p.bien_asegurado || '';
 }
 
-async function cargarPolizas() {
-  // Cargar clientes y pólizas en paralelo
-  var [, polRes] = await Promise.all([
-    cargarClientesSilente(),
-    sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento')
-  ]);
-  _allPolizas = polRes.data || [];
-  // Generate auto tasks for urgent/expired (silent, async)
+// Cache por estado para no repetir queries
+var _polCache = {};
+var _polActualEstado = 'activa';
+
+async function cargarPolizas(estado) {
+  // Por defecto solo activas — más rápido al iniciar
+  estado = estado || 'activa';
+
+  // Usar cache si ya lo tenemos
+  if (!_polCache[estado]) {
+    var [, polRes] = await Promise.all([
+      cargarClientesSilente(),
+      (function() {
+        var q = sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento');
+        if (estado !== 'todas') q = q.eq('estado', estado);
+        return q;
+      })()
+    ]);
+    _polCache[estado] = polRes.data || [];
+    // Merge en _allPolizas para que otras funciones lo usen
+    if (estado !== 'todas') {
+      // Agregar al pool sin duplicar
+      var existIds = new Set(_allPolizas.map(function(p){ return p.id; }));
+      (_polCache[estado]).forEach(function(p){
+        if (!existIds.has(p.id)) _allPolizas.push(p);
+      });
+    } else {
+      _allPolizas = _polCache[estado];
+    }
+  }
+
+  _polActualEstado = estado;
   try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
-  renderPanelPolizas();
+  renderPanelPolizas(estado);
   setTimeout(wirePolFilters, 100);
 }
 
-function renderPanelPolizas() {
+function renderPanelPolizas(estado) {
+  estado = estado || _polActualEstado || 'activa';
+  var pool = _polCache[estado] || _allPolizas;
   var hoy = new Date().toISOString().split('T')[0];
   var limite60 = new Date(); limite60.setDate(limite60.getDate()+60);
   var lim60Str = limite60.toISOString().split('T')[0];
-  var total = _allPolizas.length;
-  var vencidas = 0, proximas = 0, premioTotal = 0;
-  _allPolizas.forEach(function(p) {
+  var total = pool.length;
+  var vencidas = 0, proximas = 0;
+  pool.forEach(function(p) {
     if (p.fecha_vencimiento < hoy) vencidas++;
     else if (p.fecha_vencimiento <= lim60Str) proximas++;
-    if (p.estado === 'activa' || !p.estado) premioTotal += parseFloat(p.prima_anual||0);
   });
+  // Activas para ingreso mensual
+  var activas = (_polCache['activa'] || pool.filter(function(p){ return p.estado==='activa'||!p.estado; }));
   var el = function(id){ return document.getElementById(id); };
   if(el('pol-total'))    el('pol-total').textContent = total;
   var ingresoMesListado = (_allPolizas||[]).filter(function(p){ return p.estado==='activa'||!p.estado; }).reduce(function(a,p){ return a+getMensualNum(p); }, 0);
@@ -5397,13 +5424,29 @@ function filtrarPolizasPanel() {
   var limProx = new Date(); limProx.setDate(limProx.getDate()+diasProx);
   var limProxStr = limProx.toISOString().split('T')[0];
 
+  // Si piden un estado que no tenemos en cache, ir a buscarlo
+  var estadoReq = filEst === 'proxima' ? 'activa'
+    : filEst === 'vencida' ? 'vencida'
+    : filEst === 'renovada' ? 'renovada'
+    : filEst === 'anulada' ? 'anulada'
+    : filEst === 'activa' ? 'activa'
+    : filEst === '' ? (_polActualEstado || 'activa')
+    : 'todas';
+
+  if (!_polCache[estadoReq] && estadoReq !== _polActualEstado) {
+    cargarPolizas(estadoReq);
+    return;
+  }
+
+  var pool = _polCache[estadoReq] || _polCache[_polActualEstado] || _allPolizas;
+
   // Mostrar/ocultar chip informativo
   var infoEl = document.getElementById('pol-proximas-info');
   var diasEl = document.getElementById('pol-proximas-dias');
   if (infoEl) infoEl.style.display = filEst==='proxima' ? 'block' : 'none';
   if (diasEl) diasEl.textContent = diasProx;
 
-  var filtered = _allPolizas.filter(function(p) {
+  var filtered = pool.filter(function(p) {
     var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
     var nombre = cl ? (cl.apellido+' '+cl.nombre).toLowerCase() : '';
     var numPol = (p.numero_poliza||'').toLowerCase();
