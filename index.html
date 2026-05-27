@@ -138,10 +138,10 @@
       <div id="sec-dashboard" class="sec active">
         <!-- Métricas globales -->
         <div class="g4" style="margin-bottom:16px">
-          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol" style="color:var(--green)">—</div><div class="sub" id="m-pol-sub"></div></div>
-          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div><div class="sub" id="m-sin-sub"></div></div>
-          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Cotizaciones pendientes</div><div class="val" id="m-cotz" style="color:var(--amber)">—</div><div class="sub" id="m-cotz-sub"></div></div>
-          <div class="metric" style="border-top:3px solid var(--blue)"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar" style="color:var(--blue)">—</div><div class="sub" id="m-tar-sub" style="color:var(--red)"></div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol" style="color:var(--green)">—</div><div class="sub" id="m-pol-sub"></div></div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="m-body"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div><div class="sub" id="m-sin-sub">En gestión</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="m-body"><div class="lbl">Cotizaciones pendientes</div><div class="val" id="m-cotz" style="color:var(--amber)">—</div><div class="sub" id="m-cotz-sub">Sin respuesta</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--blue)"><div class="m-body"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar" style="color:var(--blue)">—</div><div class="sub" id="m-tar-sub"></div></div></div>
         </div>
 
         <!-- Filtro período -->
@@ -342,10 +342,10 @@
           <button type="button" class="btn btn-sm btn-p" id="btn-npol">+ Nueva póliza</button>
         </div>
         <div class="g4">
-          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Total pólizas</div><div class="val" id="pol-total" style="color:var(--green)">—</div><div class="sub">En cartera</div></div>
-          <div class="metric" style="border-top:3px solid var(--blue)"><div class="lbl">Ingreso mensual real</div><div class="val" style="font-size:16px;color:var(--blue)" id="pol-premio">—</div><div class="sub" id="pol-premio-mes"></div></div>
-          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div><div class="sub">Próximas a vencer</div></div>
-          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div><div class="sub">Sin renovar</div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Total pólizas</div><div class="val" id="pol-total" style="color:var(--green)">—</div><div class="sub">Pólizas en cartera</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--blue)"><div class="m-body"><div class="lbl">Ingreso mensual real</div><div class="val" style="font-size:20px;color:var(--blue)" id="pol-premio">—</div><div class="sub" id="pol-premio-mes">Cuotas vigentes activas</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="m-body"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div><div class="sub">Requieren renovación</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="m-body"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div><div class="sub">Sin renovar aún</div></div></div>
         </div>
         <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:6px;flex:2;min-width:200px;background:var(--bg);border-radius:var(--rsm);padding:7px 10px">
@@ -440,10 +440,10 @@
           </div>
         </div>
         <div class="g4">
-          <div class="metric" style="border-top:3px solid #888780"><div class="lbl">Total</div><div class="val" id="sin-total">—</div><div class="sub">Todos los siniestros</div></div>
-          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div><div class="sub">En gestión</div></div>
-          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div><div class="sub">Resueltos</div></div>
-          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div><div class="sub">Requieren seguimiento</div></div>
+          <div class="metric" style="border-top:3px solid #888780"><div class="m-body"><div class="lbl">Total siniestros</div><div class="val" id="sin-total">—</div><div class="sub">Historial completo</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="m-body"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div><div class="sub">En gestión activa</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div><div class="sub">Resueltos</div></div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="m-body"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div><div class="sub">Requieren seguimiento</div></div></div>
         </div>
         <div class="sin-panel-filter-card">
           <input type="text" id="sin-srch" placeholder="Buscar cliente, N° siniestro..." oninput="filtrarSiniestros()">
