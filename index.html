@@ -7051,7 +7051,7 @@ async function cargarCobranzas() {
   ]);
 
   // Traer pólizas para aseguradora/ramo
-  var { data: polsData } = await sb.from('polizas').select('id,numero_poliza,aseguradora,ramo').eq('productor_id', user.id);
+  var { data: polsData } = await sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id').eq('productor_id', user.id);
   var polIdx = {};
   (polsData||[]).forEach(function(p){ polIdx[p.id] = p; });
 
@@ -7061,8 +7061,8 @@ async function cargarCobranzas() {
   );
 
   _cobData = todasCobs.map(function(c) {
-    var cl = allCl.find(function(x){ return x.id === c.cliente_id; });
     var pol = polIdx[c.poliza_id] || {};
+    var cl = allCl.find(function(x){ return x.id === pol.cliente_id; });
     var diasMora = 0;
     if ((c.estado==='pendiente'||c.estado==='vencida') && c.fecha_vencimiento) {
       diasMora = Math.max(0, Math.round((hoy - new Date(c.fecha_vencimiento)) / 864e5));
