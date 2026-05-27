@@ -138,10 +138,10 @@
       <div id="sec-dashboard" class="sec active">
         <!-- Métricas globales -->
         <div class="g4" style="margin-bottom:16px">
-          <div class="metric"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol">—</div><div class="sub" id="m-pol-sub">premio anual</div></div>
-          <div class="metric"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div><div class="sub" id="m-sin-sub"></div></div>
-          <div class="metric"><div class="lbl">Cotizaciones pendientes</div><div class="val" id="m-cotz" style="color:var(--amber)">—</div><div class="sub" id="m-cotz-sub"></div></div>
-          <div class="metric"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar">—</div><div class="sub" id="m-tar-sub" style="color:var(--red)"></div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol" style="color:var(--green)">—</div><div class="sub" id="m-pol-sub"></div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div><div class="sub" id="m-sin-sub"></div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Cotizaciones pendientes</div><div class="val" id="m-cotz" style="color:var(--amber)">—</div><div class="sub" id="m-cotz-sub"></div></div>
+          <div class="metric" style="border-top:3px solid var(--blue)"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar" style="color:var(--blue)">—</div><div class="sub" id="m-tar-sub" style="color:var(--red)"></div></div>
         </div>
 
         <!-- Filtro período -->
@@ -342,10 +342,10 @@
           <button type="button" class="btn btn-sm btn-p" id="btn-npol">+ Nueva póliza</button>
         </div>
         <div class="g4">
-          <div class="metric"><div class="lbl">Total pólizas</div><div class="val" id="pol-total">—</div></div>
-          <div class="metric"><div class="lbl">Ingreso mensual real</div><div class="val" style="font-size:16px" id="pol-premio">—</div><div class="sub" id="pol-premio-mes" style="color:var(--green);font-weight:500"></div></div>
-          <div class="metric"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div></div>
-          <div class="metric"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Total pólizas</div><div class="val" id="pol-total" style="color:var(--green)">—</div><div class="sub">En cartera</div></div>
+          <div class="metric" style="border-top:3px solid var(--blue)"><div class="lbl">Ingreso mensual real</div><div class="val" style="font-size:16px;color:var(--blue)" id="pol-premio">—</div><div class="sub" id="pol-premio-mes"></div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Por vencer ≤60d</div><div class="val" id="pol-proximas" style="color:var(--amber)">—</div><div class="sub">Próximas a vencer</div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Vencidas</div><div class="val" id="pol-vencidas" style="color:var(--red)">—</div><div class="sub">Sin renovar</div></div>
         </div>
         <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:6px;flex:2;min-width:200px;background:var(--bg);border-radius:var(--rsm);padding:7px 10px">
@@ -440,10 +440,10 @@
           </div>
         </div>
         <div class="g4">
-          <div class="metric"><div class="lbl">Total</div><div class="val" id="sin-total">—</div></div>
-          <div class="metric"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div></div>
-          <div class="metric"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div></div>
-          <div class="metric"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div></div>
+          <div class="metric" style="border-top:3px solid #888780"><div class="lbl">Total</div><div class="val" id="sin-total">—</div><div class="sub">Todos los siniestros</div></div>
+          <div class="metric" style="border-top:3px solid var(--red)"><div class="lbl">Abiertos</div><div class="val" id="sin-abiertos" style="color:var(--red)">—</div><div class="sub">En gestión</div></div>
+          <div class="metric" style="border-top:3px solid var(--green)"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div><div class="sub">Resueltos</div></div>
+          <div class="metric" style="border-top:3px solid var(--amber)"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div><div class="sub">Requieren seguimiento</div></div>
         </div>
         <div class="sin-panel-filter-card">
           <input type="text" id="sin-srch" placeholder="Buscar cliente, N° siniestro..." oninput="filtrarSiniestros()">
@@ -653,30 +653,37 @@
           </div>
         </div>
 
-        <!-- Cards rápidas: Premio emitido | Ingreso mensual real | Comisión mensual -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+        <!-- Cards rápidas: Premio emitido | Ingreso mensual real | Comisión mensual | Tasa renovación -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
           <div class="metric" style="border-top:3px solid var(--blue)">
             <div class="m-body">
               <div class="lbl">Premio emitido <span id="an-anio-label">2026</span></div>
-              <div class="val" id="an-premio-anual" style="font-size:20px">—</div>
+              <div class="val" id="an-premio-anual" style="font-size:18px;color:var(--blue)">—</div>
               <div class="sub" id="an-premio-anual-sub">Cobranzas del año</div>
             </div>
           </div>
           <div class="metric" style="border-top:3px solid var(--green)">
             <div class="m-body">
               <div class="lbl">Ingreso mensual real</div>
-              <div class="val" id="an-premio-mensual" style="font-size:20px;color:var(--green)">—</div>
-              <div class="sub">Cuota vigente · pólizas activas</div>
+              <div class="val" id="an-premio-mensual" style="font-size:18px;color:var(--green)">—</div>
+              <div class="sub">Cuotas vigentes activas</div>
             </div>
           </div>
           <div class="metric" style="border-top:3px solid var(--amber)">
             <div class="m-body">
               <div class="lbl">Comisión mensual est.</div>
-              <div class="val" id="an-comision-mensual" style="font-size:20px;color:var(--amber)">—</div>
+              <div class="val" id="an-comision-mensual" style="font-size:18px;color:var(--amber)">—</div>
               <div class="sub" id="an-comision-sub" style="display:flex;align-items:center;gap:4px">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 Configurar % en Ajustes
               </div>
+            </div>
+          </div>
+          <div class="metric" style="border-top:3px solid #7F77DD">
+            <div class="m-body">
+              <div class="lbl">Tasa de renovación</div>
+              <div class="val" id="an-tasa-renov" style="font-size:18px;color:#534AB7">—</div>
+              <div class="sub" id="an-tasa-renov-sub">Renovadas vs vencidas</div>
             </div>
           </div>
         </div>
@@ -7754,6 +7761,14 @@ async function cargarAnalisis() {
   // Card "Valor actual de cartera" — usamos ingreso mensual real como base
   var premioTotal = activas.reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
 
+  // Tasa de renovación
+  var { data: polRenov } = await sb.from('polizas').select('estado').eq('productor_id', uid)
+    .in('estado', ['renovada','vencida']);
+  var renovadas = (polRenov||[]).filter(function(p){ return p.estado==='renovada'; }).length;
+  var vencidasTotal = (polRenov||[]).filter(function(p){ return p.estado==='vencida'; }).length;
+  var tasaRenov = (renovadas + vencidasTotal) > 0 ? Math.round(renovadas / (renovadas + vencidasTotal) * 100) : null;
+  if(el('an-tasa-renov')) el('an-tasa-renov').textContent = tasaRenov !== null ? tasaRenov+'%' : '—';
+  if(el('an-tasa-renov-sub')) el('an-tasa-renov-sub').textContent = tasaRenov !== null ? renovadas+' renovadas · '+vencidasTotal+' vencidas' : 'Sin datos';
   if(el('an-cartera-val')) el('an-cartera-val').textContent = '$'+Math.round(ingresoMensualReal).toLocaleString('es-AR');
   if(el('an-cartera-mensual')) el('an-cartera-mensual').textContent = 'ingreso mensual real';
   if(el('an-anio-label')) el('an-anio-label').textContent = anioActual;
