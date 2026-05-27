@@ -5345,14 +5345,15 @@ function getDataClavePoliza(p) {
 }
 
 async function cargarPolizas() {
-  // Cargar clientes en memoria primero — filtrarPolizasPanel los necesita para nombres
-  await cargarClientesSilente();
-  const { data } = await sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento');
-  _allPolizas = data || [];
+  // Cargar clientes y pólizas en paralelo
+  var [, polRes] = await Promise.all([
+    cargarClientesSilente(),
+    sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento')
+  ]);
+  _allPolizas = polRes.data || [];
   // Generate auto tasks for urgent/expired (silent, async)
   try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
   renderPanelPolizas();
-  // Wire filters after render
   setTimeout(wirePolFilters, 100);
 }
 
