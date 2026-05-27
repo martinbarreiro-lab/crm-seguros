@@ -7042,25 +7042,21 @@ async function cargarCobranzas() {
   if (lbl) lbl.textContent = mesesNom[mes-1] + ' ' + anio;
 
   // Traer cobranzas, pólizas y clientes por separado (sin join anidado)
-  var [resMes, resPend, polsRes, clsRes] = await Promise.all([
+  var [resMes, resPend, polsRes] = await Promise.all([
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id').eq('productor_id', user.id).limit(2000),
-    sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id).limit(2000)
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id').eq('productor_id', user.id).limit(2000)
   ]);
 
+  // Clientes: usar allCl si está disponible, sino cargar
+  if (!allCl.length) await cargarClientesSilente();
   var polIdx = {};
   (polsRes.data||[]).forEach(function(p){ polIdx[p.id] = p; });
   var clIdx = {};
-  (clsRes.data||[]).forEach(function(c){ clIdx[c.id] = c; });
-  console.log('[COB] pols:', (polsRes.data||[]).length, 'cls:', (clsRes.data||[]).length, 'cobs mes:', (resMes.data||[]).length, 'cobs pend:', (resPend.data||[]).length);
-  // Muestra primer cruce
-  if (resMes.data && resMes.data[0]) {
-    var _tc = resMes.data[0]; var _tp = polIdx[_tc.poliza_id]; var _tcl = _tp ? clIdx[_tp.cliente_id] : null;
-    console.log('[COB] 1ra cob poliza_id:', _tc.poliza_id, '→ pol:', _tp ? _tp.numero_poliza : 'NO ENCONTRADA', '→ cl:', _tcl ? _tcl.apellido : 'NO ENCONTRADO');
-  }
+  allCl.forEach(function(c){ clIdx[c.id] = c; });
+  console.log('[COB] pols:', (polsRes.data||[]).length, 'cls:', allCl.length, 'cobs mes:', (resMes.data||[]).length, 'cobs pend:', (resPend.data||[]).length);
 
   // Combinar y enriquecer
   var todasCobs = (resMes.data||[]).concat(
