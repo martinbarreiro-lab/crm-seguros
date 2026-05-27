@@ -2254,7 +2254,7 @@ var CL_ALL = [];
 
 async function cargarClientesSilente() {
   if (allCl.length) return;
-  var res = await sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id).order('apellido');
+  var res = await sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id);
   allCl = res.data || [];
   CL_ALL = allCl;
 }
