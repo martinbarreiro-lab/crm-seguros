@@ -7041,19 +7041,19 @@ async function cargarCobranzas() {
   var lbl = document.getElementById('cob-periodo-label');
   if (lbl) lbl.textContent = mesesNom[mes-1] + ' ' + anio;
 
-  // Traer cobranzas del mes + pendientes/vencidas sin importar fecha
+  // Traer cobranzas del mes con join directo a clientes y pólizas
   var [resMes, resPend] = await Promise.all([
-    sb.from('cobranzas').select('*').eq('productor_id', user.id)
-      .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta),
-    sb.from('cobranzas').select('*').eq('productor_id', user.id)
+    sb.from('cobranzas')
+      .select('*,polizas(numero_poliza,aseguradora,ramo,cliente_id,clientes(nombre,apellido,telefono,celular))')
+      .eq('productor_id', user.id)
+      .gte('fecha_vencimiento', desde)
+      .lte('fecha_vencimiento', hasta),
+    sb.from('cobranzas')
+      .select('*,polizas(numero_poliza,aseguradora,ramo,cliente_id,clientes(nombre,apellido,telefono,celular))')
+      .eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida'])
-      .lt('fecha_vencimiento', desde) // vencidas de meses anteriores también
+      .lt('fecha_vencimiento', desde)
   ]);
-
-  // Traer pólizas para aseguradora/ramo
-  var { data: polsData } = await sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id').eq('productor_id', user.id);
-  var polIdx = {};
-  (polsData||[]).forEach(function(p){ polIdx[p.id] = p; });
 
   // Combinar y enriquecer
   var todasCobs = (resMes.data||[]).concat(
@@ -7061,16 +7061,17 @@ async function cargarCobranzas() {
   );
 
   _cobData = todasCobs.map(function(c) {
-    var pol = polIdx[c.poliza_id] || {};
-    var cl = allCl.find(function(x){ return x.id === pol.cliente_id; });
+    var pol = c.polizas || {};
+    var cl = pol.clientes || {};
     var diasMora = 0;
     if ((c.estado==='pendiente'||c.estado==='vencida') && c.fecha_vencimiento) {
       diasMora = Math.max(0, Math.round((hoy - new Date(c.fecha_vencimiento)) / 864e5));
     }
+    var nombre = cl.apellido ? cl.apellido+', '+cl.nombre : (cl.nombre||'—');
     return Object.assign({}, c, {
-      _cliente: cl ? (cl.apellido ? cl.apellido+', '+cl.nombre : cl.nombre) : '—',
-      _nombre: cl ? cl.nombre : '',
-      _telefono: cl ? (cl.telefono||cl.celular||'') : '',
+      _cliente: nombre,
+      _nombre: cl.nombre || '',
+      _telefono: cl.telefono || cl.celular || '',
       _numero_poliza: pol.numero_poliza || '—',
       _aseguradora: pol.aseguradora || '—',
       _ramo: pol.ramo || '—',
