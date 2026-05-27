@@ -5337,10 +5337,10 @@ function getDataClavePoliza(p) {
 }
 
 async function cargarPolizas() {
+  // Cargar clientes primero — filtrarPolizasPanel los necesita para mostrar nombres
+  if (!allCl.length) await cargarClientes();
   const { data } = await sb.from('polizas').select('*').eq('productor_id', user.id).order('fecha_vencimiento');
   _allPolizas = data || [];
-  // Get clientes if needed
-  if (!allCl.length) await cargarClientes();
   // Generate auto tasks for urgent/expired (silent, async)
   try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
   renderPanelPolizas();
