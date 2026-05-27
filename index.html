@@ -493,20 +493,95 @@
 
       <!-- COBRANZAS -->
       <div id="sec-cobranzas" class="sec">
-        <div class="toprow">
-          <div style="font-size:14px;font-weight:600">Gestión de cobranzas</div>
-          <button type="button" class="btn btn-sm btn-p" id="btn-ncob">+ Registrar cuota</button>
+        <div class="toprow" style="align-items:flex-start">
+          <div>
+            <div style="font-size:18px;font-weight:500;color:var(--text)">Cobranzas</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cob-periodo-label">—</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="cob-mes-sel" onchange="cargarCobranzas()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)"></select>
+          </div>
         </div>
-        <div class="g3" style="margin-bottom:14px">
-          <div class="metric"><div class="lbl">Cuotas vencidas</div><div class="val" id="cob-venc" style="color:var(--red)">—</div></div>
-          <div class="metric"><div class="lbl">Pendientes</div><div class="val" id="cob-pend" style="color:var(--amber)">—</div></div>
-          <div class="metric"><div class="lbl">Cobrado este mes</div><div class="val" id="cob-mes" style="color:var(--green)">—</div></div>
+
+        <!-- Cards métricas -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+          <div class="metric" style="border-top:3px solid var(--green)">
+            <div class="m-body">
+              <div class="lbl">Cobrado este mes</div>
+              <div class="val" id="cob-mes" style="font-size:18px;color:var(--green)">—</div>
+              <div class="sub" id="cob-mes-sub">— cuotas cobradas</div>
+            </div>
+          </div>
+          <div class="metric" style="border-top:3px solid var(--red)">
+            <div class="m-body">
+              <div class="lbl">Pendiente de cobro</div>
+              <div class="val" id="cob-pend" style="font-size:18px;color:var(--red)">—</div>
+              <div class="sub" id="cob-pend-sub">— cuotas impagas</div>
+            </div>
+          </div>
+          <div class="metric" style="border-top:3px solid var(--blue)">
+            <div class="m-body">
+              <div class="lbl">Comisión estimada</div>
+              <div class="val" id="cob-comision" style="font-size:18px;color:var(--blue)">—</div>
+              <div class="sub" id="cob-comision-sub">Configurar % en Ajustes</div>
+            </div>
+          </div>
+          <div class="metric" style="border-top:3px solid var(--amber)">
+            <div class="m-body">
+              <div class="lbl">Tasa de cobrabilidad</div>
+              <div class="val" id="cob-tasa" style="font-size:18px;color:var(--amber)">—</div>
+              <div class="sub" id="cob-tasa-sub">Cobrado vs emitido</div>
+            </div>
+          </div>
         </div>
-        <div class="tbl">
-          <table>
-            <thead><tr><th>Cliente</th><th>Póliza</th><th>Cuota</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:14px">
+          <button type="button" id="cob-tab-pend" onclick="cobSetTab('pendiente')"
+            style="font-size:13px;padding:8px 18px;background:none;border:none;border-bottom:2px solid var(--text);margin-bottom:-0.5px;cursor:pointer;font-weight:500;color:var(--text)">
+            Pendientes <span id="cob-badge-pend" style="background:#FCEBEB;color:#A32D2D;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:600">0</span>
+          </button>
+          <button type="button" id="cob-tab-cob" onclick="cobSetTab('cobrado')"
+            style="font-size:13px;padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-0.5px;cursor:pointer;color:var(--muted)">
+            Cobrado <span id="cob-badge-cob" style="background:#EAF3DE;color:#3B6D11;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:600">0</span>
+          </button>
+        </div>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <select id="cob-fil-aseg" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
+            <option value="">Todas las compañías</option>
+          </select>
+          <select id="cob-fil-mora" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
+            <option value="">Todos los plazos</option>
+            <option value="1">1-30 días</option>
+            <option value="31">31-60 días</option>
+            <option value="61">+60 días</option>
+          </select>
+          <div style="flex:1"></div>
+          <div id="cob-total-label" style="font-size:12px;color:var(--muted)"></div>
+        </div>
+
+        <!-- Tabla -->
+        <div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
+            <thead id="cob-thead">
+              <tr style="background:var(--bg)">
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:22%;border-bottom:0.5px solid var(--border)">Cliente</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:14%;border-bottom:0.5px solid var(--border)">Póliza</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:14%;border-bottom:0.5px solid var(--border)">Compañía</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:12%;border-bottom:0.5px solid var(--border)">Vencimiento</th>
+                <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:12%;border-bottom:0.5px solid var(--border)">Importe</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:11%;border-bottom:0.5px solid var(--border)" id="cob-col-mora">Mora</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:15%;border-bottom:0.5px solid var(--border)" id="cob-col-accion">Acción</th>
+              </tr>
+            </thead>
             <tbody id="tbody-cob"></tbody>
           </table>
+          <div id="cob-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 10px;background:var(--bg);border-top:0.5px solid var(--border);font-size:12px;font-weight:500;color:var(--text)">
+            <span id="cob-footer-left" style="font-weight:400;color:var(--muted)"></span>
+            <span id="cob-footer-right"></span>
+          </div>
         </div>
       </div>
 
@@ -6814,27 +6889,225 @@ function exportarSiniestrosCSV() {
 }
 
 // ---- COBRANZAS ----
+// ── Cobranzas ─────────────────────────────────────────────
+var _cobData = [];
+var _cobTab = 'pendiente';
+
+function cobSetTab(tab) {
+  _cobTab = tab;
+  var tabPend = document.getElementById('cob-tab-pend');
+  var tabCob  = document.getElementById('cob-tab-cob');
+  var moraTh  = document.getElementById('cob-col-mora');
+  var accionTh = document.getElementById('cob-col-accion');
+  var filMora = document.getElementById('cob-fil-mora');
+  if (tabPend) {
+    tabPend.style.borderBottom = tab==='pendiente' ? '2px solid var(--text)' : '2px solid transparent';
+    tabPend.style.color = tab==='pendiente' ? 'var(--text)' : 'var(--muted)';
+    tabPend.style.fontWeight = tab==='pendiente' ? '500' : '400';
+  }
+  if (tabCob) {
+    tabCob.style.borderBottom = tab==='cobrado' ? '2px solid var(--text)' : '2px solid transparent';
+    tabCob.style.color = tab==='cobrado' ? 'var(--text)' : 'var(--muted)';
+    tabCob.style.fontWeight = tab==='cobrado' ? '500' : '400';
+  }
+  if (moraTh) moraTh.textContent = tab==='pendiente' ? 'Mora' : 'Fecha cobro';
+  if (accionTh) accionTh.textContent = tab==='pendiente' ? 'Acción' : 'Comisión est.';
+  if (filMora) filMora.style.display = tab==='pendiente' ? '' : 'none';
+  cobRender();
+}
+
+function cobRender() {
+  var hoy = new Date();
+  var filAseg = (document.getElementById('cob-fil-aseg')||{}).value||'';
+  var filMora = (document.getElementById('cob-fil-mora')||{}).value||'';
+  var tbody = document.getElementById('tbody-cob');
+  if (!tbody) return;
+
+  var rows = _cobData.filter(function(c) {
+    if (_cobTab === 'pendiente') {
+      if (c.estado !== 'pendiente' && c.estado !== 'vencida') return false;
+    } else {
+      if (c.estado !== 'pagada' && c.estado !== 'cancelado') return false;
+    }
+    if (filAseg && c._aseguradora !== filAseg) return false;
+    if (filMora && _cobTab === 'pendiente') {
+      var dias = c._dias_mora || 0;
+      if (filMora === '1' && (dias < 1 || dias > 30)) return false;
+      if (filMora === '31' && (dias < 31 || dias > 60)) return false;
+      if (filMora === '61' && dias < 61) return false;
+    }
+    return true;
+  });
+
+  // Ordenar: pendientes por mora desc, cobrados por fecha cobro desc
+  if (_cobTab === 'pendiente') {
+    rows.sort(function(a,b){ return (b._dias_mora||0) - (a._dias_mora||0); });
+  } else {
+    rows.sort(function(a,b){ return (b.fecha_pago||'') > (a.fecha_pago||'') ? 1 : -1; });
+  }
+
+  var totalImporte = rows.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); }, 0);
+  var cfg = _cfg || {};
+  var comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--lt);font-size:13px">'
+      + (_cobTab==='pendiente' ? '✓ Sin cuotas pendientes' : 'Sin cobros en este período') + '</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(function(c, i) {
+      var border = i < rows.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
+      var cliente = c._cliente || '—';
+      var pol = c._numero_poliza || '—';
+      var aseg = c._aseguradora || '—';
+      var monto = '$' + Math.round(parseFloat(c.monto)||0).toLocaleString('es-AR');
+
+      var col6 = '', col7 = '';
+      if (_cobTab === 'pendiente') {
+        var dias = c._dias_mora || 0;
+        var moraBg = dias > 60 ? '#FCEBEB' : dias > 30 ? '#FAEEDA' : '#FEF9C3';
+        var moraColor = dias > 60 ? '#A32D2D' : dias > 30 ? '#854F0B' : '#713F12';
+        var moraLabel = dias > 60 ? '+60 días' : dias > 30 ? '31-60 días' : dias + ' días';
+        col6 = '<span style="background:'+moraBg+';color:'+moraColor+';font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">'+moraLabel+'</span>';
+        // WhatsApp
+        var telClean = (c._telefono||'').replace(/\D/g,'');
+        var msgWa = encodeURIComponent('Hola ' + (c._nombre||'') + ', te recordamos que tenés una cuota vencida de ' + monto + ' correspondiente a tu póliza N° ' + pol + ' de ' + aseg + '. Cualquier consulta estamos a disposición. Gracias!');
+        var waUrl = telClean ? 'https://wa.me/549'+telClean+'?text='+msgWa : 'https://wa.me/?text='+msgWa;
+        col7 = '<a href="'+waUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);color:var(--med);text-decoration:none">'
+          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.016 22l4.985-1.397A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 0 1-4.076-1.124l-.29-.174-3.022.847.807-2.965-.19-.302A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>'
+          + 'Avisar</a>';
+      } else {
+        col6 = c.fecha_pago ? fmtDate(c.fecha_pago) : '—';
+        col7 = comPct ? '<span style="font-size:12px;font-weight:500;color:var(--blue)">$'
+          + Math.round((parseFloat(c.monto)||0) * comPct / 100).toLocaleString('es-AR')
+          + '</span>' : '<span style="font-size:11px;color:var(--lt)">Sin % config.</span>';
+      }
+
+      return '<tr style="'+border+'">'
+        + '<td style="padding:10px 10px;vertical-align:middle"><div style="font-weight:500;font-size:12px;color:var(--text)">'+cliente+'</div>'
+        + '<div style="font-size:11px;color:var(--muted)">'+c._ramo+'</div></td>'
+        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+pol+'</td>'
+        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+aseg+'</td>'
+        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+fmtDate(c.fecha_vencimiento)+'</td>'
+        + '<td style="padding:10px 10px;font-size:12px;font-weight:600;color:var(--text);text-align:right">'+monto+'</td>'
+        + '<td style="padding:10px 10px">'+col6+'</td>'
+        + '<td style="padding:10px 10px">'+col7+'</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  // Footer
+  var footerL = document.getElementById('cob-footer-left');
+  var footerR = document.getElementById('cob-footer-right');
+  if (footerL) footerL.textContent = rows.length + ' ' + (_cobTab==='pendiente' ? 'cuota'+(rows.length!==1?'s':'')+' pendiente'+(rows.length!==1?'s':'') : 'cobro'+(rows.length!==1?'s':''));
+  if (footerR) {
+    var txt = 'Total: $' + Math.round(totalImporte).toLocaleString('es-AR');
+    if (_cobTab === 'cobrado' && comPct) txt += ' · Comisión: $' + Math.round(totalImporte * comPct / 100).toLocaleString('es-AR');
+    footerR.textContent = txt;
+  }
+  if (document.getElementById('cob-total-label'))
+    document.getElementById('cob-total-label').innerHTML = _cobTab==='pendiente'
+      ? 'Total pendiente: <strong>$' + Math.round(totalImporte).toLocaleString('es-AR') + '</strong>'
+      : 'Total cobrado: <strong>$' + Math.round(totalImporte).toLocaleString('es-AR') + '</strong>';
+}
+
 async function cargarCobranzas() {
-  const tbody = document.getElementById('tbody-cob');
-  const { data } = await sb.from('cobranzas').select('*,clientes(nombre,apellido),polizas(numero_poliza)').eq('productor_id', user.id).order('fecha_vencimiento');
-  const venc = data ? data.filter(function(c) { return c.estado === 'vencida'; }).length : 0;
-  const pend = data ? data.filter(function(c) { return c.estado === 'pendiente'; }).length : 0;
-  const hoy = new Date(); const mes1 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const cob = data ? data.filter(function(c) { return c.estado === 'pagada' && new Date(c.fecha_pago) >= mes1; }).reduce(function(s, c) { return s + c.monto; }, 0) : 0;
-  document.getElementById('cob-venc').textContent = venc;
-  document.getElementById('cob-pend').textContent = pend;
-  document.getElementById('cob-mes').textContent = '$' + cob.toLocaleString('es-AR');
-  const eb = { pendiente: 'ba', vencida: 'br', pagada: 'bv' };
-  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Sin cuotas.</div></td></tr>'; return; }
-  tbody.innerHTML = data.map(function(c) {
-    return '<tr><td>' + (c.clientes ? c.clientes.nombre + ' ' + c.clientes.apellido : '—') + '</td>'
-      + '<td>' + (c.polizas ? c.polizas.numero_poliza : '—') + '</td>'
-      + '<td>' + c.numero_cuota + '/' + (c.total_cuotas || '?') + '</td>'
-      + '<td style="font-weight:500">$' + (c.monto || 0).toLocaleString('es-AR') + '</td>'
-      + '<td>' + fmtDate(c.fecha_vencimiento) + '</td>'
-      + '<td><span class="badge ' + (eb[c.estado] || 'bgr') + '">' + c.estado + '</span></td>'
-      + '<td>' + (c.estado !== 'pagada' ? '<button type="button" class="btn btn-sm btn-ok" onclick="marcarPagada(\'' + c.id + '\')">Registrar pago</button>' : '✓') + '</td></tr>';
-  }).join('');
+  await cargarClientesSilente();
+  var sel = document.getElementById('cob-mes-sel');
+  var hoy = new Date();
+
+  // Poblar selector de meses si está vacío
+  if (sel && !sel.options.length) {
+    for (var i = 0; i < 6; i++) {
+      var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      var val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      var opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = meses[d.getMonth()] + ' ' + d.getFullYear();
+      sel.appendChild(opt);
+    }
+  }
+
+  var mesVal = sel ? sel.value : (hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0'));
+  var parts = mesVal.split('-');
+  var anio = parseInt(parts[0]), mes = parseInt(parts[1]);
+  var desde = mesVal + '-01';
+  var hasta = new Date(anio, mes, 0).toISOString().split('T')[0];
+
+  // Label período
+  var mesesNom = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var lbl = document.getElementById('cob-periodo-label');
+  if (lbl) lbl.textContent = mesesNom[mes-1] + ' ' + anio;
+
+  // Traer cobranzas del mes + pendientes/vencidas sin importar fecha
+  var [resMes, resPend] = await Promise.all([
+    sb.from('cobranzas').select('*').eq('productor_id', user.id)
+      .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta),
+    sb.from('cobranzas').select('*').eq('productor_id', user.id)
+      .in('estado', ['pendiente','vencida'])
+      .lt('fecha_vencimiento', desde) // vencidas de meses anteriores también
+  ]);
+
+  // Traer pólizas para aseguradora/ramo
+  var { data: polsData } = await sb.from('polizas').select('id,numero_poliza,aseguradora,ramo').eq('productor_id', user.id);
+  var polIdx = {};
+  (polsData||[]).forEach(function(p){ polIdx[p.id] = p; });
+
+  // Combinar y enriquecer
+  var todasCobs = (resMes.data||[]).concat(
+    (resPend.data||[]).filter(function(p){ return !(resMes.data||[]).find(function(m){ return m.id===p.id; }); })
+  );
+
+  _cobData = todasCobs.map(function(c) {
+    var cl = allCl.find(function(x){ return x.id === c.cliente_id; });
+    var pol = polIdx[c.poliza_id] || {};
+    var diasMora = 0;
+    if ((c.estado==='pendiente'||c.estado==='vencida') && c.fecha_vencimiento) {
+      diasMora = Math.max(0, Math.round((hoy - new Date(c.fecha_vencimiento)) / 864e5));
+    }
+    return Object.assign({}, c, {
+      _cliente: cl ? (cl.apellido ? cl.apellido+', '+cl.nombre : cl.nombre) : '—',
+      _nombre: cl ? cl.nombre : '',
+      _telefono: cl ? (cl.telefono||cl.celular||'') : '',
+      _numero_poliza: pol.numero_poliza || '—',
+      _aseguradora: pol.aseguradora || '—',
+      _ramo: pol.ramo || '—',
+      _dias_mora: diasMora,
+    });
+  });
+
+  // Métricas
+  var cobradas = _cobData.filter(function(c){ return c.estado==='pagada'||c.estado==='cancelado'; });
+  var pendientes = _cobData.filter(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
+  var totalCob = cobradas.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
+  var totalPend = pendientes.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
+  var totalEmitido = totalCob + totalPend;
+  var tasa = totalEmitido > 0 ? Math.round(totalCob / totalEmitido * 100) : 0;
+  var cfg = _cfg || {};
+  var comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
+
+  var el = function(id){ return document.getElementById(id); };
+  if(el('cob-mes')) el('cob-mes').textContent = '$'+Math.round(totalCob).toLocaleString('es-AR');
+  if(el('cob-mes-sub')) el('cob-mes-sub').textContent = cobradas.length+' cuota'+(cobradas.length!==1?'s':'')+' cobrada'+(cobradas.length!==1?'s':'');
+  if(el('cob-pend')) el('cob-pend').textContent = '$'+Math.round(totalPend).toLocaleString('es-AR');
+  if(el('cob-pend-sub')) el('cob-pend-sub').textContent = pendientes.length+' cuota'+(pendientes.length!==1?'s':'')+' impaga'+(pendientes.length!==1?'s':'');
+  if(el('cob-comision')) el('cob-comision').textContent = comPct ? '$'+Math.round(totalCob*comPct/100).toLocaleString('es-AR') : '—';
+  if(el('cob-comision-sub')) el('cob-comision-sub').textContent = comPct ? '~'+comPct+'% promedio cartera' : 'Configurar % en Ajustes';
+  if(el('cob-tasa')) el('cob-tasa').textContent = tasa+'%';
+  if(el('cob-tasa-sub')) el('cob-tasa-sub').textContent = 'Cobrado vs emitido';
+  if(el('cob-badge-pend')) el('cob-badge-pend').textContent = pendientes.length;
+  if(el('cob-badge-cob')) el('cob-badge-cob').textContent = cobradas.length;
+
+  // Poblar filtro aseguradoras
+  var asegSel = el('cob-fil-aseg');
+  if (asegSel) {
+    var asegs = [...new Set(_cobData.map(function(c){ return c._aseguradora; }).filter(Boolean))].sort();
+    var prev = asegSel.value;
+    asegSel.innerHTML = '<option value="">Todas las compañías</option>'
+      + asegs.map(function(a){ return '<option'+(a===prev?' selected':'')+'>'+a+'</option>'; }).join('');
+  }
+
+  cobRender();
 }
 
 async function marcarPagada(id) {
