@@ -5376,9 +5376,12 @@ async function cargarPolizas(estado) {
   }
 
   _polActualEstado = estado;
-  try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
   renderPanelPolizas(estado);
   setTimeout(wirePolFilters, 100);
+  // Tareas automáticas en background — no bloquea el render
+  setTimeout(async function() {
+    try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
+  }, 500);
 }
 
 function renderPanelPolizas(estado) {
