@@ -3445,7 +3445,7 @@ async function fichaSiniestros(c) {
     // Acciones
     html.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">');
     html.push('<button type="button" class="btn btn-sm btn-p" onclick="abrirEditarSiniestro(\''+sinId+'\')">✏ Editar</button>');
-    html.push('<button type="button" title="Eliminar siniestro sin dejar registro" onclick="eliminarSiniestro(\''+sinId+'\')" style="margin-left:auto;padding:5px 9px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--lt)">🗑</button>');
+    html.push('<button type="button" onclick="eliminarSiniestro(\''+sinId+'\')" style="margin-left:auto;padding:5px 14px;border-radius:var(--rsm);border:0.5px solid #EF4444;background:#EF4444;cursor:pointer;color:#fff;font-size:12px;font-weight:500">🗑 Eliminar</button>');
     html.push('</div>');
 
     html.push('</div></div>'); // fin body
