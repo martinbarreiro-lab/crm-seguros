@@ -15,12 +15,27 @@
     <div class="lt" style="font-size:22px;font-weight:800;color:var(--blue)">bm <span style="color:var(--dark);font-weight:400;font-size:18px">Martín Barreiro</span></div>
     <div class="ls">Asesor de Seguros — Sistema CRM</div>
     <div class="err-box" id="login-err"></div>
+    <div class="ok-box" id="login-ok"></div>
+    <div id="login-form">
     <label class="fl">Email</label>
     <input class="fi" type="email" id="l-email" placeholder="tu@email.com" autocomplete="email">
     <label class="fl">Contraseña</label>
     <input class="fi" type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password">
     <button type="button" class="bl" id="btn-ingresar">Ingresar al CRM</button>
     <div style="text-align:center;margin-top:12px">
+      <button type="button" class="lnk" id="btn-olvide">¿Olvidaste tu contraseña?</button>
+    </div>
+    </div>
+    <!-- Nueva contraseña (se muestra al entrar desde el link de recuperación) -->
+    <div id="newpass-form" style="display:none">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Elegí tu nueva contraseña</div>
+      <label class="fl">Nueva contraseña</label>
+      <input class="fi" type="password" id="np-pass" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+      <label class="fl">Repetila</label>
+      <input class="fi" type="password" id="np-pass2" placeholder="••••••••" autocomplete="new-password">
+      <button type="button" class="bl" id="btn-guardar-pass">Guardar y entrar</button>
+    </div>
+    <div style="text-align:center;margin-top:12px" id="reg-toggle-wrap">
       <button type="button" style="background:none;border:none;font-size:12px;color:var(--med);cursor:pointer" id="btn-toggle">¿Primera vez? Crear cuenta</button>
     </div>
     <div id="reg-form" style="display:none;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
@@ -1769,10 +1784,72 @@ let fichaClienteIdForInt = null;
 var _cfg = { dias_renov:15, dias_sin:30, dias_cobr:5, auto_cotiz:true, auto_sin:true, auto_renov:true, dias_canceladas:30, dias_proximas:30 };
 
 // ---- AUTH ----
+// Si se entra desde el link del mail de recuperación, la URL trae type=recovery
+const ES_RECUPERACION = /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+
+function loginMsg(tipo, texto) {
+  var err = document.getElementById('login-err');
+  var ok = document.getElementById('login-ok');
+  err.classList.remove('show'); ok.classList.remove('show');
+  if (!texto) return;
+  var box = tipo === 'ok' ? ok : err;
+  box.textContent = texto;
+  box.classList.add('show');
+}
+
+function mostrarNuevaClave() {
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('reg-toggle-wrap').style.display = 'none';
+  document.getElementById('reg-form').style.display = 'none';
+  document.getElementById('newpass-form').style.display = 'block';
+  loginMsg(null, '');
+  setTimeout(function(){ document.getElementById('np-pass').focus(); }, 50);
+}
+
+sb.auth.onAuthStateChange(function(event) {
+  if (event === 'PASSWORD_RECOVERY') mostrarNuevaClave();
+});
+
 async function init() {
+  if (ES_RECUPERACION) { mostrarNuevaClave(); return; }
   const { data: { session } } = await sb.auth.getSession();
   if (session) { user = session.user; mostrarApp(); }
 }
+
+document.getElementById('btn-olvide').onclick = async function() {
+  const email = document.getElementById('l-email').value.trim();
+  if (!email) { loginMsg('err', 'Escribí tu email arriba y volvé a tocar "¿Olvidaste tu contraseña?"'); document.getElementById('l-email').focus(); return; }
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  btn.disabled = false; btn.textContent = '¿Olvidaste tu contraseña?';
+  if (error) { loginMsg('err', 'No se pudo enviar el mail: ' + error.message); return; }
+  loginMsg('ok', 'Si ' + email + ' tiene cuenta, te llegó un mail con un link para crear una contraseña nueva. Revisá también la carpeta de spam.');
+};
+
+document.getElementById('btn-guardar-pass').onclick = async function() {
+  const p1 = document.getElementById('np-pass').value;
+  const p2 = document.getElementById('np-pass2').value;
+  if (p1.length < 8) { loginMsg('err', 'La contraseña tiene que tener al menos 8 caracteres.'); return; }
+  if (p1 !== p2) { loginMsg('err', 'Las dos contraseñas no coinciden.'); return; }
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { data, error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = 'Guardar y entrar';
+  if (error) { loginMsg('err', 'No se pudo cambiar la contraseña: ' + error.message + '. Pedí un link nuevo e intentá otra vez.'); return; }
+  // Limpiar el token de la URL y entrar
+  history.replaceState(null, '', window.location.pathname);
+  document.getElementById('np-pass').value = '';
+  document.getElementById('np-pass2').value = '';
+  document.getElementById('newpass-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('reg-toggle-wrap').style.display = 'block';
+  loginMsg(null, '');
+  user = data.user;
+  mostrarApp();
+};
 
 document.getElementById('btn-ingresar').onclick = async function() {
   const email = document.getElementById('l-email').value.trim();
