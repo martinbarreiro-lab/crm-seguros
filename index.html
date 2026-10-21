@@ -1809,6 +1809,39 @@ async function copiarLinkArchivo(url) {
     alert('No se pudo generar el link: ' + (e.message || e));
   }
 }
+// Enviar la póliza al cliente por WhatsApp o mail, con un link que vale 7 días
+function btnsEnviarPoliza(p, cl) {
+  cl = cl || {};
+  var tel = cl.telefono_principal ? normalizarTelefono(cl.telefono_principal) : '';
+  var mail = cl.email_principal || '';
+  var nombre = (cl.nombre || '').split(' ')[0];
+  nombre = nombre ? nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() : '';
+  var data = ' data-url="' + p.pdf_url + '" data-num="' + (p.numero_poliza || '') + '" data-ramo="' + (p.ramo || '') + '" data-nombre="' + nombre + '"';
+  var est = 'font-size:11px;padding:3px 8px';
+  return '<button type="button" class="btn btn-sm"' + data + ' data-dest="' + tel + '" onclick="event.stopPropagation();enviarPolizaCliente(this,\'wa\')"' +
+      (tel ? '' : ' disabled title="El cliente no tiene teléfono cargado"') + ' style="' + est + '">📲 Enviar por WhatsApp</button>' +
+    '<button type="button" class="btn btn-sm"' + data + ' data-dest="' + mail + '" onclick="event.stopPropagation();enviarPolizaCliente(this,\'mail\')"' +
+      (mail ? '' : ' disabled title="El cliente no tiene mail cargado"') + ' style="' + est + '">✉ Enviar por mail</button>';
+}
+async function enviarPolizaCliente(btn, canal) {
+  var d = btn.dataset;
+  var w = canal === 'wa' ? _abrirVentana('about:blank', '_blank') : null;
+  try {
+    var link = await linkArchivo(d.url, 7 * 24 * 3600);
+    var poliza = (d.ramo ? 'de ' + d.ramo + ' ' : '') + (d.num ? 'N° ' + d.num : '');
+    var texto = 'Hola' + (d.nombre ? ' ' + d.nombre : '') + ', ¿cómo estás? Te paso tu póliza ' + poliza + '.\n' +
+      'La podés ver y descargar desde este link (vale 7 días):\n' + link + '\n\n' +
+      'Cualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
+    if (canal === 'wa') {
+      w.location.href = 'https://wa.me/' + d.dest + '?text=' + encodeURIComponent(texto);
+    } else {
+      window.location.href = 'mailto:' + d.dest + '?subject=' + encodeURIComponent('Tu póliza ' + poliza) + '&body=' + encodeURIComponent(texto);
+    }
+  } catch (e) {
+    if (w) w.close();
+    alert('No se pudo preparar el envío: ' + (e.message || e));
+  }
+}
 function btnLinkArchivo(url) {
   return '<button type="button" class="btn btn-sm" data-fileurl="' + url + '" onclick="event.stopPropagation();copiarLinkArchivo(this.dataset.fileurl)" title="Copiar un link que vale 7 días, para mandar a la compañía" style="font-size:11px;padding:3px 8px">🔗 Link 7 días</button>';
 }
@@ -9536,7 +9569,7 @@ function renderDetallePol() {
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirRenovarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
-        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+btnLinkArchivo(p.pdf_url):'')+
+        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+btnLinkArchivo(p.pdf_url)+btnsEnviarPoliza(p, cl):'')+
         (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>':'')+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
         '<button type="button" onclick="eliminarPolizaFicha(\''+p.id+'\')" title="Eliminar del sistema sin dejar registro" style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:12px;cursor:pointer">🗑</button>'+
