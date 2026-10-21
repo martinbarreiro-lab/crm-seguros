@@ -1860,22 +1860,32 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     var texto = 'Hola' + (_nombreCorto(cl) ? ' ' + _nombreCorto(cl) : '') + ', ¿cómo estás? Te paso ' + queEs.trim() + '. Te recomiendo guardarla en el celular.\n\nCualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
     var tel = cl.telefono_principal ? normalizarTelefono(cl.telefono_principal) : '';
     var mail = cl.email_principal || '';
-    _envio = { pol: pol, cl: cl, doc: doc, tareaId: tareaId || null, file: file, tel: tel, mail: mail };
+    _envio = { pol: pol, cl: cl, doc: doc, tareaId: tareaId || null, file: file, tel: tel, mail: mail, hechos: {} };
     var puedeCompartir = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+    _envio.compartir = puedeCompartir;
     var h = [];
     h.push('<div style="font-size:13px;color:#374151;margin-bottom:10px"><strong>' + ((cl.apellido || '') + ', ' + (cl.nombre || '')).replace(/^, /, '') + '</strong> · ' + nombreArch + '</div>');
-    h.push('<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Enviar por:</div>');
-    h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="checkbox" id="env-wa" ' + (tel ? 'checked' : 'disabled') + '> WhatsApp ' + (tel ? '<span style="color:var(--muted)">(' + cl.telefono_principal + ')</span>' : '<span style="color:#9CA3AF">— sin teléfono cargado</span>') + '</label>');
-    h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px"><input type="checkbox" id="env-mail" ' + (mail ? 'checked' : 'disabled') + '> Mail ' + (mail ? '<span style="color:var(--muted)">(' + mail + ')</span>' : '<span style="color:#9CA3AF">— sin mail cargado</span>') + '</label>');
-    if (!tel && !mail) h.push('<div class="err-box show">El cliente no tiene teléfono ni mail cargado. Cargalos en su ficha para poder enviarle la póliza.</div>');
-    h.push('<div class="frow"><label>Mensaje</label><textarea id="env-texto" style="min-height:110px">' + texto + '</textarea></div>');
+    if (!tel && !mail) {
+      h.push('<div class="err-box show">El cliente no tiene teléfono ni mail cargado. Cargalos en su ficha para poder enviarle la póliza.</div>');
+      cuerpo.innerHTML = h.join(''); return;
+    }
+    h.push('<div class="frow"><label>Mensaje</label><textarea id="env-texto" style="min-height:100px">' + texto + '</textarea></div>');
     if (puedeCompartir) {
-      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Al tocar <strong>Compartir</strong> se abre el menú de compartir: elegí WhatsApp o tu correo y el PDF va adjunto. Repetilo para cada canal marcado.</div>');
-      h.push('<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button>'
-        + '<button type="button" class="btn btn-p" onclick="compartirPdfEnvio()">📤 Compartir PDF</button>'
-        + '<button type="button" class="btn btn-ok" onclick="confirmarEnvio()">✓ Ya lo envié</button></div>');
+      // Un botón por canal: al terminar de compartir, la constancia se registra sola
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Tocá el botón, elegí <strong>' + (tel && mail ? 'WhatsApp o tu correo' : tel ? 'WhatsApp' : 'tu correo') + '</strong> en el menú y enviá. Cuando termines de compartir, la constancia se guarda sola.</div>');
+      h.push('<div style="display:flex;flex-direction:column;gap:8px">');
+      if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="compartirPdfEnvio(\'wa\')" style="justify-content:space-between;display:flex">📲 Compartir por WhatsApp <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="compartirPdfEnvio(\'mail\')" style="justify-content:space-between;display:flex">✉ Compartir por mail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
+      h.push('</div>');
+      h.push('<div style="display:flex;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarEnvio()">Cerrar</button></div>');
     } else {
-      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 12px">1) Descargá el PDF · 2) Abrí WhatsApp o el mail (el mensaje ya va escrito) · 3) Adjuntá el PDF · 4) Tocá <strong>Ya lo envié</strong> para dejar la constancia.</div>');
+      // Sin menú de compartir (algunas compus): pasos manuales y confirmación
+      h.push('<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Enviar por:</div>');
+      h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="checkbox" id="env-wa" ' + (tel ? 'checked' : 'disabled') + '> WhatsApp ' + (tel ? '<span style="color:var(--muted)">(' + cl.telefono_principal + ')</span>' : '<span style="color:#9CA3AF">— sin teléfono cargado</span>') + '</label>');
+      h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px"><input type="checkbox" id="env-mail" ' + (mail ? 'checked' : 'disabled') + '> Mail ' + (mail ? '<span style="color:var(--muted)">(' + mail + ')</span>' : '<span style="color:#9CA3AF">— sin mail cargado</span>') + '</label>');
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Este equipo no tiene el menú de compartir. 1) Descargá el PDF · 2) Abrí WhatsApp o el mail (el mensaje ya va escrito) · 3) Adjuntá el PDF · 4) Tocá <strong>Ya lo envié</strong>.</div>');
       h.push('<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
         + '<button type="button" class="btn" onclick="descargarPdfEnvio()">⬇ Descargar PDF</button>'
         + (tel ? '<button type="button" class="btn" onclick="abrirCanalEnvio(\'wa\')">📲 Abrir WhatsApp</button>' : '')
@@ -1888,14 +1898,73 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
   }
 }
 
-async function compartirPdfEnvio() {
+function _fechaHora() {
+  var ahora = new Date();
+  return ahora.toLocaleDateString('es-AR') + ' ' + ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' hs';
+}
+
+// Guarda la constancia en el historial (un registro por envío)
+async function registrarEnvio(canales, tipo) {
+  var pol = _envio.pol;
+  var fh = _fechaHora();
+  var que = (_envio.doc === 'endoso' ? 'Endoso de póliza ' : 'Póliza ') + (pol.ramo || '') + ' N° ' + (pol.numero_poliza || '');
+  var resumen = '📤 ' + que + ' enviada por ' + canales.join(' y por ') + ' (' + fh + ').';
+  var ins = await sb.from('interacciones').insert({
+    productor_id: user.id, cliente_id: pol.cliente_id, categoria: 'envio_poliza', tipo: tipo, resumen: resumen,
+    resultado: 'Enviada', poliza_id: pol.id, poliza_numero: pol.numero_poliza || null, poliza_ramo: pol.ramo || null,
+    adjuntos: [{ nombre: _envio.file.name, url: _envio.doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url }],
+    usuario_nombre: user.email, es_automatico: false
+  });
+  if (ins.error) throw ins.error;
+  return { resumen: resumen, fh: fh };
+}
+
+// Cierra la tarea de envío (la indicada, o cualquier tarea de envío pendiente de esa póliza)
+async function cerrarTareaEnvio(resumen) {
+  var tipoTarea = _envio.doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
+  var q = sb.from('tareas').update({ estado: 'cerrada', resultado: resumen }).eq('productor_id', user.id);
+  q = _envio.tareaId ? q.eq('id', _envio.tareaId) : q.eq('poliza_id', _envio.pol.id).eq('tipo', tipoTarea).neq('estado', 'cerrada');
+  await q;
+}
+
+function _refrescarTrasEnvio() {
+  if (typeof cargarTareas === 'function' && document.getElementById('sec-tareas') && document.getElementById('sec-tareas').classList.contains('active')) cargarTareas();
+  actualizarAvisoEnvios();
+}
+
+async function compartirPdfEnvio(canal) {
   if (!_envio) return;
   try {
     await navigator.share({ files: [_envio.file], text: document.getElementById('env-texto').value, title: _envio.file.name });
   } catch (e) {
-    if (e && e.name === 'AbortError') return; // se canceló el menú de compartir
-    alert('No se pudo compartir: ' + (e.message || e) + '\nProbá con "Descargar PDF".');
+    if (e && e.name === 'AbortError') return; // se canceló el menú de compartir: no se registra nada
+    alert('No se pudo compartir: ' + (e.message || e));
+    return;
   }
+  // Se compartió: queda la constancia sola
+  try {
+    var desc = canal === 'wa' ? 'WhatsApp al ' + _envio.cl.telefono_principal : 'mail a ' + _envio.mail;
+    var r = await registrarEnvio([desc], canal === 'wa' ? 'whatsapp' : 'email');
+    _envio.hechos[canal] = r.resumen;
+    var b = document.getElementById('env-btn-' + canal);
+    if (b) { b.disabled = true; b.className = 'btn btn-ok'; b.innerHTML = '✓ Enviado por ' + (canal === 'wa' ? 'WhatsApp' : 'mail') + ' <span style="opacity:.8;font-weight:400">' + r.fh + '</span>'; }
+    var pendientes = (_envio.tel && !_envio.hechos.wa) || (_envio.mail && !_envio.hechos.mail);
+    await cerrarTareaEnvio(Object.keys(_envio.hechos).map(function(k){ return _envio.hechos[k]; }).join(' '));
+    if (!pendientes) {
+      cerrarModal('modal-envio'); _envio = null;
+      mostrarAlerta('✅ Póliza enviada. Constancia guardada: ' + r.fh);
+    } else {
+      mostrarAlerta('✅ Constancia guardada (' + r.fh + '). Si querés, enviala también por el otro canal.');
+    }
+    _refrescarTrasEnvio();
+  } catch (e) {
+    alert('Se compartió, pero no se pudo guardar la constancia: ' + (e.message || e));
+  }
+}
+
+function cerrarEnvio() {
+  cerrarModal('modal-envio');
+  _envio = null;
 }
 
 function descargarPdfEnvio() {
@@ -1912,6 +1981,7 @@ function abrirCanalEnvio(canal) {
   else window.location.href = 'mailto:' + _envio.mail + '?subject=' + encodeURIComponent(_envio.file.name.replace(/_/g, ' ').replace('.pdf', '')) + '&body=' + encodeURIComponent(texto);
 }
 
+// Confirmación manual (solo en equipos sin menú de compartir)
 async function confirmarEnvio() {
   if (!_envio) return;
   var wa = document.getElementById('env-wa'), ml = document.getElementById('env-mail');
@@ -1919,28 +1989,36 @@ async function confirmarEnvio() {
   if (wa && wa.checked) canales.push('WhatsApp al ' + _envio.cl.telefono_principal);
   if (ml && ml.checked) canales.push('mail a ' + _envio.mail);
   if (!canales.length) { alert('Marcá por dónde lo enviaste (WhatsApp y/o mail).'); return; }
-  var pol = _envio.pol;
-  var ahora = new Date();
-  var fh = ahora.toLocaleDateString('es-AR') + ' ' + ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' hs';
-  var que = (_envio.doc === 'endoso' ? 'Endoso de póliza ' : 'Póliza ') + (pol.ramo || '') + ' N° ' + (pol.numero_poliza || '');
-  var resumen = '📤 ' + que + ' enviada por ' + canales.join(' y por ') + ' (' + fh + ').';
-  var tipo = (wa && wa.checked) ? 'whatsapp' : 'email';
-  var ins = await sb.from('interacciones').insert({
-    productor_id: user.id, cliente_id: pol.cliente_id, categoria: 'envio_poliza', tipo: tipo, resumen: resumen,
-    resultado: 'Enviada', poliza_id: pol.id, poliza_numero: pol.numero_poliza || null, poliza_ramo: pol.ramo || null,
-    adjuntos: [{ nombre: _envio.file.name, url: _envio.doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url }],
-    usuario_nombre: user.email, es_automatico: false
-  });
-  if (ins.error) { alert('No se pudo registrar el envío: ' + ins.error.message); return; }
-  // Cerrar la tarea de envío (la indicada, o cualquier tarea de envío pendiente de esa póliza)
-  var tipoTarea = _envio.doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
-  var q = sb.from('tareas').update({ estado: 'cerrada', resultado: resumen }).eq('productor_id', user.id);
-  q = _envio.tareaId ? q.eq('id', _envio.tareaId) : q.eq('poliza_id', pol.id).eq('tipo', tipoTarea).neq('estado', 'cerrada');
-  await q;
-  cerrarModal('modal-envio');
-  _envio = null;
-  mostrarAlerta('✅ Envío registrado: ' + fh);
-  if (typeof cargarTareas === 'function' && document.getElementById('sec-tareas') && document.getElementById('sec-tareas').classList.contains('active')) cargarTareas();
+  try {
+    var r = await registrarEnvio(canales, (wa && wa.checked) ? 'whatsapp' : 'email');
+    await cerrarTareaEnvio(r.resumen);
+    cerrarModal('modal-envio'); _envio = null;
+    mostrarAlerta('✅ Envío registrado: ' + r.fh);
+    _refrescarTrasEnvio();
+  } catch (e) { alert('No se pudo registrar el envío: ' + (e.message || e)); }
+}
+
+// ---- AVISO: PÓLIZAS Y ENDOSOS PENDIENTES DE ENVIAR ----
+async function actualizarAvisoEnvios() {
+  try {
+    if (!user) return;
+    var r = await sb.from('tareas').select('id,poliza_id,tipo,clientes(nombre,apellido)').eq('productor_id', user.id)
+      .in('tipo', ['Enviar póliza', 'Enviar endoso']).not('estado', 'in', '("cerrada","cancelada")').order('created_at');
+    var lista = (r.data || []).filter(function(t){ return t.poliza_id; });
+    var bar = document.getElementById('aviso-envios');
+    if (!lista.length) { if (bar) bar.remove(); return; }
+    if (!bar) {
+      bar = document.createElement('div'); bar.id = 'aviso-envios';
+      bar.style.cssText = 'margin:10px 20px 0;padding:10px 14px;border-radius:8px;border:1px solid #FCD34D;background:#FFFBEB;font-size:13px;color:#92400E;display:flex;flex-wrap:wrap;align-items:center;gap:8px';
+      var tb = document.querySelector('.topbar'); if (tb) tb.insertAdjacentElement('afterend', bar); else return;
+    }
+    var n = lista.length;
+    bar.innerHTML = '<strong>📤 Tenés ' + n + (n === 1 ? ' envío pendiente:' : ' envíos pendientes:') + '</strong>' + lista.slice(0, 6).map(function(t) {
+      var nom = t.clientes ? (t.clientes.apellido || '') + (t.clientes.nombre ? ', ' + t.clientes.nombre.split(' ')[0] : '') : 'Cliente';
+      var doc = t.tipo === 'Enviar endoso' ? 'endoso' : 'poliza';
+      return '<button type="button" onclick="abrirEnviarPoliza(\'' + t.poliza_id + '\',\'' + doc + '\',\'' + t.id + '\')" style="border:0.5px solid #FCD34D;background:#fff;border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;color:#92400E">' + (doc === 'endoso' ? '✍ ' : '📄 ') + nom + ' ▸ Enviar</button>';
+    }).join('') + (n > 6 ? '<span>y ' + (n - 6) + ' más (ver Tareas)</span>' : '');
+  } catch (e) { console.warn('actualizarAvisoEnvios', e); }
 }
 
 // Tarea automática de envío (póliza nueva, renovación o endoso)
@@ -1957,6 +2035,7 @@ async function crearTareaEnvio(polId, clienteId, doc, motivo, ramo) {
       tablero: motivo === 'renovacion' ? 'renovaciones' : (motivo === 'nueva' ? 'ventas' : 'general'),
       titulo: tipo + ' (' + (motivo === 'renovacion' ? 'renovación' : motivo === 'nueva' ? 'póliza nueva' : 'endoso') + ') — ' + nombre + (ramo ? ' (' + ramo + ')' : '')
     });
+    actualizarAvisoEnvios();
   } catch (e) { console.warn('crearTareaEnvio', e); }
 }
 
@@ -2117,6 +2196,7 @@ async function mostrarApp() {
   setTimeout(verificarRenovaciones, 3000);
   setTimeout(limpiarCanceladasViejas, 5000);
   setTimeout(actualizarBadgeNotif, 2000);
+  setTimeout(actualizarAvisoEnvios, 1500);
 }
 
 // ---- NAVEGACIÓN ----
