@@ -35,14 +35,6 @@
       <input class="fi" type="password" id="np-pass2" placeholder="••••••••" autocomplete="new-password">
       <button type="button" class="bl" id="btn-guardar-pass">Guardar y entrar</button>
     </div>
-    <div style="text-align:center;margin-top:12px" id="reg-toggle-wrap">
-      <button type="button" style="background:none;border:none;font-size:12px;color:var(--med);cursor:pointer" id="btn-toggle">¿Primera vez? Crear cuenta</button>
-    </div>
-    <div id="reg-form" style="display:none;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
-      <label class="fl">Tu nombre completo</label>
-      <input class="fi" type="text" id="r-nombre" placeholder="Nombre Apellido">
-      <button type="button" class="bl bl-g" id="btn-registrar">Crear cuenta</button>
-    </div>
   </div>
 </div>
 
@@ -116,6 +108,7 @@
     </nav>
     <div class="sb-foot">
       <span class="sb-name" id="sb-nombre">—</span>
+      <span id="sb-rol" style="display:none;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--light);color:var(--med);padding:2px 8px;border-radius:10px;width:max-content;margin:2px 0">Administrador</span>
       <span id="sb-email2" style="font-size:11px;color:var(--lt)"></span>
       <button type="button" class="btn-out" id="btn-logout">Cerrar sesión</button>
     </div>
@@ -1801,8 +1794,6 @@ function mostrarNuevaClave() {
   document.getElementById('app').classList.remove('show');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-form').style.display = 'none';
-  document.getElementById('reg-toggle-wrap').style.display = 'none';
-  document.getElementById('reg-form').style.display = 'none';
   document.getElementById('newpass-form').style.display = 'block';
   loginMsg(null, '');
   setTimeout(function(){ document.getElementById('np-pass').focus(); }, 50);
@@ -1845,7 +1836,6 @@ document.getElementById('btn-guardar-pass').onclick = async function() {
   document.getElementById('np-pass2').value = '';
   document.getElementById('newpass-form').style.display = 'none';
   document.getElementById('login-form').style.display = 'block';
-  document.getElementById('reg-toggle-wrap').style.display = 'block';
   loginMsg(null, '');
   user = data.user;
   mostrarApp();
@@ -1863,20 +1853,7 @@ document.getElementById('btn-ingresar').onclick = async function() {
   mostrarApp();
 };
 
-document.getElementById('btn-toggle').onclick = function() {
-  const f = document.getElementById('reg-form');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
-};
-
-document.getElementById('btn-registrar').onclick = async function() {
-  const email = document.getElementById('l-email').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  const nombre = document.getElementById('r-nombre').value.trim();
-  if (!email || !pass || !nombre) { alert('Completá todos los campos'); return; }
-  const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { nombre } } });
-  if (error) { alert('Error: ' + error.message); return; }
-  alert('Cuenta creada. Revisá tu email para confirmar, luego iniciá sesión.');
-};
+// El registro de cuentas nuevas está cerrado: los usuarios los crea el administrador desde Supabase.
 
 document.getElementById('btn-logout').onclick = async function() {
   await sb.auth.signOut();
@@ -1888,8 +1865,10 @@ document.getElementById('btn-logout').onclick = async function() {
 async function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('show');
-  const { data: perfil } = await sb.from('perfiles').select('nombre').eq('id', user.id).single();
+  const { data: perfil } = await sb.from('perfiles').select('nombre, rol').eq('id', user.id).single();
   const nombre = perfil ? perfil.nombre : user.email;
+  window.esAdmin = !!(perfil && perfil.rol === 'admin');
+  document.getElementById('sb-rol') && (document.getElementById('sb-rol').style.display = window.esAdmin ? 'inline-block' : 'none');
   document.getElementById('sb-nombre') && (document.getElementById('sb-nombre').textContent = nombre);
   document.getElementById('sb-email') && (document.getElementById('sb-email').textContent = user.email);
   document.getElementById('sb-email2') && (document.getElementById('sb-email2').textContent = user.email);
