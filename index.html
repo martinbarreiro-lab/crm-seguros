@@ -1766,6 +1766,53 @@ const SURL = 'https://rtqofqxwlvqylbeqnssl.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cW9mcXh3bHZxeWxiZXFuc3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NTA2NzIsImV4cCI6MjA5MjQyNjY3Mn0.OngRdRQ3kw6Uo1GhMdpdodFH6UgPCpFZhqy2KiEW6lo';
 const sb = window.supabase.createClient(SURL, SKEY);
 
+// ---- ARCHIVOS PRIVADOS ----
+// Los archivos (carnets, cédulas, pólizas, documentos de siniestros) están en un depósito privado.
+// En la base se guarda la dirección "pública" de siempre; al abrirlos se genera un link temporal
+// que solo funciona con la sesión iniciada.
+const PREFIJO_ARCHIVOS = '/storage/v1/object/public/archivos/';
+function rutaArchivo(url) {
+  if (typeof url !== 'string') return null;
+  var i = url.indexOf(PREFIJO_ARCHIVOS);
+  if (i < 0) return null;
+  return decodeURIComponent(url.slice(i + PREFIJO_ARCHIVOS.length).split('?')[0]);
+}
+async function linkArchivo(url, segundos) {
+  var ruta = rutaArchivo(url);
+  if (!ruta) return url;
+  var r = await sb.storage.from('archivos').createSignedUrl(ruta, segundos || 600);
+  if (r.error) throw r.error;
+  return r.data.signedUrl;
+}
+// Todos los botones "Ver" usan window.open: si es un archivo del CRM, se abre con link temporal (10 minutos)
+const _abrirVentana = window.open.bind(window);
+window.open = function(url, target, features) {
+  if (!rutaArchivo(url)) return _abrirVentana(url, target, features);
+  var w = _abrirVentana('about:blank', target || '_blank', features);
+  linkArchivo(url).then(function(u) {
+    if (w) w.location.href = u; else _abrirVentana(u, '_blank');
+  }).catch(function(e) {
+    if (w) w.close();
+    alert('No se pudo abrir el archivo: ' + (e.message || e));
+  });
+  return w;
+};
+// Link para compartir (por ejemplo con la compañía): dura 7 días
+async function copiarLinkArchivo(url) {
+  try {
+    var u = await linkArchivo(url, 7 * 24 * 3600);
+    try { await navigator.clipboard.writeText(u); }
+    catch (e) { window.prompt('Copiá este link (vale 7 días):', u); return; }
+    if (typeof mostrarAlerta === 'function') mostrarAlerta('Link copiado. Vale por 7 días.');
+    else alert('Link copiado. Vale por 7 días.');
+  } catch (e) {
+    alert('No se pudo generar el link: ' + (e.message || e));
+  }
+}
+function btnLinkArchivo(url) {
+  return '<button type="button" class="btn btn-sm" data-fileurl="' + url + '" onclick="event.stopPropagation();copiarLinkArchivo(this.dataset.fileurl)" title="Copiar un link que vale 7 días, para mandar a la compañía" style="font-size:11px;padding:3px 8px">🔗 Link 7 días</button>';
+}
+
 let user = null;
 let allCl = [];
 let fichaId = null;
@@ -2797,7 +2844,7 @@ function fichaDatos(c) {
     if (d.url) {
       html.push('<div style="padding:10px 12px;border:0.5px solid #C0DD97;border-radius:var(--rsm);background:#F0FDF4;display:flex;align-items:center;justify-content:space-between">');
       html.push('<div><div style="font-size:12px;font-weight:500;color:#27500A">'+d.lbl+'</div><div style="font-size:11px;color:#3B6D11;margin-top:1px">✓ Cargado</div></div>');
-      html.push('<button type="button" class="btn btn-sm" onclick="window.open(\''+d.url+'\',\'_blank\')" style="font-size:11px;padding:3px 8px">Ver ↗</button>');
+      html.push('<div style="display:flex;gap:5px"><button type="button" class="btn btn-sm" onclick="window.open(\''+d.url+'\',\'_blank\')" style="font-size:11px;padding:3px 8px">Ver ↗</button>'+btnLinkArchivo(d.url)+'</div>');
       html.push('</div>');
     } else {
       html.push('<div style="padding:10px 12px;border:1.5px dashed var(--border);border-radius:var(--rsm);background:var(--white);display:flex;align-items:center;justify-content:space-between">');
@@ -3873,6 +3920,7 @@ function sinFileZone(s, campo, label) {
       +'<span style="font-size:12px;color:#166534;font-weight:500;display:flex;align-items:center;gap:6px">📄 '+label+' cargado</span>'
       +'<div style="display:flex;gap:5px">'
       +'<button type="button" class="btn btn-sm" data-fileurl="'+url+'" onclick="window.open(this.dataset.fileurl,\'_blank\')">Ver ↗</button>'
+      +btnLinkArchivo(url)
       +'<button type="button" class="btn btn-sm" data-sid="'+sid+'" data-campo="'+campo+'" onclick="event.stopPropagation();sinSubirArchivo(this.dataset.sid,this.dataset.campo)">Reemplazar</button>'
       +'</div></div>';
   } else {
@@ -9488,7 +9536,7 @@ function renderDetallePol() {
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirRenovarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
-        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>':'')+
+        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+btnLinkArchivo(p.pdf_url):'')+
         (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>':'')+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
         '<button type="button" onclick="eliminarPolizaFicha(\''+p.id+'\')" title="Eliminar del sistema sin dejar registro" style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:12px;cursor:pointer">🗑</button>'+
@@ -9868,7 +9916,7 @@ function renderMpdDocumentos(p) {
         '<span style="font-size:22px">'+d.icon+'</span>'+
         '<div><div style="font-size:13px;font-weight:500;color:#111827">'+d.label+'</div><div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+d.sub+'</div></div>'+
       '</div>'+
-      '<button type="button" onclick="window.open(\''+d.url+'\',\'_blank\')" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-family:inherit">Ver ↗</button>'+
+      '<div style="display:flex;gap:5px"><button type="button" onclick="window.open(\''+d.url+'\',\'_blank\')" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-family:inherit">Ver ↗</button>'+btnLinkArchivo(d.url)+'</div>'+
     '</div>';
   }).join('');
 }
