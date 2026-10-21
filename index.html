@@ -1809,39 +1809,194 @@ async function copiarLinkArchivo(url) {
     alert('No se pudo generar el link: ' + (e.message || e));
   }
 }
-// Enviar la póliza al cliente por WhatsApp o mail, con un link que vale 7 días
-function btnsEnviarPoliza(p, cl) {
-  cl = cl || {};
-  var tel = cl.telefono_principal ? normalizarTelefono(cl.telefono_principal) : '';
-  var mail = cl.email_principal || '';
-  var nombre = (cl.nombre || '').split(' ')[0];
-  nombre = nombre ? nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() : '';
-  var data = ' data-url="' + p.pdf_url + '" data-num="' + (p.numero_poliza || '') + '" data-ramo="' + (p.ramo || '') + '" data-nombre="' + nombre + '"';
-  var est = 'font-size:11px;padding:3px 8px';
-  return '<button type="button" class="btn btn-sm"' + data + ' data-dest="' + tel + '" onclick="event.stopPropagation();enviarPolizaCliente(this,\'wa\')"' +
-      (tel ? '' : ' disabled title="El cliente no tiene teléfono cargado"') + ' style="' + est + '">📲 Enviar por WhatsApp</button>' +
-    '<button type="button" class="btn btn-sm"' + data + ' data-dest="' + mail + '" onclick="event.stopPropagation();enviarPolizaCliente(this,\'mail\')"' +
-      (mail ? '' : ' disabled title="El cliente no tiene mail cargado"') + ' style="' + est + '">✉ Enviar por mail</button>';
+// ---- ENVÍO DE PÓLIZAS Y ENDOSOS AL CLIENTE ----
+// Se manda el PDF (como archivo) por WhatsApp y/o mail y queda constancia con fecha y hora en el historial.
+var _envio = null; // { pol, cl, doc, tareaId, file, texto }
+
+function _envModal() {
+  var m = document.getElementById('modal-envio');
+  if (m) return m;
+  m = document.createElement('div');
+  m.className = 'modal-ov'; m.id = 'modal-envio';
+  m.innerHTML = '<div class="modal-box" style="max-width:520px">'
+    + '<div class="modal-t"><span id="env-titulo">Enviar póliza</span> <button type="button" class="modal-x" onclick="cerrarModal(\'modal-envio\')">✕</button></div>'
+    + '<div id="env-cuerpo"></div></div>';
+  document.body.appendChild(m);
+  return m;
 }
-async function enviarPolizaCliente(btn, canal) {
-  var d = btn.dataset;
-  var w = canal === 'wa' ? _abrirVentana('about:blank', '_blank') : null;
+
+function _nombreCorto(cl) {
+  var n = ((cl && cl.nombre) || '').split(' ')[0];
+  return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+}
+
+async function abrirEnviarPoliza(polId, doc, tareaId) {
+  doc = doc || 'poliza';
+  var m = _envModal();
+  var cuerpo = document.getElementById('env-cuerpo');
+  document.getElementById('env-titulo').textContent = doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
+  cuerpo.innerHTML = '<div style="padding:30px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Preparando el PDF...</div>';
+  m.classList.add('open');
   try {
-    var link = await linkArchivo(d.url, 7 * 24 * 3600);
-    var poliza = (d.ramo ? 'de ' + d.ramo + ' ' : '') + (d.num ? 'N° ' + d.num : '');
-    var texto = 'Hola' + (d.nombre ? ' ' + d.nombre : '') + ', ¿cómo estás? Te paso tu póliza ' + poliza + '.\n' +
-      'La podés ver y descargar desde este link (vale 7 días):\n' + link + '\n\n' +
-      'Cualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
-    if (canal === 'wa') {
-      w.location.href = 'https://wa.me/' + d.dest + '?text=' + encodeURIComponent(texto);
-    } else {
-      window.location.href = 'mailto:' + d.dest + '?subject=' + encodeURIComponent('Tu póliza ' + poliza) + '&body=' + encodeURIComponent(texto);
+    var r = await sb.from('polizas').select('*').eq('id', polId).single();
+    if (r.error || !r.data) throw new Error('No se encontró la póliza');
+    var pol = r.data;
+    var url = doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url;
+    if (!url) {
+      cuerpo.innerHTML = '<div style="padding:16px;font-size:13px;color:#374151">Esta póliza todavía no tiene el PDF ' + (doc === 'endoso' ? 'del endoso' : '') + ' cargado.<br><br>'
+        + '<button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\');abrirEditarPoliza(\'' + polId + '\')">Subir el PDF</button></div>';
+      return;
     }
+    var c = pol.cliente_id ? await sb.from('clientes').select('*').eq('id', pol.cliente_id).single() : { data: {} };
+    var cl = c.data || {};
+    // Descargar el PDF para mandarlo como archivo
+    var link = await linkArchivo(url, 600);
+    var resp = await fetch(link);
+    if (!resp.ok) throw new Error('No se pudo descargar el PDF');
+    var blob = await resp.blob();
+    var nombreArch = (doc === 'endoso' ? 'Endoso_' : 'Poliza_') + (pol.ramo || '').replace(/\s+/g, '_') + '_' + (pol.numero_poliza || '') + '.pdf';
+    var file = new File([blob], nombreArch, { type: 'application/pdf' });
+    var queEs = (doc === 'endoso' ? 'el endoso de tu póliza ' : 'tu póliza ') + (pol.ramo ? 'de ' + pol.ramo + ' ' : '') + (pol.numero_poliza ? 'N° ' + pol.numero_poliza : '');
+    var texto = 'Hola' + (_nombreCorto(cl) ? ' ' + _nombreCorto(cl) : '') + ', ¿cómo estás? Te paso ' + queEs.trim() + '. Te recomiendo guardarla en el celular.\n\nCualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
+    var tel = cl.telefono_principal ? normalizarTelefono(cl.telefono_principal) : '';
+    var mail = cl.email_principal || '';
+    _envio = { pol: pol, cl: cl, doc: doc, tareaId: tareaId || null, file: file, tel: tel, mail: mail };
+    var puedeCompartir = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+    var h = [];
+    h.push('<div style="font-size:13px;color:#374151;margin-bottom:10px"><strong>' + ((cl.apellido || '') + ', ' + (cl.nombre || '')).replace(/^, /, '') + '</strong> · ' + nombreArch + '</div>');
+    h.push('<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Enviar por:</div>');
+    h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><input type="checkbox" id="env-wa" ' + (tel ? 'checked' : 'disabled') + '> WhatsApp ' + (tel ? '<span style="color:var(--muted)">(' + cl.telefono_principal + ')</span>' : '<span style="color:#9CA3AF">— sin teléfono cargado</span>') + '</label>');
+    h.push('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px"><input type="checkbox" id="env-mail" ' + (mail ? 'checked' : 'disabled') + '> Mail ' + (mail ? '<span style="color:var(--muted)">(' + mail + ')</span>' : '<span style="color:#9CA3AF">— sin mail cargado</span>') + '</label>');
+    if (!tel && !mail) h.push('<div class="err-box show">El cliente no tiene teléfono ni mail cargado. Cargalos en su ficha para poder enviarle la póliza.</div>');
+    h.push('<div class="frow"><label>Mensaje</label><textarea id="env-texto" style="min-height:110px">' + texto + '</textarea></div>');
+    if (puedeCompartir) {
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Al tocar <strong>Compartir</strong> se abre el menú de compartir: elegí WhatsApp o tu correo y el PDF va adjunto. Repetilo para cada canal marcado.</div>');
+      h.push('<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button>'
+        + '<button type="button" class="btn btn-p" onclick="compartirPdfEnvio()">📤 Compartir PDF</button>'
+        + '<button type="button" class="btn btn-ok" onclick="confirmarEnvio()">✓ Ya lo envié</button></div>');
+    } else {
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 12px">1) Descargá el PDF · 2) Abrí WhatsApp o el mail (el mensaje ya va escrito) · 3) Adjuntá el PDF · 4) Tocá <strong>Ya lo envié</strong> para dejar la constancia.</div>');
+      h.push('<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
+        + '<button type="button" class="btn" onclick="descargarPdfEnvio()">⬇ Descargar PDF</button>'
+        + (tel ? '<button type="button" class="btn" onclick="abrirCanalEnvio(\'wa\')">📲 Abrir WhatsApp</button>' : '')
+        + (mail ? '<button type="button" class="btn" onclick="abrirCanalEnvio(\'mail\')">✉ Abrir mail</button>' : '')
+        + '<button type="button" class="btn btn-ok" onclick="confirmarEnvio()">✓ Ya lo envié</button></div>');
+    }
+    cuerpo.innerHTML = h.join('');
   } catch (e) {
-    if (w) w.close();
-    alert('No se pudo preparar el envío: ' + (e.message || e));
+    cuerpo.innerHTML = '<div class="err-box show">No se pudo preparar el envío: ' + (e.message || e) + '</div>';
   }
 }
+
+async function compartirPdfEnvio() {
+  if (!_envio) return;
+  try {
+    await navigator.share({ files: [_envio.file], text: document.getElementById('env-texto').value, title: _envio.file.name });
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // se canceló el menú de compartir
+    alert('No se pudo compartir: ' + (e.message || e) + '\nProbá con "Descargar PDF".');
+  }
+}
+
+function descargarPdfEnvio() {
+  if (!_envio) return;
+  var u = URL.createObjectURL(_envio.file);
+  var a = document.createElement('a'); a.href = u; a.download = _envio.file.name; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(u); }, 2000);
+}
+
+function abrirCanalEnvio(canal) {
+  if (!_envio) return;
+  var texto = document.getElementById('env-texto').value;
+  if (canal === 'wa') _abrirVentana('https://wa.me/' + _envio.tel + '?text=' + encodeURIComponent(texto), '_blank');
+  else window.location.href = 'mailto:' + _envio.mail + '?subject=' + encodeURIComponent(_envio.file.name.replace(/_/g, ' ').replace('.pdf', '')) + '&body=' + encodeURIComponent(texto);
+}
+
+async function confirmarEnvio() {
+  if (!_envio) return;
+  var wa = document.getElementById('env-wa'), ml = document.getElementById('env-mail');
+  var canales = [];
+  if (wa && wa.checked) canales.push('WhatsApp al ' + _envio.cl.telefono_principal);
+  if (ml && ml.checked) canales.push('mail a ' + _envio.mail);
+  if (!canales.length) { alert('Marcá por dónde lo enviaste (WhatsApp y/o mail).'); return; }
+  var pol = _envio.pol;
+  var ahora = new Date();
+  var fh = ahora.toLocaleDateString('es-AR') + ' ' + ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' hs';
+  var que = (_envio.doc === 'endoso' ? 'Endoso de póliza ' : 'Póliza ') + (pol.ramo || '') + ' N° ' + (pol.numero_poliza || '');
+  var resumen = '📤 ' + que + ' enviada por ' + canales.join(' y por ') + ' (' + fh + ').';
+  var tipo = (wa && wa.checked) ? 'whatsapp' : 'email';
+  var ins = await sb.from('interacciones').insert({
+    productor_id: user.id, cliente_id: pol.cliente_id, categoria: 'envio_poliza', tipo: tipo, resumen: resumen,
+    resultado: 'Enviada', poliza_id: pol.id, poliza_numero: pol.numero_poliza || null, poliza_ramo: pol.ramo || null,
+    adjuntos: [{ nombre: _envio.file.name, url: _envio.doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url }],
+    usuario_nombre: user.email, es_automatico: false
+  });
+  if (ins.error) { alert('No se pudo registrar el envío: ' + ins.error.message); return; }
+  // Cerrar la tarea de envío (la indicada, o cualquier tarea de envío pendiente de esa póliza)
+  var tipoTarea = _envio.doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
+  var q = sb.from('tareas').update({ estado: 'cerrada', resultado: resumen }).eq('productor_id', user.id);
+  q = _envio.tareaId ? q.eq('id', _envio.tareaId) : q.eq('poliza_id', pol.id).eq('tipo', tipoTarea).neq('estado', 'cerrada');
+  await q;
+  cerrarModal('modal-envio');
+  _envio = null;
+  mostrarAlerta('✅ Envío registrado: ' + fh);
+  if (typeof cargarTareas === 'function' && document.getElementById('sec-tareas') && document.getElementById('sec-tareas').classList.contains('active')) cargarTareas();
+}
+
+// Tarea automática de envío (póliza nueva, renovación o endoso)
+async function crearTareaEnvio(polId, clienteId, doc, motivo, ramo) {
+  try {
+    var nombre = '';
+    if (clienteId) {
+      var c = await sb.from('clientes').select('nombre,apellido').eq('id', clienteId).single();
+      if (c.data) nombre = (c.data.apellido || '') + ', ' + (c.data.nombre || '');
+    }
+    var tipo = doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
+    await crearTareaAuto({
+      cliente_id: clienteId, poliza_id: polId, tipo: tipo,
+      tablero: motivo === 'renovacion' ? 'renovaciones' : (motivo === 'nueva' ? 'ventas' : 'general'),
+      titulo: tipo + ' (' + (motivo === 'renovacion' ? 'renovación' : motivo === 'nueva' ? 'póliza nueva' : 'endoso') + ') — ' + nombre + (ramo ? ' (' + ramo + ')' : '')
+    });
+  } catch (e) { console.warn('crearTareaEnvio', e); }
+}
+
+// ---- ENDOSOS (carga simple: detalle + PDF) ----
+function abrirModalEndoso(polId, modo) {
+  var m = _envModal();
+  document.getElementById('env-titulo').textContent = 'Cargar endoso';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<div class="frow"><label>¿Qué se modificó?</label><textarea id="end-detalle" placeholder="Ej: cambio de suma asegurada, cambio de domicilio, alta de accesorio..." style="min-height:70px"></textarea></div>'
+    + '<div class="frow"><label>PDF del endoso</label><input type="file" id="end-pdf" accept="application/pdf"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button>'
+    + '<button type="button" class="btn btn-p" id="end-guardar" onclick="guardarEndoso(\'' + polId + '\')">Guardar endoso</button></div>';
+  m.classList.add('open');
+}
+
+async function guardarEndoso(polId) {
+  var det = document.getElementById('end-detalle').value.trim();
+  var f = document.getElementById('end-pdf').files[0];
+  if (!det) { alert('Escribí qué se modificó.'); return; }
+  if (!f) { alert('Subí el PDF del endoso.'); return; }
+  var btn = document.getElementById('end-guardar'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    var path = 'polizas/' + polId + '/' + Date.now() + '_endoso_' + f.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    var up = await sb.storage.from('archivos').upload(path, f);
+    if (up.error) throw up.error;
+    var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+    var hoy = new Date().toISOString().slice(0, 10);
+    var r = await sb.from('polizas').update({ endoso_pdf_url: url, endoso_fecha: hoy, endoso_detalle: det }).eq('id', polId).select('id,cliente_id,numero_poliza,ramo').single();
+    if (r.error) throw r.error;
+    var p = r.data;
+    await registrarHistorial({ cliente_id: p.cliente_id, categoria: 'endoso', tipo: 'sistema', poliza_id: p.id, poliza_numero: p.numero_poliza, poliza_ramo: p.ramo, resumen: 'Endoso cargado en póliza N° ' + (p.numero_poliza || '') + ': ' + det });
+    await crearTareaEnvio(p.id, p.cliente_id, 'endoso', 'endoso', p.ramo);
+    cerrarModal('modal-envio');
+    mostrarAlerta('✅ Endoso guardado. Se creó la tarea "Enviar endoso".');
+  } catch (e) {
+    alert('No se pudo guardar el endoso: ' + (e.message || e));
+    btn.disabled = false; btn.textContent = 'Guardar endoso';
+  }
+}
+
 function btnLinkArchivo(url) {
   return '<button type="button" class="btn btn-sm" data-fileurl="' + url + '" onclick="event.stopPropagation();copiarLinkArchivo(this.dataset.fileurl)" title="Copiar un link que vale 7 días, para mandar a la compañía" style="font-size:11px;padding:3px 8px">🔗 Link 7 días</button>';
 }
@@ -4857,8 +5012,10 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     poliza.patente = datosRamo.patente;
   }
 
-  const { error } = await sb.from('polizas').insert(poliza);
+  const { data: polNueva, error } = await sb.from('polizas').insert(poliza).select('id').single();
   if (error) { alert('Error guardando póliza: ' + error.message); return; }
+  // Tarea automática para enviarle la póliza al cliente (nueva o renovación)
+  if (polNueva && polNueva.id) await crearTareaEnvio(polNueva.id, cid, 'poliza', window._renovandoDe ? 'renovacion' : 'nueva', ramo);
 
   // Si es una RENOVACIÓN: marcar póliza anterior como renovada y registrar historial
   if (window._renovandoDe) {
@@ -7352,6 +7509,7 @@ async function cargarTareas() {
       parts.push('<div class="task-actions-row">');
       parts.push('<button type="button" class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
       if (t.cliente_id) { parts.push('<button type="button" class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
+      if ((t.tipo === 'Enviar póliza' || t.tipo === 'Enviar endoso') && t.poliza_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="enviar" data-pol="' + t.poliza_id + '" data-doc="' + (t.tipo === 'Enviar endoso' ? 'endoso' : 'poliza') + '" title="Enviar al cliente">&#128228;</button>'); }
       if (sig[t.estado]) { parts.push('<button type="button" class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
       parts.push('</div>');
       if (fechaStr) {
@@ -7394,6 +7552,7 @@ document.addEventListener('click', function(e) {
   if (act === 'ver') { verDetalleTarea(id); }
   else if (act === 'cliente') { const clid = btn.getAttribute('data-clid'); if (clid) irACliente(clid); }
   else if (act === 'sig') { const sig = btn.getAttribute('data-sig'); if (sig) moverTarea(id, sig); }
+  else if (act === 'enviar') { abrirEnviarPoliza(btn.getAttribute('data-pol'), btn.getAttribute('data-doc'), id); }
 });
 
 
@@ -9373,9 +9532,6 @@ function abrirPlanPagos(polId) {
   mostrarAlerta('Plan de pagos próximamente');
 }
 
-function abrirModalEndoso(polId, modo) {
-  mostrarAlerta('Módulo de endosos próximamente');
-}
 
 function eliminarPoliza(polId) {
   eliminarPolizaFicha(polId);
@@ -9569,8 +9725,9 @@ function renderDetallePol() {
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirRenovarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
-        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+btnLinkArchivo(p.pdf_url)+btnsEnviarPoliza(p, cl):'')+
-        (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>':'')+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirModalEndoso(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">✍ Endoso</button>'+
+        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar póliza</button>':'')+
+        (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\',\'endoso\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar endoso</button>':'')+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
         '<button type="button" onclick="eliminarPolizaFicha(\''+p.id+'\')" title="Eliminar del sistema sin dejar registro" style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:12px;cursor:pointer">🗑</button>'+
       '</div>'+
@@ -9642,6 +9799,7 @@ async function mpdSetTab(tab) {
     cont.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Cargando...</div>';
     var res = await sb.from('interacciones').select('*').eq('cliente_id',p.cliente_id).order('created_at',{ascending:false}).limit(60);
     var hist = (res.data||[]).filter(function(h){ return h.poliza_id===p.id || h.poliza_numero===p.numero_poliza; });
+    _mpdHistFiltro = 'todo';
     cont.innerHTML = renderMpdHistorial(hist);
   } else {
     cont.innerHTML = renderMpdTabContent(p,tab);
@@ -9939,7 +10097,7 @@ async function renderMpdPagosAsync(p) {
 function renderMpdDocumentos(p) {
   var docs = [];
   if (p.pdf_url) docs.push({label:'Póliza PDF',url:p.pdf_url,icon:'📄',sub:'Documento de emisión'});
-  if (p.endoso_pdf_url) docs.push({label:'Endoso PDF',url:p.endoso_pdf_url,icon:'📎',sub:'Último endoso'});
+  if (p.endoso_pdf_url) docs.push({label:'Último endoso'+(p.endoso_fecha?' — '+fmtDate(p.endoso_fecha):''),url:p.endoso_pdf_url,icon:'📎',sub:(p.endoso_detalle||'Endoso')});
   if (p.cedula_verde_frente_url) docs.push({label:'Cédula verde — frente',url:p.cedula_verde_frente_url,icon:'🪪',sub:'Imagen / PDF'});
   if (p.cedula_verde_dorso_url) docs.push({label:'Cédula verde — dorso',url:p.cedula_verde_dorso_url,icon:'🪪',sub:'Imagen / PDF'});
   if (!docs.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin documentos adjuntos a esta póliza.</div>';
@@ -9954,16 +10112,38 @@ function renderMpdDocumentos(p) {
   }).join('');
 }
 
+var _mpdHistData = [];
+var _mpdHistFiltro = 'todo';
+function filtrarMpdHistorial(f) {
+  _mpdHistFiltro = f;
+  var cont = document.getElementById('mpd-tab-cont');
+  if (cont) cont.innerHTML = renderMpdHistorial(_mpdHistData);
+}
 function renderMpdHistorial(hist) {
-  if (!hist||!hist.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin historial registrado para esta póliza.</div>';
-  var catIcon = {baja_cancelacion:'🚫',renovacion:'🔄',poliza:'📄',interaccion:'💬',sistema:'🤖'};
-  return hist.map(function(h){
+  _mpdHistData = hist || [];
+  var cant = {
+    todo: _mpdHistData.length,
+    endoso: _mpdHistData.filter(function(h){ return h.categoria === 'endoso'; }).length,
+    envio_poliza: _mpdHistData.filter(function(h){ return h.categoria === 'envio_poliza'; }).length
+  };
+  var chip = function(k, lbl) {
+    var act = _mpdHistFiltro === k;
+    return '<button type="button" onclick="filtrarMpdHistorial(\'' + k + '\')" style="padding:4px 10px;border-radius:12px;font-size:11px;cursor:pointer;border:0.5px solid ' + (act ? '#1E40AF;background:#EFF6FF;color:#1E40AF;font-weight:600' : '#E5E7EB;background:#fff;color:#374151') + '">' + lbl + ' (' + cant[k] + ')</button>';
+  };
+  var filtros = '<div style="display:flex;gap:6px;margin-bottom:8px">' + chip('todo','Todo') + chip('endoso','✍ Endosos') + chip('envio_poliza','📤 Envíos') + '</div>';
+  var lista = _mpdHistFiltro === 'todo' ? _mpdHistData : _mpdHistData.filter(function(h){ return h.categoria === _mpdHistFiltro; });
+  if (!lista.length) return filtros + '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">' + (_mpdHistFiltro === 'endoso' ? 'Esta póliza no tiene endosos registrados.' : _mpdHistFiltro === 'envio_poliza' ? 'Todavía no se registraron envíos de esta póliza.' : 'Sin historial registrado para esta póliza.') + '</div>';
+  var catIcon = {baja_cancelacion:'🚫',renovacion:'🔄',poliza:'📄',interaccion:'💬',sistema:'🤖',endoso:'✍',envio_poliza:'📤'};
+  return filtros + lista.map(function(h){
     var icon = h.es_automatico?'🤖':(catIcon[h.categoria]||'💬');
+    var d = new Date(h.created_at);
+    var fecha = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}) + ' hs';
+    var adj = (h.adjuntos && h.adjuntos.length) ? h.adjuntos.map(function(a){ return a && a.url ? ' <button type="button" onclick="window.open(\'' + a.url + '\',\'_blank\')" style="font-size:11px;padding:1px 6px;border-radius:4px;border:0.5px solid #E5E7EB;background:#fff;cursor:pointer">📎 ' + (a.nombre || 'PDF') + '</button>' : ''; }).join('') : '';
     return '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:0.5px solid #F3F4F6">'+
       '<div style="width:28px;height:28px;border-radius:50%;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">'+icon+'</div>'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:13px;color:#111827">'+(h.resumen||'—')+'</div>'+
-        '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+new Date(h.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+(h.usuario_nombre?' · '+h.usuario_nombre:'')+'</div>'+
+        '<div style="font-size:13px;color:#111827">'+(h.resumen||'—')+adj+'</div>'+
+        '<div style="font-size:11px;color:#9CA3AF;margin-top:2px">'+fecha+(h.usuario_nombre?' · '+h.usuario_nombre:'')+'</div>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -10955,7 +11135,7 @@ async function normalizarYSincronizar(parsed, filename) {
             }
             // Cerrar tarea de renovación pendiente para esta póliza
             try {
-              await sb.from('tareas').update({ estado: 'completada' })
+              await sb.from('tareas').update({ estado: 'cerrada' })
                 .eq('productor_id', uid)
                 .eq('poliza_id', pAnt.id)
                 .eq('tablero', 'renovaciones')
