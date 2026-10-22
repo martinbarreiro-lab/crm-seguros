@@ -578,3 +578,9 @@ tr:hover td{background:var(--bg)}
 .dz-dow{text-align:center;font-size:10px;color:var(--muted);padding:3px}
 .dz-bar{height:8px;background:#F1F5F9;border-radius:99px;margin-top:6px;overflow:hidden}
 .dz-bar>div{height:8px;border-radius:99px}
+
+/* ── Paquetes de pólizas ── */
+.pq-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#EDE9FE;color:#5B21B6;margin-top:4px;white-space:nowrap}
+.pq-line{font-size:11.5px;color:#5B21B6;background:#F5F3FF;border-radius:6px;padding:5px 9px;margin:6px 0 8px;line-height:1.5}
+.pq-line a{color:#5B21B6;font-weight:600}
+.pq-hijo{margin-left:22px!important;border-left:3px solid #DDD6FE!important;padding-left:10px!important}

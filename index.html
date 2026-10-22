@@ -2443,7 +2443,7 @@ async function cargarDashboard() {
 
   // ── Datos base, en paralelo ──
   var R = await Promise.all([
-    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,prima_anual,valor_cuota,forma_pago,periodo_meses,cantidad_cuotas,fecha_vencimiento,pdf_url,datos_ramo,estado').eq('productor_id',uid).eq('estado','activa'),
+    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,prima_anual,valor_cuota,forma_pago,periodo_meses,cantidad_cuotas,fecha_vencimiento,pdf_url,datos_ramo,estado,paquete_de').eq('productor_id',uid).eq('estado','activa'),
     sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
@@ -2473,11 +2473,11 @@ async function cargarDashboard() {
   if (el('dz-chips')) el('dz-chips').innerHTML = chips.length ? chips.join('') : '<span class="dz-chip ok"><i></i>Todo al día</span>';
 
   // ── Cartera vigente ──
-  var porCia = {}, porRamo = {}, ingreso = 0, comision = 0, hayCom = false;
+  var porCia = {}, porRamo = {}, porRamoPq = {}, ingreso = 0, comision = 0, hayCom = false;
   pols.forEach(function(p){
     var m = getMensualNum(p); ingreso += m;
     var c = p.aseguradora || 'Sin compañía'; porCia[c] = porCia[c] || { n:0, m:0 }; porCia[c].n++; porCia[c].m += m;
-    var r = p.ramo || 'Sin ramo'; porRamo[r] = (porRamo[r]||0) + 1;
+    var r = p.ramo || 'Sin ramo'; porRamo[r] = (porRamo[r]||0) + 1; if (p.paquete_de) porRamoPq[r] = (porRamoPq[r]||0) + 1;
     var cm = calcComisionMensual(p.prima_anual || m*12, p.aseguradora, p.ramo); if (cm) { comision += cm.monto; hayCom = true; }
   });
   if (el('dz-ingreso')) el('dz-ingreso').textContent = $(ingreso);
@@ -2549,13 +2549,13 @@ async function cargarDashboard() {
   var segC = cias.slice(0, 6).map(function(c, i){ return { k:c.k, n:c.n, m:c.m, c:COL[i] }; });
   if (cias.length > 6) segC.push({ k:'Otras', n:cias.slice(6).reduce(function(a,c){ return a+c.n; },0), m:cias.slice(6).reduce(function(a,c){ return a+c.m; },0), c:COL[7] });
   var ramos = Object.keys(porRamo).map(function(k){ return { k:k, n:porRamo[k] }; }).sort(function(a,b){ return b.n - a.n; });
-  var segR = ramos.slice(0, 5).map(function(r, i){ return { k:r.k, n:r.n, c:['#2E6DA4','#7FB3E8','#27AE60','#F39C12','#8E44AD'][i] }; });
+  var segR = ramos.slice(0, 5).map(function(r, i){ return { k:r.k, n:r.n, pq:porRamoPq[r.k]||0, c:['#2E6DA4','#7FB3E8','#27AE60','#F39C12','#8E44AD'][i] }; });
   if (ramos.length > 5) segR.push({ k:'Otros ('+(ramos.length-5)+' ramos)', n:ramos.slice(5).reduce(function(a,r){ return a+r.n; },0), c:'#CBD5E1' });
   if (el('dz-dist-total')) el('dz-dist-total').textContent = pols.length + ' pólizas vigentes';
   if (el('dz-donut-cia')) el('dz-donut-cia').innerHTML = donut(segC, pols.length, 'pólizas', 'Pólizas por compañía');
   if (el('dz-leg-cia')) el('dz-leg-cia').innerHTML = '<div class="h">POR COMPAÑÍA</div>' + segC.map(function(s){ return '<div class="it"><span class="sw" style="background:'+s.c+'"></span><span class="nm">'+esc_(s.k)+'</span><b>'+s.n+'</b><span class="mm">'+$M(s.m)+'/mes</span></div>'; }).join('');
   if (el('dz-donut-ramo')) el('dz-donut-ramo').innerHTML = donut(segR, pols.length, ramos.length === 1 ? 'ramo' : ramos.length+' ramos', 'Pólizas por ramo');
-  if (el('dz-leg-ramo')) el('dz-leg-ramo').innerHTML = '<div class="h">POR RAMO</div>' + segR.map(function(s){ return '<div class="it"><span class="sw" style="background:'+s.c+'"></span><span class="nm">'+esc_(s.k)+'</span><b>'+s.n+'</b></div>'; }).join('');
+  if (el('dz-leg-ramo')) el('dz-leg-ramo').innerHTML = '<div class="h">POR RAMO</div>' + segR.map(function(s){ return '<div class="it"><span class="sw" style="background:'+s.c+'"></span><span class="nm">'+esc_(s.k)+(s.pq ? ' <span class="pq-chip" title="De estas, '+s.pq+' van en paquete con un auto, hogar o integral">📦 '+s.pq+'</span>' : '')+'</span><b>'+s.n+'</b></div>'; }).join('');
 
   // ── Movimiento del período ──
   var M = await Promise.all([
@@ -3140,6 +3140,61 @@ async function renderFichaTab(c) {
   else if (fichaTab === 'historial') { cont.className = ''; cont.innerHTML = await fichaHistorial(c); }
 }
 
+// ── Paquetes: auto/hogar/integral + vida/AP/salud del mismo cliente y misma vigencia ──
+function nombreCortoRamo(r) { r = r || ''; return /vida/i.test(r) ? 'Vida' : /accid/i.test(r) ? 'AP' : /salud/i.test(r) ? 'Salud' : r; }
+function nombrePrincipal(r) { r = r || ''; return /auto|moto/i.test(r) ? 'auto' : /combinado|hogar/i.test(r) ? 'hogar' : /comercio/i.test(r) ? 'integral' : esc(r.toLowerCase()); }
+function ordenarPorPaquete(lista) {
+  var ids = {}; lista.forEach(function (p) { ids[p.id] = 1; });
+  var hijos = {}; lista.forEach(function (p) { if (p.paquete_de && ids[p.paquete_de]) (hijos[p.paquete_de] = hijos[p.paquete_de] || []).push(p); });
+  var out = [];
+  lista.forEach(function (p) { if (p.paquete_de && ids[p.paquete_de]) return; out.push(p); (hijos[p.id] || []).forEach(function (h) { out.push(h); }); });
+  return out;
+}
+function lineaPaquete(p, lista) {
+  lista = lista || [];
+  if (p.paquete_de) {
+    var pr = lista.find(function (x) { return x.id === p.paquete_de; });
+    return '<span class="pq-chip" title="Póliza que acompaña a la principal (va en paquete)">📦 Paquete' + (pr ? ' de ' + nombrePrincipal(pr.ramo) + ' N° ' + esc(pr.numero_poliza) : '') + '</span>';
+  }
+  var hs = lista.filter(function (x) { return x.paquete_de === p.id; });
+  if (!hs.length) return '';
+  var tot = getMensualNum(p) + hs.reduce(function (a, h) { return a + getMensualNum(h); }, 0);
+  return '<div class="pq-line">📦 Paquete · incluye ' + hs.map(function (h) { return esc(nombreCortoRamo(h.ramo)) + ' ' + esc(h.numero_poliza); }).join(' + ') + (tot ? ' · <b>Total $' + Math.round(tot).toLocaleString('es-AR') + '/mes</b>' : '') + '</div>';
+}
+async function separarDePaquete(polId) {
+  if (!confirm('¿Separar esta póliza del paquete? Va a quedar como póliza suelta y no se vuelve a agrupar sola.')) return;
+  var r = await sb.from('polizas').update({ paquete_de: null, paquete_manual: true }).eq('id', polId);
+  if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  if (typeof abrirDetallePol === 'function') abrirDetallePol(polId);
+  if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
+}
+async function unirAPaquete(polId) {
+  var nro = prompt('Número de la póliza principal (auto, hogar o integral) a la que pertenece:');
+  if (!nro) return;
+  var { data: pr } = await sb.from('polizas').select('id,numero_poliza').eq('numero_poliza', nro.trim()).limit(1);
+  if (!pr || !pr.length) { alert('No encontré una póliza con ese número.'); return; }
+  var r = await sb.from('polizas').update({ paquete_de: pr[0].id, paquete_manual: true }).eq('id', polId);
+  if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  abrirDetallePol(polId);
+}
+async function cargarPaqueteDetalle(p) {
+  var box = document.getElementById('mpd-paquete'); if (!box) return;
+  var h = '';
+  if (p.paquete_de) {
+    var { data: pr } = await sb.from('polizas').select('id,numero_poliza,ramo').eq('id', p.paquete_de).single();
+    h = '<div class="pq-line" style="display:flex;justify-content:space-between;align-items:center;gap:8px">📦 Va en paquete con ' + (pr ? esc(pr.ramo) + ' N° <a href="#" onclick="event.preventDefault();abrirDetallePol(\'' + pr.id + '\')">' + esc(pr.numero_poliza) + '</a>' : 'otra póliza') + '<button type="button" class="btn btn-sm" onclick="separarDePaquete(\'' + p.id + '\')">Separar del paquete</button></div>';
+  } else {
+    var { data: hs } = await sb.from('polizas').select('id,numero_poliza,ramo,valor_cuota,prima_anual,forma_pago').eq('paquete_de', p.id);
+    if (hs && hs.length) {
+      var tot = getMensualNum(p) + hs.reduce(function (a, x) { return a + getMensualNum(x); }, 0);
+      h = '<div class="pq-line">📦 Paquete · incluye ' + hs.map(function (x) { return esc(nombreCortoRamo(x.ramo)) + ' N° <a href="#" onclick="event.preventDefault();abrirDetallePol(\'' + x.id + '\')">' + esc(x.numero_poliza) + '</a>'; }).join(' + ') + ' · <b>Total $' + Math.round(tot).toLocaleString('es-AR') + '/mes</b></div>';
+    } else if (/vida|accid|salud/i.test(p.ramo || '')) {
+      h = '<div style="text-align:right;margin-bottom:8px"><button type="button" class="btn btn-sm" onclick="unirAPaquete(\'' + p.id + '\')">📦 Unir a un paquete</button></div>';
+    }
+  }
+  box.innerHTML = h;
+}
+
 // ── Indicador de PDF de póliza (ficha del cliente) ──
 function chipPdf(p) {
   if (p.pdf_url) return '<span onclick="event.stopPropagation();window.open(\'' + p.pdf_url + '\',\'_blank\')" title="Ver el PDF de la póliza" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#DCFCE7;color:#166534;cursor:pointer">📄 PDF cargado</span>';
@@ -3210,11 +3265,11 @@ async function fichaResumen(c) {
   html.push('<div class="ficha-card">');
   html.push('<div class="ficha-card-title" style="display:flex;align-items:center;gap:6px">Pólizas vigentes <span style="background:#EAF3DE;color:#27500A;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsActivas.length+'</span></div>');
   if (polsActivas.length) {
-    polsActivas.forEach(function(p){
+    ordenarPorPaquete(polsActivas).forEach(function(p){
       var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
       var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
-      html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
-      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>'+chipPdf(p));
+      html.push('<div class="'+(p.paquete_de?'pq-hijo':'')+'" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
+      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>'+chipPdf(p)+lineaPaquete(p, polsActivas));
       html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
@@ -3773,7 +3828,7 @@ async function fichaPolizas(c) {
   if (polActivas.length > 0) {
     html.push('<div class="card-resumen">'
          +  '<div class="card-resumen-titulo">Pólizas vigentes</div>');
-    polActivas.forEach(function(p, idx) {
+    ordenarPorPaquete(polActivas).forEach(function(p, idx) {
       const esUltimo = idx === polActivas.length - 1;
       const info = dataVehiculoOrInfo(p);
       // Cobertura por ramo
@@ -3863,11 +3918,11 @@ async function fichaPolizas(c) {
       }
       const cobTexto = cobPartes.join(' · ');
 
-      html.push('<div class="poliza-row" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
+      html.push('<div class="poliza-row' + (p.paquete_de ? ' pq-hijo' : '') + '" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
-           +      chipPdf(p)
+           +      chipPdf(p) + lineaPaquete(p, polActivas)
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
            +      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Detalle de cobertura</div>'
@@ -6197,6 +6252,7 @@ function filtrarPolizasPanel() {
 
   // Sort by vencimiento
   filtered.sort(function(a,b){ return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1; });
+  filtered = ordenarPorPaquete(filtered);
 
   var cont = document.getElementById('pol-panel-list');
   if (!cont) return;
@@ -6222,7 +6278,7 @@ function filtrarPolizasPanel() {
     var estadoLabel = p.estado ? p.estado.charAt(0).toUpperCase()+p.estado.slice(1) : 'Activa';
     var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
     return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
-      +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+'</div></div>'
+      +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 paquete</span>':(filtered.some(function(x){return x.paquete_de===p.id;})?' <span class="pq-chip">📦 +'+filtered.filter(function(x){return x.paquete_de===p.id;}).length+'</span>':''))+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
       +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
@@ -6822,6 +6878,7 @@ async function generarTareasAutoVencimiento() {
     var cands = {};
     (_allPolizas || []).forEach(function (p) {
       if (p.estado !== 'activa' || !p.fecha_vencimiento) return;
+      if (p.paquete_de) return; // va en paquete: la tarea es de la póliza principal
       if (/ART/i.test(p.ramo || '') || /ART$/i.test(p.aseguradora || '')) return; // las ART renuevan solas
       var e = calcEstadoVto(p.fecha_vencimiento);
       if (e.key !== 'urgente' && e.key !== 'vencida') return;
@@ -6844,7 +6901,7 @@ async function generarTareasAutoVencimiento() {
       var dias = e.dias;
       return {
         productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id,
-        titulo: (e.key === 'vencida' ? 'Renovar (vencida) — ' : 'Renovar — ') + nom,
+        titulo: (e.key === 'vencida' ? 'Renovar (vencida) — ' : 'Renovar — ') + nom + ((_allPolizas || []).some(function (x) { return x.paquete_de === p.id; }) ? ' (paquete)' : ''),
         descripcion: textoPolizaTarea(p) + ' · Vence ' + fmtDate(p.fecha_vencimiento) + (dias !== null && dias !== undefined ? (dias < 0 ? ' (hace ' + Math.abs(dias) + ' días)' : ' (en ' + dias + ' días)') : ''),
         tipo: 'Cotizar renovación', tablero: 'renovaciones', categoria: 'renovacion',
         prioridad: e.key === 'vencida' ? 'urgente' : 'alta',
@@ -10038,6 +10095,7 @@ async function abrirDetallePol(polId) {
 
 function renderDetallePol() {
   var p = _mpdPolData;
+  setTimeout(function(){ if (_mpdPolData) cargarPaqueteDetalle(_mpdPolData); }, 0);
   var cl = _mpdClData || {};
   var box = document.getElementById('mpd-box');
   if (!box || !p) return;
@@ -10085,6 +10143,7 @@ function renderDetallePol() {
         '</div>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){verFicha(\''+p.cliente_id+'\')},100)" style="padding:5px 12px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;font-size:12px;cursor:pointer;color:#374151">Ver ficha →</button>'+
       '</div>'+
+      '<div id="mpd-paquete"></div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
         mpdMetric('Cuota vigente',fmtCuota(p),getPeriodoLabel(p),'#166534')+
         mpdMetric(cuotaMetricLabel,cuotaVal,p.medio_pago||'—','#111827')+
@@ -11697,6 +11756,7 @@ async function normalizarYSincronizar(parsed, filename) {
 // ── Análisis post-importación ──────────────────────────────
 async function analizarPostImportacion(uid) {
   compLog('info', 'Analizando cartera...');
+  try { var rp = await sb.rpc('armar_paquetes'); if (!rp.error && rp.data) compLog('ok', rp.data + ' pólizas agrupadas en paquetes (auto/hogar/integral + vida/AP)'); } catch (e) {}
   var hoy = new Date();
   var diasRenov = parseInt(_cfg.dias_renov) || 30;
   var diasCobr  = parseInt(_cfg.dias_cobr)  || 5;
@@ -11714,7 +11774,7 @@ async function analizarPostImportacion(uid) {
     { data: tareasExist }
   ] = await Promise.all([
     // Pólizas por vencer
-    sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,fecha_vencimiento,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)')
+    sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,fecha_vencimiento,cliente_id,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente)')
       .eq('productor_id', uid).eq('estado','activa')
       .lte('fecha_vencimiento', limiteRenov).gte('fecha_vencimiento', hoySt),
     // Cuotas vencidas
@@ -11757,7 +11817,7 @@ async function analizarPostImportacion(uid) {
 
   // Filtrar pólizas por vencer sin tarea ya existente
   var polRenov = (polVencer||[]).filter(function(p){
-    return !tareasIdx[p.id+'_renovaciones'] && !/ART/i.test(p.ramo||'');
+    return !tareasIdx[p.id+'_renovaciones'] && !/ART/i.test(p.ramo||'') && !p.paquete_de;
   });
 
   // Filtrar cobranzas con tarea ya existente
