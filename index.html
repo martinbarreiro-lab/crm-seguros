@@ -348,7 +348,7 @@
       <div id="sec-polizas" class="sec">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <div style="font-size:15px;font-weight:600;color:var(--text)">Pólizas</div>
-          <button type="button" class="btn btn-sm btn-p" id="btn-npol">+ Nueva póliza</button>
+          <div style="display:flex;gap:8px"><button type="button" class="btn btn-sm" onclick="abrirCargaPdfs()">📥 Subir PDFs</button><button type="button" class="btn btn-sm btn-p" id="btn-npol">+ Nueva póliza</button></div>
         </div>
         <div class="g4">
           <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Total pólizas</div><div class="val" id="pol-total" style="color:var(--green)">—</div><div class="sub">Pólizas en cartera</div></div></div>
@@ -1812,6 +1812,111 @@ async function copiarLinkArchivo(url) {
 }
 // ---- ENVÍO DE PÓLIZAS Y ENDOSOS AL CLIENTE ----
 // Se manda el PDF (como archivo) por WhatsApp y/o mail y queda constancia con fecha y hora en el historial.
+// ── Carga masiva de PDFs de pólizas: se enganchan solos por número de póliza ──
+var _cpdf = { items: [], pols: null };
+function _cargarJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise(function (ok, mal) {
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    sc.onload = function () { ok(window.JSZip); }; sc.onerror = function () { mal(new Error('No se pudo cargar el lector de ZIP')); };
+    document.head.appendChild(sc);
+  });
+}
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function _numSinCeros(n) { return String(n || '').replace(/\D/g, '').replace(/^0+/, ''); }
+function _buscarPolizaPorArchivo(nombre) {
+  var runs = (nombre.replace(/\.pdf$/i, '').match(/\d{5,}/g) || []).map(_numSinCeros);
+  for (var i = 0; i < runs.length; i++) { var p = _cpdf.pols[runs[i]]; if (p) return p; }
+  return null;
+}
+function abrirCargaPdfs() {
+  var m = _envModal();
+  document.getElementById('env-titulo').textContent = 'Subir PDFs de pólizas';
+  _cpdf.items = [];
+  document.getElementById('env-cuerpo').innerHTML =
+    '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>.</p>'
+    + '<label id="cpdf-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📂 Elegir archivos o soltarlos acá<input type="file" id="cpdf-in" multiple accept="application/pdf,.pdf,.zip,application/zip" style="display:none"></label>'
+    + '<label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:10px 0"><input type="checkbox" id="cpdf-reemp"> Reemplazar el PDF si la póliza ya tiene uno</label>'
+    + '<div id="cpdf-lista" style="max-height:300px;overflow:auto;font-size:12px"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cerrar</button><button type="button" class="btn btn-p" id="cpdf-ok" disabled onclick="subirPdfsMasivo()">Subir</button></div>';
+  var inp = document.getElementById('cpdf-in'), dz = document.getElementById('cpdf-drop');
+  inp.onchange = function () { var fs = Array.prototype.slice.call(inp.files); inp.value = ''; _agregarArchivosPdf(fs); };
+  dz.ondragover = function (e) { e.preventDefault(); dz.style.background = '#F1F5F9'; };
+  dz.ondragleave = function () { dz.style.background = ''; };
+  dz.ondrop = function (e) { e.preventDefault(); dz.style.background = ''; _agregarArchivosPdf(Array.prototype.slice.call(e.dataTransfer.files)); };
+  document.getElementById('cpdf-reemp').onchange = _renderCargaPdfs;
+  m.classList.add('open');
+}
+async function _agregarArchivosPdf(files) {
+  var lista = document.getElementById('cpdf-lista');
+  lista.innerHTML = '<div style="color:var(--text2)">Leyendo archivos…</div>';
+  try {
+    if (!_cpdf.pols) {
+      var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,clientes(nombre,apellido,razon_social,tipo_cliente)');
+      if (r.error) throw r.error;
+      _cpdf.pols = {};
+      (r.data || []).forEach(function (p) { var k = _numSinCeros(p.numero_poliza); if (k && !_cpdf.pols[k]) _cpdf.pols[k] = p; });
+    }
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (/\.zip$/i.test(f.name)) {
+        var JSZip = await _cargarJSZip(); var z = await JSZip.loadAsync(f);
+        var ents = Object.values(z.files).filter(function (e) { return !e.dir && /\.pdf$/i.test(e.name); });
+        for (var j = 0; j < ents.length; j++) {
+          var nom = ents[j].name.split('/').pop();
+          var b = await ents[j].async('blob');
+          _cpdf.items.push({ file: new File([b], nom, { type: 'application/pdf' }) });
+        }
+      } else if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+        _cpdf.items.push({ file: f });
+      }
+    }
+    _cpdf.items.forEach(function (it) { if (it.pol === undefined) it.pol = _buscarPolizaPorArchivo(it.file.name); });
+  } catch (e) { alert('Error leyendo los archivos: ' + (e.message || e)); }
+  _renderCargaPdfs();
+}
+function _estadoItemPdf(it, reemp) {
+  if (it.hecho) return ['✓ Subido', '#166534'];
+  if (it.error) return ['Error: ' + it.error, '#B91C1C'];
+  if (!it.pol) return ['Sin póliza con ese número', '#B45309'];
+  if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF (no se toca)', '#64748B'];
+  return ['Listo para subir', '#1D4ED8'];
+}
+function _renderCargaPdfs() {
+  var reemp = (document.getElementById('cpdf-reemp') || {}).checked;
+  var n = 0;
+  var filas = _cpdf.items.map(function (it) {
+    var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir') n++;
+    var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : '—';
+    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
+  }).join('');
+  var lista = document.getElementById('cpdf-lista'); if (!lista) return;
+  lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
+  var btn = document.getElementById('cpdf-ok'); if (btn) { btn.disabled = !n; btn.textContent = n ? 'Subir ' + n + ' PDF' + (n > 1 ? 's' : '') : 'Subir'; }
+}
+async function subirPdfsMasivo() {
+  var reemp = document.getElementById('cpdf-reemp').checked;
+  var btn = document.getElementById('cpdf-ok'); btn.disabled = true;
+  var cola = _cpdf.items.filter(function (it) { return _estadoItemPdf(it, reemp)[0] === 'Listo para subir'; });
+  for (var i = 0; i < cola.length; i++) {
+    var it = cola[i]; btn.textContent = 'Subiendo ' + (i + 1) + ' de ' + cola.length + '…';
+    try {
+      var path = 'polizas/' + it.pol.id + '/' + Date.now() + '_poliza_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' });
+      if (up.error) throw up.error;
+      var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+      var r = await sb.from('polizas').update({ pdf_url: url }).eq('id', it.pol.id);
+      if (r.error) throw r.error;
+      it.pol.pdf_url = url; it.hecho = true;
+    } catch (e) { it.error = e.message || String(e); }
+    _renderCargaPdfs();
+  }
+  var ok = cola.filter(function (it) { return it.hecho; }).length;
+  btn.textContent = ok + ' subido' + (ok === 1 ? '' : 's');
+  if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
+}
+
 var _envio = null; // { pol, cl, doc, tareaId, file, texto }
 const CUENTA_GMAIL = 'martinbarreiro@mbseguros.com.ar'; // cuenta de Gmail con la que se redactan los mails
 
