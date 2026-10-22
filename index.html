@@ -1846,7 +1846,7 @@ function _buscarPolizaPorArchivo(nombre) {
 function abrirCargaPdfs() {
   var m = _envModal();
   document.getElementById('env-titulo').textContent = 'Subir PDFs de pólizas';
-  _cpdf.items = [];
+  _cpdf.items = []; _cpdf.pols = null; // siempre trae las pólizas actualizadas
   document.getElementById('env-cuerpo').innerHTML =
     '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>.</p>'
     + '<label id="cpdf-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📂 Elegir archivos o soltarlos acá<input type="file" id="cpdf-in" multiple accept="application/pdf,.pdf,.zip,application/zip" style="display:none"></label>'
