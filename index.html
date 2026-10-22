@@ -284,6 +284,7 @@
               <option value="renovacion">En renovación</option>
               <option value="siniestrado">Siniestrados</option>
               <option value="inactivo">Inactivos</option>
+              <option value="sin_poliza">Sin póliza vigente (para ofrecer)</option>
             </select>
           </div>
           <div class="cl-filter-wrap">
@@ -2358,7 +2359,7 @@ async function cargarDashboard() {
       var tc = t.fecha_limite===hoy ? '#791F1F' : '#791F1F';
       var sc = t.fecha_limite===hoy ? '#854F0B' : '#A32D2D';
       var sub = t.fecha_limite===hoy ? 'Hoy' : 'Venció hace '+dias+'d';
-      var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
+      var nombre = t.clientes ? ' — '+nombreClienteLista(t.clientes) : '';
       return '<div style="padding:7px 9px;background:'+bg+';border-radius:var(--rsm);margin-bottom:5px"><div style="font-size:12px;color:'+tc+';font-weight:500">'+t.titulo+'</div><div style="font-size:11px;color:'+sc+';margin-top:1px">'+sub+' · '+t.tablero+'</div></div>';
     }).join('');
   }
@@ -2375,7 +2376,7 @@ async function cargarDashboard() {
       var tc = dias<0?'#791F1F':dias<=15?'#633806':'#27500A';
       var sc = dias<0?'#A32D2D':dias<=15?'#854F0B':'#3B6D11';
       var sub = dias<0?'Vencida':dias===0?'Vence hoy':'Vence en '+dias+'d';
-      var nombre = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '—';
+      var nombre = p.clientes ? nombreClienteLista(p.clientes) : '—';
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:'+bg+';border-radius:var(--rsm);margin-bottom:5px">'
         +'<div><div style="font-size:12px;color:'+tc+';font-weight:500">'+nombre+' — '+(p.ramo||'')+'</div><div style="font-size:11px;color:'+sc+';margin-top:1px">'+sub+'</div></div>'
         +'<button type="button" class="btn btn-sm" onclick="irAFichaCliente(\''+p.cliente_id+'\')" style="font-size:11px;padding:3px 8px">Ver →</button>'
@@ -2392,7 +2393,7 @@ async function cargarDashboard() {
   if (cpEl) {
     if (!cotProc||!cotProc.length) { cpEl.innerHTML='<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin cotizaciones en proceso</div>'; }
     else cpEl.innerHTML = cotProc.map(function(c){
-      var nombre = c.clientes ? c.clientes.apellido+', '+c.clientes.nombre : '—';
+      var nombre = c.clientes ? nombreClienteLista(c.clientes) : '—';
       var ramo = {auto:'Automotor',hogar:'Hogar',comercio:'Comercio',art:'ART',ap:'AP',rc:'RC',vida:'Vida',otros:'Otros'}[c.ramo]||c.ramo||'—';
       var dias = Math.round((new Date()-new Date(c.created_at))/864e5);
       var bg = ESTADO_COT_BG[c.estado]||'#F3F4F6';
@@ -2432,7 +2433,7 @@ async function dashCargarCalendario() {
   (polVenc.data||[]).forEach(function(p){
     var k = p.fecha_vencimiento;
     if (!_dashCalEventos[k]) _dashCalEventos[k] = [];
-    _dashCalEventos[k].push({tipo:'poliza', texto:(p.clientes?p.clientes.apellido+', '+p.clientes.nombre:'—')+' — '+(p.ramo||'')});
+    _dashCalEventos[k].push({tipo:'poliza', texto:(p.clientes?nombreClienteLista(p.clientes):'—')+' — '+(p.ramo||'')});
   });
   (tarFec.data||[]).forEach(function(t){
     var k = t.fecha_limite;
@@ -2679,7 +2680,7 @@ async function cargarClientes(filtro, estado) {
   cont.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
 
   var q = sb.from('clientes').select('*').eq('productor_id', user.id);
-  if (estado) q = q.eq('estado', estado);
+  if (estado && estado !== 'sin_poliza') q = q.eq('estado', estado);
   if (filtro) q = q.or('nombre.ilike.%' + filtro + '%,apellido.ilike.%' + filtro + '%,dni.ilike.%' + filtro + '%,patente.ilike.%' + filtro + '%');
   if (orden === 'reciente') q = q.order('created_at', {ascending: false});
   else if (orden === 'estado') q = q.order('estado');
@@ -2687,6 +2688,13 @@ async function cargarClientes(filtro, estado) {
 
   var res = await q;
   var clientes = res.data || [];
+
+  // Marcar quiénes tienen al menos una póliza vigente (para el cartel "Sin póliza" y el filtro)
+  var hoyCl = new Date().toISOString().slice(0,10);
+  var vRes = await sb.from('polizas').select('cliente_id').eq('productor_id', user.id).eq('estado', 'activa').gte('fecha_vencimiento', hoyCl);
+  var conVigente = new Set((vRes.data || []).map(function(p){ return p.cliente_id; }));
+  clientes.forEach(function(cl){ cl._sinPoliza = !conVigente.has(cl.id) && cl.estado !== 'prospecto'; });
+  if (estado === 'sin_poliza') clientes = clientes.filter(function(cl){ return cl._sinPoliza; });
 
   if (ramoFil && clientes.length) {
     var ids = clientes.map(function(cl) { return cl.id; });
@@ -2707,6 +2715,12 @@ async function cargarClientes(filtro, estado) {
   CL_PAGE = 1;
   actualizarSelectsClientes();
   renderClientesPage();
+}
+
+// Nombre para listas: empresas por razón social; personas "APELLIDO, Nombre"
+function nombreClienteLista(cl) {
+  if (cl.tipo_cliente === 'empresa') return cl.razon_social || ((cl.apellido || '') + ' ' + (cl.nombre || '')).trim();
+  return (cl.apellido || '') + (cl.nombre ? ', ' + cl.nombre : '');
 }
 
 function renderClientesPage() {
@@ -2756,9 +2770,12 @@ function renderClientesPage() {
 
     // Col 1: Nombre + estado
     p.push('<div class="cl-col">');
-    p.push('<div class="cl-name">' + cl.apellido + ', ' + cl.nombre + '</div>');
-    if (estadoVisible) {
-      p.push('<div class="cl-badges"><span class="cl-estado ' + (estMap[cl.estado]||'est-inactivo') + '">' + estadoVisible.charAt(0).toUpperCase() + estadoVisible.slice(1) + '</span></div>');
+    p.push('<div class="cl-name">' + nombreClienteLista(cl) + '</div>');
+    if (estadoVisible || cl._sinPoliza) {
+      p.push('<div class="cl-badges">');
+      if (estadoVisible) p.push('<span class="cl-estado ' + (estMap[cl.estado]||'est-inactivo') + '">' + estadoVisible.charAt(0).toUpperCase() + estadoVisible.slice(1) + '</span>');
+      if (cl._sinPoliza) p.push('<span class="cl-estado est-sin-poliza" title="No tiene pólizas vigentes en el CRM: oportunidad para ofrecerle algo">Sin póliza</span>');
+      p.push('</div>');
     }
     p.push('</div>');
 
@@ -2874,7 +2891,7 @@ async function verFicha(id) {
     const secTitle = document.querySelector('.cl-section-title');
     const secSub = document.querySelector('.cl-section-sub');
     const secIcon = document.querySelector('.cl-section-icon');
-    if (secTitle) secTitle.textContent = cl.apellido + ', ' + cl.nombre;
+    if (secTitle) secTitle.textContent = nombreClienteLista(cl);
     if (secSub) secSub.textContent = 'Ficha 360\u00b0 del cliente';
     if (secIcon) {
       secIcon.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
@@ -3057,7 +3074,7 @@ function fichaDatos(c) {
     html.push('<div style="'+card+'">');
     html.push('<div style="'+sl+'">Datos personales</div>');
     html.push('<div style="'+row3+'">');
-    html.push(cell('Nombre completo',(c.apellido&&c.nombre?c.apellido+', '+c.nombre:c.nombre||c.apellido||'—'),''));
+    html.push(cell('Nombre completo',(c.apellido&&c.nombre?nombreClienteLista(c):c.nombre||c.apellido||'—'),''));
     html.push(cell('DNI',c.dni,''));
     html.push(cell('Fecha de nacimiento',(fmtDate(c.fecha_nacimiento)?(fmtDate(c.fecha_nacimiento)+' · '+Math.floor((new Date()-new Date(c.fecha_nacimiento))/3156e6)+' años'):'—'),true));
     html.push('</div><div style="'+row3+';border-top:0.5px solid var(--border)">');
@@ -5970,7 +5987,7 @@ function filtrarPolizasPanel() {
 
   cont.innerHTML = filtered.map(function(p, i) {
     var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
-    var nombre = cl ? cl.apellido+', '+cl.nombre : '—';
+    var nombre = cl ? nombreClienteLista(cl) : '—';
     var diasVto = p.fecha_vencimiento ? Math.round((new Date(p.fecha_vencimiento) - new Date(hoy)) / 864e5) : null;
     var diasBg = '#F3F4F6', diasColor = 'var(--muted)', diasTxt = diasVto !== null ? diasVto+'d' : '—';
     if (diasVto !== null) {
@@ -6665,7 +6682,7 @@ function renderCotCard(cot, isInline) {
   var ofertas = cot.ofertas || [];
   var est = ESTADO_COT[cot.estado] || ESTADO_COT.pendiente;
   var ramo = RAMO_LABELS_COT[cot.ramo] || cot.ramo || '—';
-  var nombre = cot.clientes ? cot.clientes.apellido+', '+cot.clientes.nombre : '—';
+  var nombre = cot.clientes ? nombreClienteLista(cot.clientes) : '—';
   var subtitulo = cot.ramo==='auto' ? ((dr.marca||'')+(dr.modelo?' '+dr.modelo:'')+(dr.anio?' '+dr.anio:'')).trim() :
                   cot.ramo==='hogar' ? (dr.direccion||'') :
                   cot.ramo==='comercio' ? (dr.nombre_comercio||'') :
@@ -7233,7 +7250,7 @@ function filtrarSiniestros() {
   }
 
   cont.innerHTML = filtered.map(function(s) {
-    var nombre = s.clientes ? s.clientes.apellido+', '+s.clientes.nombre : '—';
+    var nombre = s.clientes ? nombreClienteLista(s.clientes) : '—';
     var dias = Math.round((hoy - new Date(s.created_at))/864e5);
     var alerta = s.estado !== 'cerrado' && dias > 30;
     var etapa = etapaLabels[s.etapa_actual] || (s.etapa_actual ? s.etapa_actual.charAt(0).toUpperCase()+s.etapa_actual.slice(1) : '—');
@@ -7289,7 +7306,7 @@ function irAFichaConSin(clienteId, sinId) {
 function exportarSiniestrosCSV() {
   var rows = [['Cliente','N° Siniestro','Tipo','Ramo','Aseguradora','Etapa','Fecha','Estado','Días']];
   _sinPanelData.forEach(function(s) {
-    var nombre = s.clientes ? s.clientes.apellido+', '+s.clientes.nombre : '';
+    var nombre = s.clientes ? nombreClienteLista(s.clientes) : '';
     var dias = Math.round((new Date()-new Date(s.created_at))/864e5);
     rows.push([nombre, s.numero_expediente||'', s.tipo_siniestro||'', s.tipo_ramo||'', s.aseguradora||'', s.etapa_actual||'', fmtDate(s.fecha_hecho||s.created_at), s.estado||'', s.estado!=='cerrado'?dias:'']);
   });
@@ -7482,7 +7499,7 @@ async function cargarCobranzas() {
     if ((c.estado==='pendiente'||c.estado==='vencida') && c.fecha_vencimiento) {
       diasMora = Math.max(0, Math.round((hoy - new Date(c.fecha_vencimiento)) / 864e5));
     }
-    var nombre = cl.apellido ? cl.apellido+', '+cl.nombre : (cl.nombre||'—');
+    var nombre = cl.apellido ? nombreClienteLista(cl) : (cl.nombre||'—');
     return Object.assign({}, c, {
       _cliente: nombre,
       _nombre: cl.nombre || '',
@@ -7892,7 +7909,7 @@ async function cargarNotificaciones() {
   var vencidas = todas.filter(function(t){ return t.fecha_limite < hoy; });
   vencidas.forEach(function(t) {
     var dias = Math.round((new Date(hoy) - new Date(t.fecha_limite)) / 864e5);
-    var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
+    var nombre = t.clientes ? ' — '+nombreClienteLista(t.clientes) : '';
     var cid = t.cliente_id;
     notifs.push({tipo:'vencida', titulo:t.titulo+nombre, sub:'Venció hace '+dias+'d · '+t.tablero, color:'var(--red)', textColor:'#A32D2D', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('tareas'); }});
   });
@@ -7900,7 +7917,7 @@ async function cargarNotificaciones() {
   // Hoy
   var hoySin = todas.filter(function(t){ return t.fecha_limite === hoy; });
   hoySin.forEach(function(t) {
-    var nombre = t.clientes ? ' — '+t.clientes.apellido+', '+t.clientes.nombre : '';
+    var nombre = t.clientes ? ' — '+nombreClienteLista(t.clientes) : '';
     var cid = t.cliente_id;
     notifs.push({tipo:'hoy', titulo:t.titulo+nombre, sub:'Para hoy · '+t.tablero, color:'#F59E0B', textColor:'#854F0B', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('tareas'); }});
   });
@@ -7908,7 +7925,7 @@ async function cargarNotificaciones() {
   // Pólizas por vencer
   (polizas||[]).forEach(function(p) {
     var dias = Math.round((new Date(p.fecha_vencimiento) - new Date(hoy)) / 864e5);
-    var nombre = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '';
+    var nombre = p.clientes ? nombreClienteLista(p.clientes) : '';
     var cid = p.cliente_id;
     notifs.push({tipo:'poliza', titulo:'Póliza por vencer — '+nombre, sub:p.ramo+' · en '+dias+'d', color:'var(--med)', textColor:'var(--med)', accion: cid ? function(id){return function(){ toggleNotifPanel(); irAFichaCliente(id); };}(cid) : function(){ irASeccion('polizas'); }});
   });
@@ -8107,7 +8124,7 @@ async function verificarRenovaciones() {
   if (!pols || !pols.length) return;
   for (var i=0;i<pols.length;i++) {
     var p = pols[i];
-    var nombreCl = p.clientes ? p.clientes.apellido+', '+p.clientes.nombre : '';
+    var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
     var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).eq('tablero','renovaciones').eq('estado','pendiente');
     if (existing && existing.length) continue;
     await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+' ('+p.ramo+')', tablero:'renovaciones', tipo:'Cotizar renovación' });
@@ -8396,7 +8413,7 @@ async function cargarAnalisis() {
   (sinData.data||[]).forEach(function(s){ sinMap[s.cliente_id] = (sinMap[s.cliente_id]||0)+1; });
   var rankData = activas.reduce(function(acc, p){
     if (!p.cliente_id) return acc;
-    if (!acc[p.cliente_id]) acc[p.cliente_id] = {id:p.cliente_id, nombre:p.clientes?(p.clientes.apellido+', '+p.clientes.nombre):'—', premio:0, sins:sinMap[p.cliente_id]||0};
+    if (!acc[p.cliente_id]) acc[p.cliente_id] = {id:p.cliente_id, nombre:p.clientes?nombreClienteLista(p.clientes):'—', premio:0, sins:sinMap[p.cliente_id]||0};
     acc[p.cliente_id].premio += parseFloat(p.prima_anual)||0;
     return acc;
   }, {});
@@ -10500,6 +10517,20 @@ function handleCompFile(file) {
 // en el formato normalizado del CRM
 // ══════════════════════════════════════════════════════════
 
+// Fed Pat manda el nombre como "APELLIDO NOMBRE". Las empresas (tipo de sociedad distinto de 21 = persona física,
+// o CUIT 30/33/34) van completas como razón social; los apellidos con partícula (LA PORTA, DE LA PEÑA) se mantienen juntos.
+function separarNombreFedPat(nombre, tipoSoc, cuit) {
+  nombre = (nombre || '').replace(/\s+/g, ' ').trim();
+  var esEmpresa = (tipoSoc && tipoSoc !== '21') || /^(30|33|34)/.test(String(cuit || ''));
+  if (esEmpresa) return { empresa: true, apellido: nombre, nombre: '' };
+  var PARTICULAS = ['LA','LE','LO','LOS','LAS','DE','DEL','DI','DA','DOS','DAS','DELLA','DELLE','VAN','VON','MC','MAC','SAN','SANTA','DU'];
+  var partes = nombre.split(' ');
+  var i = 0;
+  while (i < partes.length - 2 && PARTICULAS.indexOf(partes[i].toUpperCase()) >= 0) i++;
+  var apellido = partes.slice(0, i + 1).join(' ');
+  return { empresa: false, apellido: apellido, nombre: partes.slice(i + 1).join(' ') };
+}
+
 function parseFedPatronal(buffer) {
   var xmls = window._compZipXmls;
   if (!xmls) throw new Error('ZIP no cargado');
@@ -10552,9 +10583,9 @@ function parseFedPatronal(buffer) {
     var cp        = (r.getAttribute('I')||'').trim();
 
     // Separar nombre y apellido (Fed Patronal manda "APELLIDO NOMBRE")
-    var partes    = nombre.split(' ');
-    var apellido  = partes[0] || '';
-    var nombreSolo = partes.slice(1).join(' ') || '';
+    var sep = separarNombreFedPat(nombre, r.getAttribute('V'), r.getAttribute('U'));
+    var apellido  = sep.apellido;
+    var nombreSolo = sep.nombre;
 
     clientes.push({
       nombre:              nombreSolo || nombre,
@@ -10568,7 +10599,8 @@ function parseFedPatronal(buffer) {
       piso:                piso || null,
       departamento:        depto || null,
       localidad:           localidad || null,
-      tipo_cliente:        'cliente',
+      tipo_cliente:        sep.empresa ? 'empresa' : 'persona',
+      razon_social:        sep.empresa ? nombre : null,
       estado:              'activo',
       _codComp:            r.getAttribute('A'),
     });
@@ -11001,7 +11033,8 @@ async function normalizarYSincronizar(parsed, filename) {
           piso:             c.piso       || null,
           departamento:     c.departamento || null,
           localidad:        c.localidad  || null,
-          tipo_cliente:     'cliente',
+          tipo_cliente:     c.tipo_cliente || 'persona',
+          razon_social:     c.razon_social || null,
           estado:           'activo',
           cod_comp_fedpat:  c._codComp   || null,
         });

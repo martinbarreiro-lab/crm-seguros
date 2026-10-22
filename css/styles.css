@@ -228,6 +228,7 @@ tr:hover td{background:var(--bg)}
 .est-activo{background:#DCFCE7;color:#166534}
 .est-prospecto{background:#DBEAFE;color:#1E40AF}
 .est-inactivo{background:#F3F4F6;color:#6B7280}
+.est-sin-poliza{background:#FEF3C7;color:#92400E}
 .est-renovacion{background:#FEF3C7;color:#92400E}
 .est-siniestrado{background:#FEE2E2;color:#991B1B}
 
