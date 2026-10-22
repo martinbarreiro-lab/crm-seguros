@@ -3062,6 +3062,30 @@ async function renderFichaTab(c) {
   else if (fichaTab === 'historial') { cont.className = ''; cont.innerHTML = await fichaHistorial(c); }
 }
 
+// ── Indicador de PDF de póliza (ficha del cliente) ──
+function chipPdf(p) {
+  if (p.pdf_url) return '<span onclick="event.stopPropagation();window.open(\'' + p.pdf_url + '\',\'_blank\')" title="Ver el PDF de la póliza" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#DCFCE7;color:#166534;cursor:pointer">📄 PDF cargado</span>';
+  return '<span onclick="event.stopPropagation();subirPdfPoliza(\'' + p.id + '\')" title="Esta póliza no tiene el PDF. Tocá para subirlo" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E;border:1px dashed #F59E0B;cursor:pointer">⚠ Sin PDF · Subir</span>';
+}
+function subirPdfPoliza(polId) {
+  var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
+  inp.onchange = async function () {
+    var f = inp.files[0]; if (!f) return;
+    try {
+      var path = 'polizas/' + polId + '/' + Date.now() + '_poliza_' + f.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var up = await sb.storage.from('archivos').upload(path, f, { contentType: 'application/pdf' });
+      if (up.error) throw up.error;
+      var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+      var r = await sb.from('polizas').update({ pdf_url: url }).eq('id', polId);
+      if (r.error) throw r.error;
+      var md = document.getElementById('modal-pol-det');
+      if (md && md.classList.contains('open')) abrirDetallePol(polId);
+      if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
+    } catch (e) { alert('No se pudo subir el PDF: ' + (e.message || e)); }
+  };
+  inp.click();
+}
+
 async function fichaResumen(c) {
   const { data: pols } = await sb.from('polizas').select('*').eq('cliente_id', c.id).order('fecha_vencimiento');
   const { data: sins } = await sb.from('siniestros').select('*').eq('cliente_id', c.id).neq('estado', 'cerrado');
@@ -3100,6 +3124,10 @@ async function fichaResumen(c) {
   // LEFT: actividad dinámica
   html.push('<div style="display:flex;flex-direction:column;gap:12px">');
 
+  // Aviso de pólizas vigentes sin PDF
+  var sinPdf = polsActivas.filter(function(p){ return !p.pdf_url; });
+  if (sinPdf.length) html.push('<div style="background:#FFFBEB;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12.5px">⚠ <b>' + (sinPdf.length === polsActivas.length ? (sinPdf.length === 1 ? 'La póliza vigente no tiene' : 'Ninguna de las ' + sinPdf.length + ' pólizas vigentes tiene') : sinPdf.length + ' de ' + polsActivas.length + ' pólizas vigentes no ' + (sinPdf.length === 1 ? 'tiene' : 'tienen')) + ' el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente. Tocá <b>⚠ Sin PDF · Subir</b> en cada una.</div>');
+
   // Pólizas vigentes (solo en resumen)
   html.push('<div class="ficha-card">');
   html.push('<div class="ficha-card-title" style="display:flex;align-items:center;gap:6px">Pólizas vigentes <span style="background:#EAF3DE;color:#27500A;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500">'+polsActivas.length+'</span></div>');
@@ -3108,7 +3136,7 @@ async function fichaResumen(c) {
       var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
       var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
       html.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
-      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>');
+      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>'+chipPdf(p));
       html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
@@ -3752,6 +3780,7 @@ async function fichaPolizas(c) {
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
+           +      chipPdf(p)
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
            +      '<div style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Detalle de cobertura</div>'
@@ -10334,8 +10363,9 @@ function renderMpdDocumentos(p) {
   if (p.endoso_pdf_url) docs.push({label:'Último endoso'+(p.endoso_fecha?' — '+fmtDate(p.endoso_fecha):''),url:p.endoso_pdf_url,icon:'📎',sub:(p.endoso_detalle||'Endoso')});
   if (p.cedula_verde_frente_url) docs.push({label:'Cédula verde — frente',url:p.cedula_verde_frente_url,icon:'🪪',sub:'Imagen / PDF'});
   if (p.cedula_verde_dorso_url) docs.push({label:'Cédula verde — dorso',url:p.cedula_verde_dorso_url,icon:'🪪',sub:'Imagen / PDF'});
-  if (!docs.length) return '<div style="padding:30px;text-align:center;font-size:13px;color:#9CA3AF">Sin documentos adjuntos a esta póliza.</div>';
-  return docs.map(function(d){
+  var avisoPdf = p.pdf_url ? '' : '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:12.5px;color:#92400E"><span>⚠ <b>Esta póliza no tiene el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente.</span><button type="button" onclick="subirPdfPoliza(\''+p.id+'\')" style="padding:5px 12px;border-radius:6px;border:1px solid #F59E0B;background:#fff;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Subir PDF</button></div>';
+  if (!docs.length) return avisoPdf;
+  return avisoPdf + docs.map(function(d){
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F3F4F6">'+
       '<div style="display:flex;align-items:center;gap:10px">'+
         '<span style="font-size:22px">'+d.icon+'</span>'+
