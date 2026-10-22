@@ -1872,7 +1872,7 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     h.push('<div class="frow"><label>Mensaje</label><textarea id="env-texto" style="min-height:100px">' + texto + '</textarea></div>');
     // Un botón por canal: abre directo el chat de WhatsApp o el mail del cliente, descarga el PDF para adjuntarlo
     // y guarda la constancia con fecha y hora.
-    h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Al tocar un botón se descarga el PDF y se abre ' + (tel && mail ? 'el chat de WhatsApp o el mail' : tel ? 'el chat de WhatsApp' : 'el mail') + ' del cliente con el mensaje escrito. <strong>Adjuntá el PDF descargado y enviá.</strong> La constancia se guarda sola.</div>');
+    h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Al tocar un botón se descarga el PDF y se abre ' + (tel && mail ? 'el chat de WhatsApp o el mail' : tel ? 'el chat de WhatsApp' : 'el mail') + ' del cliente con el mensaje escrito. <strong>Arrastrá al chat el PDF que se descargó y enviá.</strong> La constancia se guarda sola.</div>');
     h.push('<div style="display:flex;flex-direction:column;gap:8px">');
     if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
     else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
@@ -1974,7 +1974,13 @@ function descargarPdfEnvio() {
 function abrirCanalEnvio(canal) {
   if (!_envio) return;
   var texto = document.getElementById('env-texto').value;
-  if (canal === 'wa') _abrirVentana('https://wa.me/' + _envio.tel + '?text=' + encodeURIComponent(texto), '_blank');
+  // Abre directo la app de WhatsApp de la compu (sin la página intermedia de WhatsApp Web).
+  // En el celular, wa.me ya abre la app directamente.
+  var esCel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (canal === 'wa') {
+    if (esCel) _abrirVentana('https://wa.me/' + _envio.tel + '?text=' + encodeURIComponent(texto), '_blank');
+    else window.location.href = 'whatsapp://send?phone=' + _envio.tel + '&text=' + encodeURIComponent(texto);
+  }
   else _abrirVentana('mailto:' + _envio.mail + '?subject=' + encodeURIComponent(_envio.file.name.replace(/_/g, ' ').replace('.pdf', '')) + '&body=' + encodeURIComponent(texto), '_self');
 }
 
