@@ -3776,6 +3776,8 @@ async function fichaPolizas(c) {
       } else if (p.ramo === 'ART') {
         if (drC.actividad) cobPartes.push(drC.actividad);
         if (drC.empleados) cobPartes.push(drC.empleados + ' empleados');
+        if (drC.alicuota && drC.alicuota !== '0.00%') cobPartes.push('Alícuota ' + drC.alicuota);
+        if (drC.saldo > 0) cobPartes.push('<span style="color:#B91C1C">Saldo deudor ' + fmtMoney(drC.saldo) + (drC.periodo ? ' (' + drC.periodo + ')' : '') + '</span>');
       } else {
         // Genérico — suma asegurada
         if (p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
@@ -11062,13 +11064,37 @@ function parseExcel(buffer, comp) {
       aseguradora = 'Seguro Metal';
       premio      = parseFloat(row['Premio Emitido']) || null;
     } else {
-      nombre      = String(row['RAZÓN SOCIAL'] || '').trim();
+      // Provincia ART: "Exportar a Excel" de Contratos Activos del portal de productores
+      nombre      = String(row['RAZÓN SOCIAL'] || row['RAZON SOCIAL'] || '').replace(/\s+/g, ' ').trim();
       nroPol      = String(row['CONTRATO']     || '').trim();
-      ramo        = 'ART';
-      vigDesde    = fmtDateComp(row['VIGENCIA DESDE']);
-      vigHasta    = fmtDateComp(row['VIGENCIA HASTA']);
-      aseguradora = 'Provincia ART';
-      premio      = null;
+      if (!nombre || !nroPol) return;
+      var cuitDig = String(row['CUIT'] || '').replace(/\D/g, '');
+      var sep     = separarNombreFedPat(nombre, '', cuitDig);
+      var num     = function (v) { if (typeof v === 'number') return v; var t = String(v || '').replace(/[^\d,.-]/g, ''); if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); else t = t.replace(/,/g, ''); var n = parseFloat(t); return isNaN(n) ? null : n; };
+      var dr = {
+        actividad: String(row['ACTIVIDAD'] || '').trim() || null,
+        empleados: num(row['CÁPITAS'] != null ? row['CÁPITAS'] : row['CAPITAS']),
+        // MASA SALARIAL y SUMA FIJA no se toman: el Excel del portal los exporta truncados (ej. 2.001.433 sale como 2,000)
+        alicuota: String(row['PORCENTAJE VARIABLE'] != null ? row['PORCENTAJE VARIABLE'] : '').trim() || null,
+        periodo: String(row['PERIODO'] || '').trim() || null,
+        saldo: num(row['SALDO']),
+        vigencia_tarifa: fmtDateComp(row['VIGENCIA TARIFA'])
+      };
+      Object.keys(dr).forEach(function (k) { if (dr[k] === null || dr[k] === '') delete dr[k]; });
+      var baja = String(row['DADO DE BAJA'] || '').trim();
+      clientes.push({
+        apellido: sep.apellido, nombre: sep.nombre,
+        razon_social: sep.empresa ? nombre : null,
+        tipo_cliente: sep.empresa ? 'empresa' : 'cliente',
+        cuit: cuitDig || null,
+        dni: (!sep.empresa && /^(20|23|24|27)\d{9}$/.test(cuitDig)) ? String(parseInt(cuitDig.slice(2, 10), 10)) : null
+      });
+      polizas.push({ numero_poliza: nroPol, ramo: 'ART', aseguradora: 'Provincia ART',
+        fecha_inicio: fmtDateComp(row['VIGENCIA DESDE']), fecha_vencimiento: fmtDateComp(row['VIGENCIA HASTA']),
+        estado: (baja && !/^(no|n|0|false)$/i.test(baja)) ? 'baja' : 'activa',
+        datos_ramo: JSON.stringify(dr), bien_asegurado: dr.actividad || null,
+        _nombreCliente: nombre, _cuit: cuitDig || null });
+      return;
     }
 
     if (!nombre || !nroPol) return;
@@ -11127,7 +11153,7 @@ async function normalizarYSincronizar(parsed, filename) {
   try {
     // ── Traer TODO de Supabase en 3 consultas ──────────────
     var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
-      sb.from('clientes').select('id,nombre,apellido,dni,email_principal,telefono_principal').eq('productor_id', uid),
+      sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,email_principal,telefono_principal').eq('productor_id', uid),
       sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at').eq('productor_id', uid).order('created_at'),
       sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
     ]);
@@ -11135,7 +11161,10 @@ async function normalizarYSincronizar(parsed, filename) {
     // Índices en memoria para búsqueda O(1)
     var clPorNombre = {};
     var clPorDni    = {};
+    var clPorCuit   = {};
     (clBD||[]).forEach(function(c){
+      var cd = String(c.cuit||'').replace(/\D/g,''); if (cd) clPorCuit[cd] = c;
+      if (!cd && c.dni) clPorCuit['dni:' + String(c.dni).replace(/\D/g,'').replace(/^0+/,'')] = c;
       if (c.nombre) clPorNombre[(c.apellido||''+' '+c.nombre||'').trim().toUpperCase()] = c;
       if (c.nombre) clPorNombre[c.nombre.trim().toUpperCase()] = c;
       if (c.dni)    clPorDni[String(c.dni).trim()] = c;
@@ -11157,7 +11186,7 @@ async function normalizarYSincronizar(parsed, filename) {
 
     var clUnicos = {};
     parsed.clientes.forEach(function(c){
-      var key = (c.dni || (c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
+      var key = (c.cuit || c.dni || (c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       if (key) clUnicos[key] = c;
     });
 
@@ -11165,7 +11194,9 @@ async function normalizarYSincronizar(parsed, filename) {
     var clInsertar = [], clActualizar = [];
     Object.values(clUnicos).forEach(function(c) {
       var nombreCompleto = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
-      var existe = (c.dni ? clPorDni[String(c.dni).trim()] : null)
+      var existe = (c.cuit ? (clPorCuit[String(c.cuit)] || (c.dni ? clPorCuit['dni:' + String(c.dni)] : null)) : null)
+                || (c.dni ? clPorDni[String(c.dni).trim()] : null)
+                || (c.razon_social ? clPorNombre[c.razon_social.trim().toUpperCase()] : null)
                 || clPorNombre[nombreCompleto]
                 || clPorNombre[(c.nombre||'').trim().toUpperCase()];
       if (!existe) {
@@ -11191,6 +11222,7 @@ async function normalizarYSincronizar(parsed, filename) {
         var cambios = {};
         if (c.email_principal    && c.email_principal    !== existe.email_principal)    cambios.email_principal    = c.email_principal;
         if (c.telefono_principal && c.telefono_principal !== existe.telefono_principal) cambios.telefono_principal = c.telefono_principal;
+        if (c.cuit && !existe.cuit) cambios.cuit = c.cuit;
         if (Object.keys(cambios).length) {
           clActualizar.push({ id:existe.id, cambios:cambios });
         } else { stats.skip++; }
@@ -11219,9 +11251,11 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
     // Refrescar índice de clientes con los recién insertados
-    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni,cod_comp_fedpat').eq('productor_id', uid);
-    var clPorNombre2 = {}, clPorDni2 = {}, clPorCodComp = {};
+    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,cod_comp_fedpat').eq('productor_id', uid);
+    var clPorNombre2 = {}, clPorDni2 = {}, clPorCodComp = {}, clPorCuit2 = {};
     (clBD2||[]).forEach(function(c){
+      var cd2 = String(c.cuit||'').replace(/\D/g,''); if (cd2) clPorCuit2[cd2] = c;
+      if (c.razon_social) clPorNombre2[c.razon_social.trim().toUpperCase()] = clPorNombre2[c.razon_social.trim().toUpperCase()] || c;
       var nc = ((c.apellido||'')+' '+(c.nombre||'')).trim().toUpperCase();
       if (nc) clPorNombre2[nc] = c;
       if (c.nombre) clPorNombre2[c.nombre.trim().toUpperCase()] = c;
@@ -11237,7 +11271,7 @@ async function normalizarYSincronizar(parsed, filename) {
       var existe  = polPorNumero[nro];
 
       // Buscar cliente_id
-      var cl = clPorCodComp[String(p._codCliente)] || null;
+      var cl = (p._cuit ? clPorCuit2[String(p._cuit)] : null) || clPorCodComp[String(p._codCliente)] || null;
       if (!cl && p._nombreCliente) cl = clPorNombre2[(p._nombreCliente||'').trim().toUpperCase()];
 
       if (!existe) {
