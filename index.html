@@ -3774,10 +3774,15 @@ async function fichaPolizas(c) {
           if (cb.suma_asegurada) cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada));
         });
       } else if (p.ramo === 'ART') {
-        if (drC.actividad) cobPartes.push(drC.actividad);
-        if (drC.empleados) cobPartes.push(drC.empleados + ' empleados');
-        if (drC.alicuota && drC.alicuota !== '0.00%') cobPartes.push('Alícuota ' + drC.alicuota);
-        if (drC.saldo > 0) cobPartes.push('<span style="color:#B91C1C">Saldo deudor ' + fmtMoney(drC.saldo) + (drC.periodo ? ' (' + drC.periodo + ')' : '') + '</span>');
+        var fmtP = function (n) { return '$' + Number(n).toLocaleString('es-AR', { maximumFractionDigits: 0 }); };
+        if (drC.empleados != null) cobPartes.push('<b>' + drC.empleados + '</b> cápita' + (drC.empleados == 1 ? '' : 's'));
+        if (drC.masa_salarial) cobPartes.push('Masa salarial <b>' + fmtP(drC.masa_salarial) + '</b>');
+        if (drC.alicuota != null && parseFloat(drC.alicuota) > 0) cobPartes.push('Alícuota <b>' + String(drC.alicuota).replace('.', ',').replace('%', '') + ' %</b>');
+        var cuotaArt = drC.cuota_mensual != null ? drC.cuota_mensual : p.valor_cuota;
+        if (cuotaArt != null) cobPartes.push('Paga por mes <b style="color:#166534">' + fmtP(cuotaArt) + '</b>' + (drC.cuota_estimada ? ' (estimado)' : (drC.periodo ? ' (' + drC.periodo + ')' : '')));
+        if (drC.saldo > 0) cobPartes.push('<span style="color:#B91C1C">Saldo deudor ' + fmtP(drC.saldo) + '</span>');
+        else if (drC.saldo < 0) cobPartes.push('<span style="color:#166534">Saldo a favor ' + fmtP(-drC.saldo) + '</span>');
+        if (drC.actividad) cobPartes.push('<span style="color:#9CA3AF">' + drC.actividad + '</span>');
       } else {
         // Genérico — suma asegurada
         if (p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
