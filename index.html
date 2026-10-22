@@ -905,6 +905,15 @@
           <input type="file" id="comp-file-input" style="display:none" onchange="handleCompFile(this.files[0])">
         </div>
 
+        <!-- Paso 3: PDFs de las pólizas -->
+        <div class="card" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="card-t" style="margin-bottom:4px">3 · PDFs de las pólizas</div>
+            <div style="font-size:12px;color:var(--muted)">Subí los PDFs sueltos o un ZIP (ej. el que bajamos de Adminse). Cada uno se engancha solo a su póliza por el número.</div>
+          </div>
+          <button type="button" class="btn btn-p" onclick="abrirCargaPdfs()">📥 Subir PDFs de pólizas</button>
+        </div>
+
         <!-- Log de procesamiento -->
         <div class="card" id="comp-result-card" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -10627,6 +10636,11 @@ function cargarHistorialComp() {
 // ── Entrada de archivo ─────────────────────────────────────
 function handleCompFile(file) {
   if (!file) return;
+  // Si es un PDF o un ZIP de PDFs de pólizas, va a la carga de PDFs (no al importador de datos)
+  if (/\.pdf$/i.test(file.name) || (/\.zip$/i.test(file.name) && /poliza|póliza|adminse/i.test(file.name))) {
+    document.getElementById('comp-file-input').value = '';
+    abrirCargaPdfs(); _agregarArchivosPdf([file]); return;
+  }
   var dz = document.getElementById('comp-dropzone');
   dz.style.borderColor = 'var(--blue)';
   dz.style.background  = 'var(--light)';
@@ -11911,6 +11925,10 @@ async function cargarLib(url) {
 var _origHandleCompFile = handleCompFile;
 handleCompFile = async function(file) {
   if (!file) return;
+  if (/\.pdf$/i.test(file.name) || (/\.zip$/i.test(file.name) && /poliza|póliza|adminse/i.test(file.name))) {
+    document.getElementById('comp-file-input').value = '';
+    abrirCargaPdfs(); _agregarArchivosPdf([file]); return;
+  }
   var dz = document.getElementById('comp-dropzone');
   dz.style.borderColor = 'var(--blue)';
   dz.style.background  = 'var(--light)';
