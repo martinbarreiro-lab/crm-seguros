@@ -1870,18 +1870,32 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
       cuerpo.innerHTML = h.join(''); return;
     }
     h.push('<div class="frow"><label>Mensaje</label><textarea id="env-texto" style="min-height:100px">' + texto + '</textarea></div>');
-    // Un botón por canal: abre directo el chat de WhatsApp o el mail del cliente, descarga el PDF para adjuntarlo
-    // y guarda la constancia con fecha y hora.
-    h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Al tocar un botón se descarga el PDF y se abre ' + (tel && mail ? 'el chat de WhatsApp o el mail' : tel ? 'el chat de WhatsApp' : 'el mail') + ' del cliente con el mensaje escrito. <strong>Arrastrá al chat el PDF que se descargó y enviá.</strong> La constancia se guarda sola.</div>');
-    h.push('<div style="display:flex;flex-direction:column;gap:8px">');
-    if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
-    else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-    if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir mail del cliente <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
-    else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
-    h.push('</div>');
-    h.push('<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">'
-      + (puedeCompartir && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? '<button type="button" class="lnk" onclick="compartirPdfEnvio()">o compartir el PDF adjunto</button>' : '<span></span>')
-      + '<div style="display:flex;gap:8px"><button type="button" class="btn" onclick="descargarPdfEnvio()">⬇ Descargar PDF</button><button type="button" class="btn" onclick="cerrarEnvio()">Cerrar</button></div></div>');
+    var quien = tel && mail ? 'WhatsApp o tu correo' : tel ? 'WhatsApp' : 'tu correo';
+    if (puedeCompartir) {
+      // Opción principal: compartir con el PDF adjunto. La constancia se guarda al terminar de compartir.
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Tocá el botón, elegí <strong>' + quien + '</strong> en el menú de compartir, buscá al cliente y enviá: el PDF va adjunto. Al terminar, la constancia se guarda sola.</div>');
+      h.push('<div style="display:flex;flex-direction:column;gap:8px">');
+      if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="compartirPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📤 Compartir por WhatsApp <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="compartirPorCanal(\'mail\')" style="justify-content:space-between;display:flex">📤 Compartir por mail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
+      h.push('</div>');
+      h.push('<div style="font-size:11px;color:var(--muted);margin-top:8px">Alternativa: '
+        + (tel ? '<button type="button" class="lnk" onclick="enviarPorCanal(\'wa\')">abrir el chat directo</button>' : '')
+        + (tel && mail ? ' · ' : '')
+        + (mail ? '<button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">abrir el mail directo</button>' : '')
+        + ' (descarga el PDF para adjuntarlo a mano)</div>');
+    } else {
+      // Equipos sin menú de compartir: abre el chat / mail directo y descarga el PDF para adjuntarlo
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Al tocar un botón se descarga el PDF y se abre el chat o el mail del cliente con el mensaje escrito. <strong>Adjuntá el PDF descargado y enviá.</strong> La constancia se guarda sola.</div>');
+      h.push('<div style="display:flex;flex-direction:column;gap:8px">');
+      if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir mail del cliente <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
+      h.push('</div>');
+    }
+    h.push('<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button type="button" class="btn" onclick="descargarPdfEnvio()">⬇ Descargar PDF</button><button type="button" class="btn" onclick="cerrarEnvio()">Cerrar</button></div>');
     cuerpo.innerHTML = h.join('');
   } catch (e) {
     cuerpo.innerHTML = '<div class="err-box show">No se pudo preparar el envío: ' + (e.message || e) + '</div>';
@@ -1928,9 +1942,11 @@ async function _marcarEnviado(canal) {
   var r = await registrarEnvio([desc], canal === 'wa' ? 'whatsapp' : 'email');
   _envio.hechos[canal] = r.resumen;
   var b = document.getElementById('env-btn-' + canal);
-  if (b) { b.className = 'btn btn-ok'; b.innerHTML = '✓ Enviado por ' + (canal === 'wa' ? 'WhatsApp' : 'mail') + ' <span style="opacity:.8;font-weight:400">' + r.fh + ' · tocá para reabrir</span>'; }
+  if (b) { b.className = 'btn btn-ok'; b.innerHTML = '✓ Enviado por ' + (canal === 'wa' ? 'WhatsApp' : 'mail') + ' <span style="opacity:.8;font-weight:400">' + r.fh + '</span>'; }
   await cerrarTareaEnvio(Object.keys(_envio.hechos).map(function(k){ return _envio.hechos[k]; }).join(' '));
-  mostrarAlerta('✅ Constancia guardada: ' + r.fh);
+  var faltan = (_envio.tel && !_envio.hechos.wa) || (_envio.mail && !_envio.hechos.mail);
+  mostrarAlerta(faltan ? '✅ Constancia guardada (' + r.fh + '). Si querés, envialo también por el otro canal.' : '✅ Enviado. Constancia guardada: ' + r.fh);
+  if (!faltan) setTimeout(function(){ cerrarEnvio(); }, 1200);
   _refrescarTrasEnvio();
 }
 
@@ -1944,17 +1960,17 @@ async function enviarPorCanal(canal) {
   catch (e) { alert('No se pudo guardar la constancia: ' + (e.message || e)); }
 }
 
-// Opción celular: menú de compartir con el PDF adjunto (la constancia se guarda al terminar de compartir)
-async function compartirPdfEnvio() {
+// Compartir con el PDF adjunto (menú de compartir). La constancia se guarda al terminar de compartir.
+async function compartirPorCanal(canal) {
   if (!_envio) return;
   try {
     await navigator.share({ files: [_envio.file], text: document.getElementById('env-texto').value, title: _envio.file.name });
   } catch (e) {
-    if (e && e.name === 'AbortError') return;
-    alert('No se pudo compartir: ' + (e.message || e));
+    if (e && e.name === 'AbortError') return; // se canceló: no se registra nada
+    alert('No se pudo compartir: ' + (e.message || e) + '\nProbá con "abrir el chat directo".');
     return;
   }
-  var canal = _envio.tel && !_envio.hechos.wa ? 'wa' : 'mail';
+  if (_envio.hechos[canal]) return;
   try { await _marcarEnviado(canal); }
   catch (e) { alert('Se compartió, pero no se pudo guardar la constancia: ' + (e.message || e)); }
 }
