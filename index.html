@@ -10565,7 +10565,7 @@ function parseFedPatronal(buffer) {
 
   // ── Pólizas ───────────────────────────────────────────────
   var polizas = [];
-  var ESTADOS_POL = { '1':'activa','2':'activa','3':'baja','4':'baja','5':'baja','6':'cancelada' };
+  var ESTADOS_POL = { '1':'activa','2':'activa','3':'baja','4':'baja','5':'baja','6':'cancelada','11':'anulada' }; // 11 = anulada (dada de baja con fecha de estado)
   var hoyParse = new Date();
   var limite60 = new Date(hoyParse.getTime() - 60 * 86400000).toISOString().slice(0,10);
   var hoyStr   = hoyParse.toISOString().slice(0,10);
@@ -10600,7 +10600,9 @@ function parseFedPatronal(buffer) {
     parse('CRET_PRODUCTOS_DATOS.xml').querySelectorAll('ROW').forEach(function(r){
       var sec  = r.getAttribute('A');
       var nro  = r.getAttribute('B');
-      if (sec !== '4' || !nro || vehiculos[nro]) return; // solo automotores, sin duplicar
+      var endVeh = parseInt(r.getAttribute('D')) || 0;
+      if (sec !== '4' || !nro) return; // solo automotores
+      if (vehiculos[nro] && vehiculos[nro]._endoso >= endVeh) return; // quedarse con el último endoso
       var patente  = r.getAttribute('C40006') || null;
       var chasis   = r.getAttribute('C40005') || null;
       var motor    = r.getAttribute('C40070') || null;
@@ -10629,6 +10631,7 @@ function parseFedPatronal(buffer) {
         marca:         marcaNorm,
         modelo:        modeloSolo || modelo,
         marca_modelo:  modelo,
+        _endoso:       endVeh,
       };
     });
     compLog('info', Object.keys(vehiculos).length + ' vehículos encontrados en el archivo');
@@ -10673,7 +10676,8 @@ function parseFedPatronal(buffer) {
   var polNrosValidos = new Set();
   var franqPorPol = {};
   var cobsPorPol = {};
-  var COBS_CASCO = new Set(['60','70','80','90','110','120','130','140']);
+  var COBS_DANO_PARCIAL = new Set(['120','130','140','150']); // daño parcial = Todo riesgo
+  var COBS_TOTALES = new Set(['60','70','80','90','110','160']);    // robo/incendio/destrucción total y FULL = Terceros completo
 
   // Llenar cobsPorPol y franqPorPol ANTES del loop de certificados
   try {
@@ -10698,9 +10702,25 @@ function parseFedPatronal(buffer) {
     });
   } catch(e) {}
 
-  parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW').forEach(function(r){
+  // Los certificados (personas de AP/Vida, ítems de flotas) vienen como filas con "Certificado" (C).
+  // No son pólizas aparte: se guardan como ítems dentro de la póliza.
+  var itemsPorPol = {};
+  var filasCert = parse('CART_CERTIFICADOS.xml').querySelectorAll('ROW');
+  filasCert.forEach(function(r){
+    var nro = r.getAttribute('B'), cert = r.getAttribute('C');
+    if (!nro || !cert || cert === '0') return;
+    if (!itemsPorPol[nro]) itemsPorPol[nro] = [];
+    itemsPorPol[nro].push({ certificado: cert, tipo: r.getAttribute('D') || null, cod_asegurado: r.getAttribute('E') || null,
+      estado: r.getAttribute('F') === '11' ? 'anulado' : 'vigente', desde: fmtDateComp(r.getAttribute('I')), hasta: fmtDateComp(r.getAttribute('J')) });
+  });
+  var polVistas = {};
+  filasCert.forEach(function(r){
     var nro = r.getAttribute('B');
     if (!nro) return;
+    var cert = r.getAttribute('C');
+    if (cert && cert !== '0') return; // es un ítem/certificado, no la póliza
+    if (polVistas[nro]) return;        // una sola póliza por número
+    polVistas[nro] = true;
     var vto = fmtDateComp(r.getAttribute('J'));
     // Filtrar: solo vigentes o vencidas hace menos de 60 días
     if (vto && vto < limite60) return;
@@ -10709,11 +10729,16 @@ function parseFedPatronal(buffer) {
     var v = vehiculos[nro] || {};
     var f = franqPorPol[nro] || {};
     var cobsNro = cobsPorPol[nro] || new Set();
-    var tieneCasco = false;
-    cobsNro.forEach(function(cod){ if (COBS_CASCO.has(cod)) tieneCasco = true; });
+
+    var secCod = r.getAttribute('A');
+    var ramoRaw = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
+    var ramoDesc = ramoRaw ? (RAMO_MAP[ramoRaw] || ramoRaw) : null;
+
     var tipoCob = null;
     if (ramoDesc === 'Automotor') {
-      tipoCob = tieneCasco ? 'Todo riesgo' : (cobsNro.size > 0 ? 'Terceros completo' : null);
+      var dano = false, totales = false;
+      cobsNro.forEach(function(cod){ if (COBS_DANO_PARCIAL.has(cod)) dano = true; if (COBS_TOTALES.has(cod)) totales = true; });
+      tipoCob = dano ? 'Todo riesgo' : (totales ? 'Terceros completo' : (cobsNro.size ? 'Responsabilidad civil' : null));
     }
 
     // Calcular período en meses desde fechas
@@ -10723,10 +10748,17 @@ function parseFedPatronal(buffer) {
       var dI = new Date(fechaI), dV = new Date(vto);
       periodoMeses = (dV.getFullYear() - dI.getFullYear()) * 12 + (dV.getMonth() - dI.getMonth());
     }
+    var items = itemsPorPol[nro] || [];
+    var datosRamo = {};
+    if (Object.keys(v).length) { datosRamo.patente = v.patente; datosRamo.chasis = v.chasis; datosRamo.motor = v.motor; datosRamo.anio = v.anio; datosRamo.marca = v.marca; datosRamo.modelo = v.modelo; datosRamo.marca_modelo = v.marca_modelo; }
+    if (s.suma_asegurada) datosRamo.suma_asegurada = s.suma_asegurada;
+    if (f.desc || f.min) { datosRamo.franquicia_desc = f.desc || null; datosRamo.franquicia_monto = f.min || null; }
+    if (items.length) {
+      datosRamo.certificados = items;
+      datosRamo.cant_certificados = items.length;
+      datosRamo.cant_certificados_vigentes = items.filter(function(i){ return i.estado === 'vigente'; }).length;
+    }
 
-    var secCod = r.getAttribute('A');
-    var ramoRaw = (secCod ? ramos[secCod] : null) || multiRamo[nro] || ramoPorPol[nro] || null;
-    var ramoDesc = ramoRaw ? (RAMO_MAP[ramoRaw] || ramoRaw) : null;
     polNrosValidos.add(nro);
     polizas.push({
       numero_poliza:     nro,
@@ -10748,39 +10780,34 @@ function parseFedPatronal(buffer) {
       _medio_pago:       r.getAttribute('P') || null,
       _renueva_a:        r.getAttribute('U') || null, // número de póliza anterior que esta renueva
       _renovada_por:     r.getAttribute('S') || null, // número de póliza nueva que renovó esta
-      // Datos vehículo
+      // Ojo: la columna O ("Nro Tarjeta") NO se importa a propósito.
       patente:           v.patente || null,
-      bien_asegurado:    v.marca_modelo || null,
-      datos_ramo:        (Object.keys(v).length || f.desc) ? JSON.stringify({
-        patente:      v.patente,
-        chasis:       v.chasis,
-        motor:        v.motor,
-        anio:         v.anio,
-        marca:        v.marca,
-        modelo:       v.modelo,
-        marca_modelo: v.marca_modelo,
-        suma_asegurada: s.suma_asegurada || null,
-        franquicia_desc: f.desc || null,
-        franquicia_monto: f.min || null,
-      }) : null,
+      bien_asegurado:    v.marca_modelo || (items.length ? items.length + ' asegurados' : null),
+      datos_ramo:        Object.keys(datosRamo).length ? JSON.stringify(datosRamo) : null,
     });
   });
+  compLog('info', polizas.length + ' pólizas en el archivo (los certificados quedan como ítems dentro de cada póliza)');
 
   // ── Cobranzas (recibos) ───────────────────────────────────
   // Solo de pólizas válidas (vigentes + vencidas < 60 días)
   var cobranzas = [];
-  var ESTADOS_REC = { '1':'pendiente','2':'pagada','3':'vencida','4':'pagada' };
+
   parse('CART_RECIBOS.xml').querySelectorAll('ROW').forEach(function(r){
     var nroPol = r.getAttribute('B');
     var nroRec = r.getAttribute('L');
     if (!nroPol || !nroRec) return;
     // Solo incluir cobranzas de pólizas válidas
     if (!polNrosValidos.has(nroPol)) return;
+    var montoRec = parseFloat(r.getAttribute('J')) || 0;
+    var cobrado  = r.getAttribute('F') === '4'; // 4 = cobrado (coincide con las imputaciones de caja)
     cobranzas.push({
       numero_cuota:      parseInt(r.getAttribute('G')) || null,
-      monto:             parseFloat(r.getAttribute('J')) || null,
+      monto:             montoRec,
       fecha_vencimiento: fmtDateComp(r.getAttribute('E')),
-      estado:            ESTADOS_REC[r.getAttribute('F')] || 'pendiente',
+      // Recibos negativos = devoluciones/créditos de un endoso: no son deuda del cliente
+      estado:            cobrado ? 'pagada' : (montoRec < 0 ? 'nota_credito' : 'pendiente'),
+      numero_recibo:     nroRec,
+      endoso:            parseInt(r.getAttribute('D')) || 0,
       _nroPol:           nroPol,
       _nroRecibo:        nroRec,
     });
@@ -10909,7 +10936,7 @@ async function normalizarYSincronizar(parsed, filename) {
     // ── Traer TODO de Supabase en 3 consultas ──────────────
     var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
       sb.from('clientes').select('id,nombre,apellido,dni,email_principal,telefono_principal').eq('productor_id', uid),
-      sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado').eq('productor_id', uid),
+      sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at').eq('productor_id', uid).order('created_at'),
       sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
     ]);
 
@@ -10922,7 +10949,7 @@ async function normalizarYSincronizar(parsed, filename) {
       if (c.dni)    clPorDni[String(c.dni).trim()] = c;
     });
     var polPorNumero = {};
-    (polBD||[]).forEach(function(p){ polPorNumero[String(p.numero_poliza)] = p; });
+    (polBD||[]).forEach(function(p){ var kn = String(p.numero_poliza); if (!polPorNumero[kn]) polPorNumero[kn] = p; });
 
     // Índice de cobranzas: poliza_id + numero_cuota
     var cobIdx = {};
@@ -11048,8 +11075,19 @@ async function normalizarYSincronizar(parsed, filename) {
           cambios.fecha_vencimiento = p.fecha_vencimiento;
         if (p.prima_anual && p.prima_anual !== existe.prima_anual)
           cambios.prima_anual = p.prima_anual;
-        if (p.estado && p.estado !== existe.estado)
+        // Estado: la compañía manda bajas/anulaciones; no pisar estados que cargaste a mano (renovada, no renueva)
+        if (p.estado && p.estado !== existe.estado && (['anulada','baja','cancelada'].indexOf(p.estado) >= 0 || existe.estado === 'activa' || existe.estado === 'vencida'))
           cambios.estado = p.estado;
+        // Vincular al cliente si la póliza estaba suelta
+        if (!existe.cliente_id && cl) cambios.cliente_id = cl.id;
+        if (p._codCliente && String(existe.cod_aseg_fedpat||'') !== String(p._codCliente)) cambios.cod_aseg_fedpat = p._codCliente;
+        if (p.cobertura && p.cobertura !== existe.cobertura) cambios.cobertura = p.cobertura;
+        // Datos del ramo: sumar lo que trae la compañía sin borrar lo cargado a mano
+        if (p.datos_ramo) {
+          var drViejo = existe.datos_ramo; try { if (typeof drViejo === 'string') drViejo = JSON.parse(drViejo); } catch(e) { drViejo = {}; }
+          var drNuevo = Object.assign({}, drViejo || {}, JSON.parse(p.datos_ramo));
+          if (JSON.stringify(drNuevo) !== JSON.stringify(drViejo || {})) cambios.datos_ramo = JSON.stringify(drNuevo);
+        }
         if (Object.keys(cambios).length) polActualizar.push({ id:existe.id, cambios:cambios });
         else stats.skip++;
       }
@@ -11081,28 +11119,52 @@ async function normalizarYSincronizar(parsed, filename) {
     // ── Cobranzas (solo Fed Patronal por ahora) ────────────
     var cobranzasArr = parsed.cobranzas || [];
     if (cobranzasArr.length) {
-      var { data: polBD2 } = await sb.from('polizas').select('id,numero_poliza').eq('productor_id', uid);
-      var polIdx2 = {};
-      (polBD2||[]).forEach(function(p){ polIdx2[String(p.numero_poliza)] = p.id; });
+      var { data: polBD2 } = await sb.from('polizas').select('id,numero_poliza,cliente_id,created_at').eq('productor_id', uid).order('created_at');
+      var polIdx2 = {}, polCli2 = {};
+      (polBD2||[]).forEach(function(p){ var kn = String(p.numero_poliza); if (!polIdx2[kn]) { polIdx2[kn] = p.id; polCli2[p.id] = p.cliente_id; } });
 
-      var cobInsertar = [];
+      // Cuotas ya cargadas: por número de recibo; las viejas (sin número) se reconocen por póliza + vencimiento + importe
+      var { data: cobAll } = await sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,estado,numero_recibo').eq('productor_id', uid);
+      var cobPorRecibo = {}, cobViejas = {};
+      (cobAll||[]).forEach(function(c){
+        if (c.numero_recibo) cobPorRecibo[c.poliza_id + '_' + c.numero_recibo] = c;
+        else { var kv = c.poliza_id + '_' + (c.fecha_vencimiento||'') + '_' + Math.round(Number(c.monto)||0); (cobViejas[kv] = cobViejas[kv] || []).push(c); }
+      });
+
+      var cobInsertar = [], cobActualizar = [];
       cobranzasArr.forEach(function(c) {
         var polId = polIdx2[String(c._nroPol)];
         if (!polId) return;
-        // Dedup: preferir por fecha_vencimiento (evita duplicados si numero_cuota llega como null)
-        var keyFecha = polId + '_' + (c.fecha_vencimiento||'');
-        var keyCuota = polId + '_' + (c.numero_cuota||'');
-        if (cobIdx[keyFecha] || (c.numero_cuota && cobIdx[keyCuota])) { stats.skip++; return; }
-        // Marcar como procesado
-        cobIdx[keyFecha] = true;
-        if (c.numero_cuota) cobIdx[keyCuota] = true;
+        var k = polId + '_' + c.numero_recibo;
+        var ex = cobPorRecibo[k];
+        if (!ex) {
+          var kv = polId + '_' + (c.fecha_vencimiento||'') + '_' + Math.round(c.monto||0);
+          var lista = cobViejas[kv];
+          if (lista && lista.length) {
+            ex = lista.shift(); cobPorRecibo[k] = ex;
+            cobActualizar.push({ id: ex.id, cambios: { numero_recibo: c.numero_recibo, endoso: c.endoso, estado: c.estado, monto: c.monto, cliente_id: ex.cliente_id || polCli2[polId] || null } });
+            return;
+          }
+        }
+        if (ex) {
+          var camb = {};
+          if (ex.estado !== c.estado) camb.estado = c.estado;
+          if (Number(ex.monto) !== Number(c.monto)) camb.monto = c.monto;
+          if (!ex.cliente_id && polCli2[polId]) camb.cliente_id = polCli2[polId];
+          if (Object.keys(camb).length) cobActualizar.push({ id: ex.id, cambios: camb }); else stats.skip++;
+          return;
+        }
+        cobPorRecibo[k] = { id: null };
         cobInsertar.push({
           productor_id:      uid,
           poliza_id:         polId,
+          cliente_id:        polCli2[polId] || null,
           numero_cuota:      c.numero_cuota,
           monto:             c.monto,
           fecha_vencimiento: c.fecha_vencimiento,
           estado:            c.estado,
+          numero_recibo:     c.numero_recibo,
+          endoso:            c.endoso,
         });
       });
 
@@ -11113,7 +11175,13 @@ async function normalizarYSincronizar(parsed, filename) {
           if (errCob) { compLog('error', 'Error cobranzas: ' + errCob.message); stats.error = true; break; }
           await new Promise(function(r){ setTimeout(r, 200); });
         }
-        compLog('ok', cobInsertar.length + ' cuotas de cobranza insertadas');
+        compLog('ok', cobInsertar.length + ' cuotas nuevas insertadas');
+      }
+      if (cobActualizar.length) {
+        for (var cu = 0; cu < cobActualizar.length; cu += 10) {
+          await Promise.all(cobActualizar.slice(cu, cu+10).map(function(u){ return sb.from('cobranzas').update(u.cambios).eq('id', u.id); }));
+        }
+        compLog('ok', cobActualizar.length + ' cuotas actualizadas (pagos, importes o datos)');
       }
 
       // ── Post-proceso: actualizar valor_cuota y prima_anual ─
