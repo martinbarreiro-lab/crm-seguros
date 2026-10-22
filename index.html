@@ -1812,6 +1812,7 @@ async function copiarLinkArchivo(url) {
 // ---- ENVÍO DE PÓLIZAS Y ENDOSOS AL CLIENTE ----
 // Se manda el PDF (como archivo) por WhatsApp y/o mail y queda constancia con fecha y hora en el historial.
 var _envio = null; // { pol, cl, doc, tareaId, file, texto }
+const CUENTA_GMAIL = 'martinbarreiro@mbseguros.com.ar'; // cuenta de Gmail con la que se redactan los mails
 
 function _envModal() {
   var m = document.getElementById('modal-envio');
@@ -1873,25 +1874,21 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     var quien = tel && mail ? 'WhatsApp o tu correo' : tel ? 'WhatsApp' : 'tu correo';
     if (puedeCompartir) {
       // Opción principal: compartir con el PDF adjunto. La constancia se guarda al terminar de compartir.
-      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Tocá el botón, elegí <strong>' + quien + '</strong> en el menú de compartir, buscá al cliente y enviá: el PDF va adjunto. Al terminar, la constancia se guarda sola.</div>');
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">' + (tel ? '<strong>WhatsApp:</strong> elegí WhatsApp en el menú de compartir, buscá al cliente y enviá (el PDF va adjunto). ' : '') + (mail ? '<strong>Mail:</strong> se abre Gmail con todo cargado y se descarga el PDF: adjuntalo y enviá. ' : '') + 'La constancia se guarda sola.</div>');
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="compartirPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📤 Compartir por WhatsApp <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="compartirPorCanal(\'mail\')" style="justify-content:space-between;display:flex">📤 Compartir por mail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir en Gmail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
-      h.push('<div style="font-size:11px;color:var(--muted);margin-top:8px">Alternativa: '
-        + (tel ? '<button type="button" class="lnk" onclick="enviarPorCanal(\'wa\')">abrir el chat directo</button>' : '')
-        + (tel && mail ? ' · ' : '')
-        + (mail ? '<button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">abrir el mail directo</button>' : '')
-        + ' (descarga el PDF para adjuntarlo a mano)</div>');
+      if (tel) h.push('<div style="font-size:11px;color:var(--muted);margin-top:8px">Alternativa para WhatsApp: <button type="button" class="lnk" onclick="enviarPorCanal(\'wa\')">abrir el chat directo</button> (descarga el PDF para adjuntarlo a mano)</div>');
     } else {
       // Equipos sin menú de compartir: abre el chat / mail directo y descarga el PDF para adjuntarlo
       h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">Al tocar un botón se descarga el PDF y se abre el chat o el mail del cliente con el mensaje escrito. <strong>Adjuntá el PDF descargado y enviá.</strong> La constancia se guarda sola.</div>');
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir mail del cliente <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir en Gmail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
     }
@@ -1997,7 +1994,12 @@ function abrirCanalEnvio(canal) {
     if (esCel) _abrirVentana('https://wa.me/' + _envio.tel + '?text=' + encodeURIComponent(texto), '_blank');
     else window.location.href = 'whatsapp://send?phone=' + _envio.tel + '&text=' + encodeURIComponent(texto);
   }
-  else _abrirVentana('mailto:' + _envio.mail + '?subject=' + encodeURIComponent(_envio.file.name.replace(/_/g, ' ').replace('.pdf', '')) + '&body=' + encodeURIComponent(texto), '_self');
+  else {
+    // Abre el redactor de Gmail con la cuenta de MB Seguros (no Outlook)
+    var asunto = _envio.file.name.replace(/_/g, ' ').replace('.pdf', '');
+    _abrirVentana('https://mail.google.com/mail/?authuser=' + encodeURIComponent(CUENTA_GMAIL) + '&view=cm&fs=1&to=' + encodeURIComponent(_envio.mail)
+      + '&su=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(texto), '_blank');
+  }
 }
 
 // Confirmación manual (solo en equipos sin menú de compartir)
