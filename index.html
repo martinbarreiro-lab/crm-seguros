@@ -3782,6 +3782,8 @@ async function fichaPolizas(c) {
         if (cuotaArt != null) cobPartes.push('Paga por mes <b style="color:#166534">' + fmtP(cuotaArt) + '</b>' + (drC.cuota_estimada ? ' (estimado)' : (drC.periodo ? ' (' + drC.periodo + ')' : '')));
         if (drC.saldo > 0) cobPartes.push('<span style="color:#B91C1C">Saldo deudor ' + fmtP(drC.saldo) + '</span>');
         else if (drC.saldo < 0) cobPartes.push('<span style="color:#166534">Saldo a favor ' + fmtP(-drC.saldo) + '</span>');
+        if (drC.poliza_provincia) cobPartes.push('Póliza ' + drC.poliza_provincia);
+        if (drC.gestor_cobranza) cobPartes.push('Cobranza: ' + String(drC.gestor_cobranza).replace(/\b\w/g, function (m) { return m.toUpperCase(); }).replace(/@PROVART\.COM\.AR/i, '@provart.com.ar'));
         if (drC.actividad) cobPartes.push('<span style="color:#9CA3AF">' + drC.actividad + '</span>');
       } else {
         // Genérico — suma asegurada
