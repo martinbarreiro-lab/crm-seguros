@@ -144,110 +144,114 @@
 
       <!-- DASHBOARD -->
       <div id="sec-dashboard" class="sec active">
-        <!-- Métricas globales -->
-        <div class="g4" style="margin-bottom:16px">
-          <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Pólizas vigentes</div><div class="val" id="m-pol" style="color:var(--green)">—</div><div class="sub" id="m-pol-sub"></div></div></div>
-          <div class="metric" style="border-top:3px solid var(--red)"><div class="m-body"><div class="lbl">Siniestros abiertos</div><div class="val" id="m-sin" style="color:var(--red)">—</div><div class="sub" id="m-sin-sub">En gestión</div></div></div>
-          <div class="metric" style="border-top:3px solid var(--amber)"><div class="m-body"><div class="lbl">Cotizaciones pendientes</div><div class="val" id="m-cotz" style="color:var(--amber)">—</div><div class="sub" id="m-cotz-sub">Sin respuesta</div></div></div>
-          <div class="metric" style="border-top:3px solid var(--blue)"><div class="m-body"><div class="lbl">Tareas pendientes</div><div class="val" id="m-tar" style="color:var(--blue)">—</div><div class="sub" id="m-tar-sub"></div></div></div>
-        </div>
+        <!-- 1. Saludo + avisos -->
+        <section class="dz-card dz-head">
+          <div class="dz-hola">
+            <h1 id="dz-saludo">Hola</h1>
+            <div class="dz-fecha" id="dz-fecha"></div>
+          </div>
+          <div class="dz-chips" id="dz-chips"></div>
+          <div class="dz-acc">
+            <button type="button" class="btn" onclick="irASeccion('tareas')">+ Tarea</button>
+            <button type="button" class="btn dz-btn-dark" onclick="var b=document.getElementById('btn-npol'); irASeccion('polizas'); setTimeout(function(){ b && b.click(); }, 300);">+ Nueva póliza</button>
+          </div>
+        </section>
 
-        <!-- Filtro período -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-          <div style="font-size:12px;color:var(--muted);font-weight:500">Período:</div>
-          <div style="display:flex;gap:4px">
-            <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('semana',this)">Semana</button>
-            <button type="button" class="btn btn-sm btn-p" id="dash-btn-mes" onclick="dashSetPeriodo('mes',this)">Mes</button>
-            <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('trim',this)">Trimestre</button>
-            <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('anio',this)">Año</button>
-          </div>
-          <div style="font-size:12px;color:var(--muted)" id="dash-rango"></div>
-        </div>
-
-        <!-- Métricas del período -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-          <div style="background:var(--white);border:0.5px solid var(--border);border-top:3px solid var(--green);border-radius:var(--rsm);padding:12px 14px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Pólizas nuevas</div>
-            <div style="font-size:22px;font-weight:500;color:var(--green)" id="dp-nuevas">—</div>
-          </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-top:3px solid var(--green);border-radius:var(--rsm);padding:12px 14px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Renovaciones</div>
-            <div style="font-size:22px;font-weight:500;color:var(--green)" id="dp-renov">—</div>
-          </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-top:3px solid var(--red);border-radius:var(--rsm);padding:12px 14px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">No renovadas</div>
-            <div style="font-size:22px;font-weight:500;color:var(--red)" id="dp-norenov">—</div>
-          </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-top:3px solid var(--red);border-radius:var(--rsm);padding:12px 14px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Anulaciones</div>
-            <div style="font-size:22px;font-weight:500;color:var(--red)" id="dp-anul">—</div>
-          </div>
-        </div>
-
-        <!-- Fila paneles -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:12px;font-weight:500;color:var(--text)">Tareas urgentes</div>
-              <button type="button" class="btn btn-sm" onclick="irASeccion('tareas')">Ver →</button>
+        <!-- 2. Cartera vigente + indicadores -->
+        <section class="dz-row">
+          <div class="dz-hero">
+            <div class="dz-hero-tag">● CARTERA VIGENTE</div>
+            <div>
+              <div class="dz-hero-lbl">INGRESO MENSUAL DE CARTERA</div>
+              <div class="dz-hero-val"><span id="dz-ingreso">—</span><small> /mes</small></div>
             </div>
-            <div id="dash-tareas-urgentes"><div class="loading"><span class="spin"></span></div></div>
+            <div class="dz-hero-split" id="dz-split"></div>
           </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:12px;font-weight:500;color:var(--text)">Próximos vencimientos</div>
-              <button type="button" class="btn btn-sm" onclick="irASeccion('polizas')">Ver →</button>
+          <div class="dz-kpis">
+            <div class="dz-kpi"><div class="dz-kpi-l">PÓLIZAS VIGENTES</div><div class="dz-kpi-v" id="m-pol" style="color:var(--green)">—</div><div class="dz-kpi-s" id="m-pol-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">SINIESTROS ABIERTOS</div><div class="dz-kpi-v" id="m-sin" style="color:var(--red)">—</div><div class="dz-kpi-s" id="m-sin-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">COTIZACIONES EN CURSO</div><div class="dz-kpi-v" id="m-cotz" style="color:var(--amber)">—</div><div class="dz-kpi-s" id="m-cotz-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">TAREAS PENDIENTES</div><div class="dz-kpi-v" id="m-tar" style="color:var(--med)">—</div><div class="dz-kpi-s" id="m-tar-sub"></div></div>
+          </div>
+        </section>
+
+        <!-- 3. Tu día + Vencimientos -->
+        <section class="dz-row">
+          <div class="dz-card">
+            <div class="dz-tit"><h2>Tu día</h2><button type="button" class="dz-link" onclick="dzToggleAgenda()" id="dz-btn-agenda">Ver agenda →</button></div>
+            <div class="dz-sub">Hoy y mañana</div>
+            <div id="dz-tudia"><div class="loading"><span class="spin"></span></div></div>
+            <!-- Agenda (calendario) -->
+            <div id="dz-agenda" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <button type="button" class="btn btn-sm" onclick="dashCalMes(-1)" aria-label="Mes anterior">‹</button>
+                <div style="font-size:12px;font-weight:500;color:var(--text)" id="dash-cal-titulo"></div>
+                <button type="button" class="btn btn-sm" onclick="dashCalMes(1)" aria-label="Mes siguiente">›</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:4px">
+                <div class="dz-dow">L</div><div class="dz-dow">M</div><div class="dz-dow">M</div><div class="dz-dow">J</div><div class="dz-dow">V</div><div class="dz-dow">S</div><div class="dz-dow">D</div>
+              </div>
+              <div id="dash-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--red)"></div>Póliza</div>
+                <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--amber)"></div>Tarea</div>
+                <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--med)"></div>Ambos</div>
+              </div>
+              <div id="dash-cal-det" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:var(--rsm)">
+                <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:5px" id="dash-cal-det-tit"></div>
+                <div id="dash-cal-det-items"></div>
+              </div>
             </div>
+          </div>
+          <div class="dz-card">
+            <div class="dz-tit"><h2>Vencimientos próximos</h2><button type="button" class="dz-link" onclick="irASeccion('polizas')">Ver todas →</button></div>
+            <div class="dz-sub">Próximos 60 días · con estado de renovación</div>
             <div id="dash-venc"><div class="loading"><span class="spin"></span></div></div>
           </div>
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:12px;font-weight:500;color:var(--text)">Cotizaciones en proceso</div>
-              <button type="button" class="btn btn-sm" onclick="irASeccion('cotizaciones')">Ver →</button>
-            </div>
-            <div id="dash-cotz-proceso"><div class="loading"><span class="spin"></span></div></div>
-          </div>
-        </div>
+        </section>
 
-        <!-- Calendario + Objetivos -->
-        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:12px">
-          <!-- Calendario -->
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <button type="button" class="btn btn-sm" onclick="dashCalMes(-1)">‹</button>
-              <div style="font-size:12px;font-weight:500;color:var(--text)" id="dash-cal-titulo"></div>
-              <button type="button" class="btn btn-sm" onclick="dashCalMes(1)">›</button>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:4px">
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">L</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">M</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">M</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">J</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">V</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">S</div>
-              <div style="text-align:center;font-size:10px;color:var(--muted);padding:3px">D</div>
-            </div>
-            <div id="dash-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
-            <div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">
-              <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--red)"></div>Póliza</div>
-              <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--amber)"></div>Tarea</div>
-              <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)"><div style="width:6px;height:6px;border-radius:50%;background:var(--med)"></div>Ambos</div>
-            </div>
-            <div id="dash-cal-det" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:var(--rsm)">
-              <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:5px" id="dash-cal-det-tit"></div>
-              <div id="dash-cal-det-items"></div>
+        <!-- 4. Distribución de cartera -->
+        <section class="dz-card">
+          <div class="dz-tit"><h2>Distribución de cartera</h2><span class="dz-sub" id="dz-dist-total" style="margin:0"></span></div>
+          <div class="dz-dist">
+            <div class="dz-donut-wrap"><div id="dz-donut-cia"></div><div class="dz-leg" id="dz-leg-cia"></div></div>
+            <div class="dz-donut-wrap"><div id="dz-donut-ramo"></div><div class="dz-leg dz-leg2" id="dz-leg-ramo"></div></div>
+          </div>
+        </section>
+
+        <!-- 5. Movimiento del período -->
+        <section class="dz-card">
+          <div class="dz-tit" style="flex-wrap:wrap;gap:10px">
+            <h2>Movimiento del período <span class="dz-sub" id="dash-rango" style="margin:0 0 0 6px;display:inline"></span></h2>
+            <div class="dz-seg">
+              <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('semana',this)">Semana</button>
+              <button type="button" class="btn btn-sm btn-p" id="dash-btn-mes" onclick="dashSetPeriodo('mes',this)">Mes</button>
+              <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('trim',this)">Trimestre</button>
+              <button type="button" class="btn btn-sm" onclick="dashSetPeriodo('anio',this)">Año</button>
             </div>
           </div>
+          <div class="dz-mov">
+            <div class="dz-movc"><div class="dz-kpi-l">PÓLIZAS NUEVAS</div><div class="dz-movv" id="dp-nuevas" style="color:var(--green)">—</div></div>
+            <div class="dz-movc"><div class="dz-kpi-l">RENOVACIONES</div><div class="dz-movv" id="dp-renov" style="color:var(--green)">—</div></div>
+            <div class="dz-movc"><div class="dz-kpi-l">NO RENOVADAS</div><div class="dz-movv" id="dp-norenov" style="color:var(--red)">—</div></div>
+            <div class="dz-movc"><div class="dz-kpi-l">ANULACIONES</div><div class="dz-movv" id="dp-anul" style="color:var(--red)">—</div></div>
+            <div class="dz-movc"><div class="dz-kpi-l">PÓLIZAS ENVIADAS</div><div class="dz-movv" id="dp-env" style="color:var(--med)">—</div></div>
+          </div>
+        </section>
 
-          <!-- Objetivos -->
-          <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-              <div style="font-size:12px;font-weight:500;color:var(--text)" id="dash-obj-titulo">Objetivos</div>
-              <button type="button" class="btn btn-sm btn-p" onclick="abrirModalObjetivo()">+ Agregar</button>
-            </div>
+        <!-- 6. Actividad reciente + Objetivos -->
+        <section class="dz-row">
+          <div class="dz-card">
+            <div class="dz-tit"><h2>Actividad reciente</h2></div>
+            <div class="dz-sub">Hoy y ayer</div>
+            <div id="dz-actividad"><div class="loading"><span class="spin"></span></div></div>
+          </div>
+          <div class="dz-card">
+            <div class="dz-tit"><h2 id="dash-obj-titulo">Objetivos</h2><button type="button" class="dz-link" onclick="abrirModalObjetivo()">+ Agregar</button></div>
+            <div id="dz-obj-pdf"></div>
             <div id="dash-objetivos"><div style="text-align:center;padding:20px;color:var(--lt);font-size:13px">Sin objetivos definidos.<br><span style="font-size:11px">Hacé click en + Agregar para crear uno.</span></div></div>
           </div>
-        </div>
+        </section>
       </div>
 
       <!-- CLIENTES -->
@@ -2417,114 +2421,179 @@ function dashActualizarPeriodo() {
 
 async function cargarDashboard() {
   var uid = user.id;
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoyD = new Date();
+  var iso = function(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); };
+  var hoy = iso(hoyD);
+  var manD = new Date(hoyD); manD.setDate(manD.getDate()+1); var manana = iso(manD);
+  var ayerD = new Date(hoyD); ayerD.setDate(ayerD.getDate()-1); ayerD.setHours(0,0,0,0);
+  var en30 = new Date(hoyD); en30.setDate(en30.getDate()+30);
+  var en60 = new Date(hoyD); en60.setDate(en60.getDate()+60);
   var range = dashActualizarPeriodo();
-
-  // Métricas globales
-  var [pol, sin, cotz, tar, premioData] = await Promise.all([
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','activa'),
-    sb.from('siniestros').select('id',{count:'exact'}).eq('productor_id',uid).neq('estado','cerrado'),
-    sb.from('cotizaciones').select('id',{count:'exact'}).eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
-    sb.from('tareas').select('id',{count:'exact'}).eq('productor_id',uid).not('estado','in','("cerrada","cancelada")'),
-    sb.from('polizas').select('prima_anual,valor_cuota,forma_pago').eq('productor_id',uid).eq('estado','activa'),
-  ]);
-  var premioTotal = (premioData.data||[]).reduce(function(a,p){return a+(parseFloat(p.prima_anual)||0);},0);
-  var ingresoMesReal = Math.round((premioData.data||[]).reduce(function(a,p){ return a+getMensualNum(p); }, 0));
-  var sinMovim = 0;
-  var hoyDate = new Date(); var limite30 = new Date(); limite30.setDate(hoyDate.getDate()-30);
-  var {data: sinData} = await sb.from('siniestros').select('created_at').eq('productor_id',uid).neq('estado','cerrado');
-  sinMovim = (sinData||[]).filter(function(s){ return new Date(s.created_at) < limite30; }).length;
-
-  var tarVenc = 0;
-  var {data: tarData} = await sb.from('tareas').select('fecha_limite').eq('productor_id',uid).not('estado','in','("cerrada","cancelada")').not('fecha_limite','is',null);
-  tarVenc = (tarData||[]).filter(function(t){ return t.fecha_limite < hoy; }).length;
-
   var el = function(id){ return document.getElementById(id); };
-  if(el('m-pol')) el('m-pol').textContent = pol.count||0;
-  if(el('m-pol-sub')) el('m-pol-sub').innerHTML = ingresoMesReal
-    ? '<span style="color:var(--green);font-weight:600">$'+ingresoMesReal.toLocaleString('es-AR')+'/mes</span> · ingreso mensual real'
-    : '';
-  if(el('m-sin')) el('m-sin').textContent = sin.count||0;
-  if(el('m-sin-sub')) el('m-sin-sub').textContent = sinMovim ? sinMovim+' sin movimiento +30d' : '';
-  if(el('m-cotz')) el('m-cotz').textContent = cotz.count||0;
-  if(el('m-tar')) el('m-tar').textContent = tar.count||0;
-  if(el('m-tar-sub')) el('m-tar-sub').textContent = tarVenc ? tarVenc+' vencidas' : '';
+  var $ = function(n){ return '$' + Math.round(n||0).toLocaleString('es-AR'); };
+  var $M = function(n){ n = n||0; return n >= 1e6 ? '$' + (n/1e6).toLocaleString('es-AR',{maximumFractionDigits:1}) + ' M' : $(n); };
+  var esc_ = function(t){ return typeof esc === 'function' ? esc(t) : String(t==null?'':t); };
 
-  // Métricas del período
-  var [pNuevas, pRenov, pNoRenov, pAnul] = await Promise.all([
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).gte('created_at',range.desde).lte('created_at',range.hasta+'T23:59:59'),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','renovada').gte('updated_at',range.desde),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','no_renueva').gte('updated_at',range.desde),
-    sb.from('polizas').select('id',{count:'exact'}).eq('productor_id',uid).eq('estado','anulada').gte('updated_at',range.desde),
+  // Saludo
+  var h = hoyD.getHours();
+  var nom = ((el('sb-nombre')||{}).textContent||'').trim().split(/\s+/)[0];
+  if (!nom || nom === '—' || nom.indexOf('@') >= 0) nom = '';
+  if (el('dz-saludo')) el('dz-saludo').innerHTML = (h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches') + (nom ? ', <span>' + esc_(nom) + '</span>' : '');
+  if (el('dz-fecha')) { var f = hoyD.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); el('dz-fecha').textContent = f.charAt(0).toUpperCase()+f.slice(1); }
+
+  // ── Datos base, en paralelo ──
+  var R = await Promise.all([
+    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,prima_anual,valor_cuota,forma_pago,periodo_meses,cantidad_cuotas,fecha_vencimiento,pdf_url,datos_ramo,estado').eq('productor_id',uid).eq('estado','activa'),
+    sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
+    sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
+    sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
+    sb.from('cobranzas').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy),
+    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
+    sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
+    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
-  if(el('dp-nuevas')) el('dp-nuevas').textContent = pNuevas.count||0;
-  if(el('dp-renov')) el('dp-renov').textContent = pRenov.count||0;
-  if(el('dp-norenov')) el('dp-norenov').textContent = pNoRenov.count||0;
-  if(el('dp-anul')) el('dp-anul').textContent = pAnul.count||0;
+  var todasPol = R[0].data||[], sins = R[1].data||[], cots = R[2].data||[], tars = R[3].data||[];
+  var cuotasVenc = R[4].count||0, cuotasHoy = R[5].data||[], acts = R[6].data||[], venc = R[7].data||[];
+  var pols = todasPol.filter(function(p){ return !p.fecha_vencimiento || p.fecha_vencimiento >= hoy; });
+  var dr = function(p){ var d = p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = {}; } } return d||{}; };
+  var nomCl = function(c){ return c ? nombreClienteLista(c) : ''; };
 
-  // Tareas urgentes
-  var {data: tarUrg} = await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada")').not('fecha_limite','is',null).lte('fecha_limite',hoy).order('fecha_limite').limit(5);
-  var tuEl = el('dash-tareas-urgentes');
-  if (tuEl) {
-    if (!tarUrg||!tarUrg.length) { tuEl.innerHTML='<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin tareas urgentes 🎉</div>'; }
-    else tuEl.innerHTML = tarUrg.map(function(t){
-      var dias = Math.round((new Date(hoy)-new Date(t.fecha_limite))/864e5);
-      var bg = t.fecha_limite===hoy ? '#FEF3C7' : '#FCEBEB';
-      var tc = t.fecha_limite===hoy ? '#791F1F' : '#791F1F';
-      var sc = t.fecha_limite===hoy ? '#854F0B' : '#A32D2D';
-      var sub = t.fecha_limite===hoy ? 'Hoy' : 'Venció hace '+dias+'d';
-      var nombre = t.clientes ? ' — '+nombreClienteLista(t.clientes) : '';
-      return '<div style="padding:7px 9px;background:'+bg+';border-radius:var(--rsm);margin-bottom:5px"><div style="font-size:12px;color:'+tc+';font-weight:500">'+t.titulo+'</div><div style="font-size:11px;color:'+sc+';margin-top:1px">'+sub+' · '+t.tablero+'</div></div>';
-    }).join('');
-  }
+  // ── Avisos (chips) ──
+  var vence30 = pols.filter(function(p){ return p.fecha_vencimiento && p.fecha_vencimiento <= iso(en30); }).length;
+  var artDeuda = pols.filter(function(p){ return /ART/i.test(p.ramo||'') && Number(dr(p).saldo) > 0; }).length;
+  var sinPdf = pols.filter(function(p){ return !p.pdf_url && !/ART/i.test(p.ramo||''); }).length;
+  var aEnviar = tars.filter(function(t){ return /^Enviar (póliza|endoso)/i.test(t.tipo||''); }).length;
+  var chips = [];
+  var chip = function(n, txt, cls, js){ if (n) chips.push('<button type="button" class="dz-chip '+cls+'" onclick="'+js+'"><i></i><b>'+n+'</b> '+txt+'</button>'); };
+  chip(vence30, vence30 === 1 ? 'vence en 30 días' : 'vencen en 30 días', 'am', "irASeccion('polizas')");
+  chip(cuotasVenc, cuotasVenc === 1 ? 'cuota vencida' : 'cuotas vencidas', 'rj', "irASeccion('cobranzas')");
+  chip(artDeuda, 'ART con saldo deudor', 'rj', "irASeccion('polizas')");
+  chip(aEnviar, aEnviar === 1 ? 'póliza para enviar' : 'pólizas para enviar', 'az', "irASeccion('tareas')");
+  chip(sinPdf, sinPdf === 1 ? 'póliza sin PDF' : 'pólizas sin PDF', '', "irASeccion('polizas')");
+  if (el('dz-chips')) el('dz-chips').innerHTML = chips.length ? chips.join('') : '<span class="dz-chip ok"><i></i>Todo al día</span>';
 
-  // Próximos vencimientos
-  var lim60 = new Date(); lim60.setDate(lim60.getDate()+60);
-  var {data: venc} = await sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',uid).lte('fecha_vencimiento',lim60.toISOString().split('T')[0]).order('fecha_vencimiento').limit(4);
+  // ── Cartera vigente ──
+  var porCia = {}, porRamo = {}, ingreso = 0, comision = 0, hayCom = false;
+  pols.forEach(function(p){
+    var m = getMensualNum(p); ingreso += m;
+    var c = p.aseguradora || 'Sin compañía'; porCia[c] = porCia[c] || { n:0, m:0 }; porCia[c].n++; porCia[c].m += m;
+    var r = p.ramo || 'Sin ramo'; porRamo[r] = (porRamo[r]||0) + 1;
+    var cm = calcComisionMensual(p.prima_anual || m*12, p.aseguradora, p.ramo); if (cm) { comision += cm.monto; hayCom = true; }
+  });
+  if (el('dz-ingreso')) el('dz-ingreso').textContent = $(ingreso);
+  var cias = Object.keys(porCia).map(function(k){ return { k:k, n:porCia[k].n, m:porCia[k].m }; }).sort(function(a,b){ return b.m - a.m; });
+  if (el('dz-split')) el('dz-split').innerHTML = cias.slice(0,3).map(function(c){ return '<div><div class="l">'+esc_(c.k)+'</div><div class="v">'+$(c.m)+'</div></div>'; }).join('')
+    + '<div><div class="l">Comisión estimada</div><div class="v" style="color:#86EFAC">'+(hayCom ? $(comision)+'/mes' : '<span style="font-size:12px;font-weight:500;color:#94A3B8">Cargá los % en Configuración</span>')+'</div></div>';
+
+  // ── Indicadores ──
+  var clientesCon = {}; pols.forEach(function(p){ if (p.cliente_id) clientesCon[p.cliente_id] = 1; });
+  var lim30 = new Date(hoyD); lim30.setDate(lim30.getDate()-30);
+  var dos = new Date(hoyD); dos.setDate(dos.getDate()-2);
+  var cotSinResp = cots.filter(function(c){ var f = c.fecha_envio || c.created_at; return f && new Date(f) < dos; }).length;
+  var tarVenc = tars.filter(function(t){ return t.fecha_limite && t.fecha_limite < hoy; }).length;
+  var tarHoy = tars.filter(function(t){ return t.fecha_limite && t.fecha_limite >= hoy && t.fecha_limite <= manana; }).length;
+  if (el('m-pol')) el('m-pol').textContent = pols.length;
+  if (el('m-pol-sub')) el('m-pol-sub').textContent = Object.keys(clientesCon).length + ' clientes con póliza';
+  if (el('m-sin')) el('m-sin').textContent = sins.length;
+  if (el('m-sin-sub')) el('m-sin-sub').textContent = 'Sin movimiento +30 días: ' + sins.filter(function(s){ return new Date(s.created_at) < lim30; }).length;
+  if (el('m-cotz')) el('m-cotz').textContent = cots.length;
+  if (el('m-cotz-sub')) el('m-cotz-sub').textContent = 'Sin respuesta +2 días: ' + cotSinResp;
+  if (el('m-tar')) el('m-tar').textContent = tars.length;
+  if (el('m-tar-sub')) el('m-tar-sub').textContent = 'Hoy y mañana: ' + tarHoy + (tarVenc ? ' · ' + tarVenc + ' vencidas' : '');
+
+  // ── Tu día ──
+  var items = [];
+  var fmtD = function(f){ return f === hoy ? 'HOY' : f === manana ? 'MAÑANA' : f < hoy ? 'VENCIDA' : fmtDate(f); };
+  tars.filter(function(t){ return t.fecha_limite && t.fecha_limite <= manana; })
+    .sort(function(a,b){ return a.fecha_limite < b.fecha_limite ? -1 : 1; })
+    .forEach(function(t){
+      var cls = t.fecha_limite < hoy ? 'rj' : /^Enviar/i.test(t.tipo||'') ? 'az' : t.fecha_limite === hoy ? 'am' : '';
+      items.push({ o: t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="irASeccion(\'tareas\')"><span class="w">'+fmtD(t.fecha_limite)+'</span><div class="t"><b>'+esc_(t.tipo || 'Tarea')+'</b> · '+esc_(t.titulo||'')+(t.clientes ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">Tareas →</span></div>' });
+    });
+  pols.filter(function(p){ return p.fecha_vencimiento === hoy || p.fecha_vencimiento === manana; }).forEach(function(p){
+    var cl = (venc.find(function(v){ return v.id === p.id; })||{}).clientes;
+    items.push({ o: p.fecha_vencimiento, h: '<div class="dz-item am" onclick="irAFichaCliente(\''+p.cliente_id+'\')"><span class="w">'+fmtD(p.fecha_vencimiento)+'</span><div class="t"><b>Vence</b> '+esc_(p.ramo||'')+' '+esc_(p.numero_poliza||'')+(cl ? ' · '+esc_(nomCl(cl)) : '')+'</div><span class="r">Ver cliente →</span></div>' });
+  });
+  cuotasHoy.forEach(function(c){
+    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irASeccion(\'cobranzas\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota</b> '+$(c.monto)+(c.clientes ? ' · '+esc_(nomCl(c.clientes)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
+  });
+  items.sort(function(a,b){ return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; });
+  var tdHtml = items.slice(0, 7).map(function(x){ return x.h; }).join('');
+  if (items.length > 7) tdHtml += '<div class="dz-sub" style="margin:4px 0 0">y '+(items.length-7)+' más en Tareas</div>';
+  if (cuotasVenc) tdHtml += '<div class="dz-item rj" onclick="irASeccion(\'cobranzas\')"><span class="w">PENDIENTE</span><div class="t"><b>Cuotas vencidas</b> · '+cuotasVenc+' para reclamar</div><span class="r">Cobranzas →</span></div>';
+  if (el('dz-tudia')) el('dz-tudia').innerHTML = tdHtml || '<div style="font-size:13px;color:var(--lt);padding:8px 0">Nada para hoy ni mañana</div>';
+
+  // ── Vencimientos con estado de renovación ──
+  var tarRenov = {}; tars.forEach(function(t){ if (t.poliza_id && /renov/i.test((t.tipo||'')+' '+(t.titulo||''))) tarRenov[t.poliza_id] = 1; });
+  var cotCl = {}; cots.forEach(function(c){ if (c.cliente_id) cotCl[c.cliente_id] = 1; });
   var dvEl = el('dash-venc');
-  if (dvEl) {
-    if (!venc||!venc.length) { dvEl.innerHTML='<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin vencimientos próximos 🎉</div>'; }
-    else dvEl.innerHTML = venc.map(function(p){
-      var dias = Math.round((new Date(p.fecha_vencimiento)-new Date(hoy))/864e5);
-      var bg = dias<0?'#FCEBEB':dias<=15?'#FEF3C7':'#EAF3DE';
-      var tc = dias<0?'#791F1F':dias<=15?'#633806':'#27500A';
-      var sc = dias<0?'#A32D2D':dias<=15?'#854F0B':'#3B6D11';
-      var sub = dias<0?'Vencida':dias===0?'Vence hoy':'Vence en '+dias+'d';
-      var nombre = p.clientes ? nombreClienteLista(p.clientes) : '—';
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:'+bg+';border-radius:var(--rsm);margin-bottom:5px">'
-        +'<div><div style="font-size:12px;color:'+tc+';font-weight:500">'+nombre+' — '+(p.ramo||'')+'</div><div style="font-size:11px;color:'+sc+';margin-top:1px">'+sub+'</div></div>'
-        +'<button type="button" class="btn btn-sm" onclick="irAFichaCliente(\''+p.cliente_id+'\')" style="font-size:11px;padding:3px 8px">Ver →</button>'
-        +'</div>';
-    }).join('');
-  }
+  if (dvEl) dvEl.innerHTML = venc.length ? venc.map(function(p){
+    var dias = Math.round((new Date(p.fecha_vencimiento+'T12:00:00') - new Date(hoy+'T12:00:00'))/864e5);
+    var dc = dias <= 7 ? 'background:#FEE2E2;color:#B91C1C' : dias <= 30 ? 'background:#FEF3C7;color:#92400E' : 'background:#DCFCE7;color:#166534';
+    var est = /ART/i.test(p.ramo||'') ? ['renueva solo','background:#F3F4F6;color:#6B7280']
+      : cotCl[p.cliente_id] ? ['cotizando','background:#DCFCE7;color:#166534']
+      : tarRenov[p.id] ? ['tarea creada','background:#DBEAFE;color:#1E40AF']
+      : ['sin cotizar','background:#FEF3C7;color:#92400E'];
+    return '<div class="dz-venc" onclick="irAFichaCliente(\''+p.cliente_id+'\')"><span class="dz-dias" style="'+dc+'">'+(dias === 0 ? 'hoy' : dias === 1 ? '1 día' : dias+' días')+'</span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+esc_(nomCl(p.clientes) || '—')+'</div><div style="font-size:12px;color:var(--muted)">'+esc_(p.ramo||'')+' · '+esc_(p.aseguradora||'')+' · '+esc_(p.numero_poliza||'')+'</div></div>'
+      + '<span class="dz-est" style="'+est[1]+'">'+est[0]+'</span></div>';
+  }).join('') : '<div style="font-size:13px;color:var(--lt);padding:8px 0">Sin vencimientos en los próximos 60 días</div>';
 
-  // Cotizaciones en proceso
-  var {data: cotProc} = await sb.from('cotizaciones').select('*,clientes(nombre,apellido)').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")').order('created_at',{ascending:false}).limit(4);
-  var cpEl = el('dash-cotz-proceso');
-  var ESTADO_COT_LABEL = {pendiente:'Pendiente',en_proceso:'En proceso',presentada:'Presentada'};
-  var ESTADO_COT_BG = {pendiente:'#FAEEDA',en_proceso:'#EEEDFE',presentada:'#E6F1FB'};
-  var ESTADO_COT_CLR = {pendiente:'#633806',en_proceso:'#3C3489',presentada:'#0C447C'};
-  if (cpEl) {
-    if (!cotProc||!cotProc.length) { cpEl.innerHTML='<div style="font-size:12px;color:var(--lt);padding:8px 0">Sin cotizaciones en proceso</div>'; }
-    else cpEl.innerHTML = cotProc.map(function(c){
-      var nombre = c.clientes ? nombreClienteLista(c.clientes) : '—';
-      var ramo = {auto:'Automotor',hogar:'Hogar',comercio:'Comercio',art:'ART',ap:'AP',rc:'RC',vida:'Vida',otros:'Otros'}[c.ramo]||c.ramo||'—';
-      var dias = Math.round((new Date()-new Date(c.created_at))/864e5);
-      var bg = ESTADO_COT_BG[c.estado]||'#F3F4F6';
-      var clr = ESTADO_COT_CLR[c.estado]||'var(--muted)';
-      var lbl = ESTADO_COT_LABEL[c.estado]||c.estado||'—';
-      return '<div style="padding:7px 9px;background:var(--bg);border-radius:var(--rsm);margin-bottom:5px">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:12px;font-weight:500;color:var(--text)">'+nombre+' — '+ramo+'</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;background:'+bg+';color:'+clr+'">'+lbl+'</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">Hace '+dias+'d</div>'
-        +'</div>';
-    }).join('');
-  }
+  // ── Distribución de cartera ──
+  var COL = ['#4A90D9','#F39C12','#27AE60','#8E44AD','#E74C3C','#16A085','#2E6DA4','#CBD5E1'];
+  var donut = function(segs, total, lbl, aria){
+    var C = 2*Math.PI*60, off = 0;
+    var arcs = segs.map(function(s, i){ var len = total ? s.n/total*C : 0; var a = '<circle cx="75" cy="75" r="60" fill="none" stroke="'+s.c+'" stroke-width="20" stroke-dasharray="'+len.toFixed(1)+' '+C.toFixed(1)+'" stroke-dashoffset="'+(-off).toFixed(1)+'" transform="rotate(-90 75 75)"></circle>'; off += len; return a; }).join('');
+    return '<svg width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="'+esc_(aria)+'"><circle cx="75" cy="75" r="60" fill="none" stroke="#F1F5F9" stroke-width="20"></circle>'+arcs+'<text x="75" y="72" text-anchor="middle" font-size="24" font-weight="700" fill="#2C3444">'+total+'</text><text x="75" y="92" text-anchor="middle" font-size="11" fill="#6B7280">'+lbl+'</text></svg>';
+  };
+  var segC = cias.slice(0, 6).map(function(c, i){ return { k:c.k, n:c.n, m:c.m, c:COL[i] }; });
+  if (cias.length > 6) segC.push({ k:'Otras', n:cias.slice(6).reduce(function(a,c){ return a+c.n; },0), m:cias.slice(6).reduce(function(a,c){ return a+c.m; },0), c:COL[7] });
+  var ramos = Object.keys(porRamo).map(function(k){ return { k:k, n:porRamo[k] }; }).sort(function(a,b){ return b.n - a.n; });
+  var segR = ramos.slice(0, 5).map(function(r, i){ return { k:r.k, n:r.n, c:['#2E6DA4','#7FB3E8','#27AE60','#F39C12','#8E44AD'][i] }; });
+  if (ramos.length > 5) segR.push({ k:'Otros ('+(ramos.length-5)+' ramos)', n:ramos.slice(5).reduce(function(a,r){ return a+r.n; },0), c:'#CBD5E1' });
+  if (el('dz-dist-total')) el('dz-dist-total').textContent = pols.length + ' pólizas vigentes';
+  if (el('dz-donut-cia')) el('dz-donut-cia').innerHTML = donut(segC, pols.length, 'pólizas', 'Pólizas por compañía');
+  if (el('dz-leg-cia')) el('dz-leg-cia').innerHTML = '<div class="h">POR COMPAÑÍA</div>' + segC.map(function(s){ return '<div class="it"><span class="sw" style="background:'+s.c+'"></span><span class="nm">'+esc_(s.k)+'</span><b>'+s.n+'</b><span class="mm">'+$M(s.m)+'/mes</span></div>'; }).join('');
+  if (el('dz-donut-ramo')) el('dz-donut-ramo').innerHTML = donut(segR, pols.length, ramos.length === 1 ? 'ramo' : ramos.length+' ramos', 'Pólizas por ramo');
+  if (el('dz-leg-ramo')) el('dz-leg-ramo').innerHTML = '<div class="h">POR RAMO</div>' + segR.map(function(s){ return '<div class="it"><span class="sw" style="background:'+s.c+'"></span><span class="nm">'+esc_(s.k)+'</span><b>'+s.n+'</b></div>'; }).join('');
 
-  // Calendario
-  await dashCargarCalendario();
+  // ── Movimiento del período ──
+  var M = await Promise.all([
+    sb.from('polizas').select('id',{count:'exact',head:true}).eq('productor_id',uid).gte('created_at',range.desde).lte('created_at',range.hasta+'T23:59:59'),
+    sb.from('polizas').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('estado','renovada').gte('updated_at',range.desde),
+    sb.from('polizas').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('estado','no_renueva').gte('updated_at',range.desde),
+    sb.from('polizas').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('estado','anulada').gte('updated_at',range.desde),
+    sb.from('interacciones').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('categoria','envio_poliza').gte('created_at',range.desde)
+  ]);
+  ['dp-nuevas','dp-renov','dp-norenov','dp-anul','dp-env'].forEach(function(id, i){ if (el(id)) el(id).textContent = M[i].count||0; });
 
-  // Objetivos
+  // ── Actividad reciente ──
+  var CAT = { envio_poliza:['#27AE60','Póliza enviada'], poliza_eliminada:['#9CA3AF','Póliza dada de baja del CRM'], siniestro:['#E74C3C','Siniestro'], cotizacion:['#F39C12','Cotización'] };
+  if (el('dz-actividad')) el('dz-actividad').innerHTML = acts.length ? acts.map(function(a){
+    var c = CAT[a.categoria] || ['#4A90D9', a.tipo || 'Movimiento'];
+    var d = new Date(a.created_at); var esHoy = iso(d) === hoy;
+    var hora = esHoy ? ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2) : 'ayer';
+    var txt = a.resumen || c[1];
+    return '<div class="dz-act"><span class="d" style="background:'+c[0]+'"></span><div class="t">'+(a.clientes ? '<b>'+esc_(nomCl(a.clientes))+'</b> · ' : '')+esc_(txt.length > 140 ? txt.slice(0,140)+'…' : txt)+'</div><span class="h">'+hora+'</span></div>';
+  }).join('') : '<div style="font-size:13px;color:var(--lt);padding:8px 0">Sin movimientos hoy ni ayer</div>';
+
+  // ── Objetivo fijo: pólizas con PDF ──
+  var conPdf = pols.filter(function(p){ return p.pdf_url; }).length;
+  var pct = pols.length ? Math.round(conPdf/pols.length*100) : 0;
+  if (el('dz-obj-pdf')) el('dz-obj-pdf').innerHTML = '<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Pólizas con PDF cargado</span><b>'+conPdf+' / '+pols.length+'</b></div><div class="dz-bar"><div style="width:'+pct+'%;background:var(--amber)"></div></div></div>';
+
+  // Agenda + objetivos
+  if (el('dz-agenda') && el('dz-agenda').style.display !== 'none') await dashCargarCalendario();
   await cargarObjetivos();
+}
+
+function dzToggleAgenda() {
+  var a = document.getElementById('dz-agenda'), b = document.getElementById('dz-btn-agenda');
+  if (!a) return;
+  var abrir = a.style.display === 'none';
+  a.style.display = abrir ? 'block' : 'none';
+  if (b) b.textContent = abrir ? 'Ocultar agenda' : 'Ver agenda →';
+  if (abrir) dashCargarCalendario();
 }
 
 // ---- CALENDARIO DASHBOARD ----
