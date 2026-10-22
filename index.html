@@ -9636,12 +9636,12 @@ function verEndosos(polId) {
 
 function renovarPoliza(polId) {
   document.querySelectorAll('[id^="pm2-"]').forEach(function(m){ m.style.display='none'; });
-  mostrarAlerta('Función de renovación próximamente');
+  abrirRenovarPoliza(polId); // renovación real (mismo flujo que el botón 🔄 Renovar del detalle)
 }
 
 function abrirPlanPagos(polId) {
   document.querySelectorAll('[id^="pm2-"]').forEach(function(m){ m.style.display='none'; });
-  mostrarAlerta('Plan de pagos próximamente');
+  abrirDetallePol(polId).then(function(){ if (typeof mpdSetTab === 'function') mpdSetTab('pagos'); }); // plan de pagos = pestaña 'Datos de pago'
 }
 
 
