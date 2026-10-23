@@ -3358,7 +3358,7 @@ function lineaPaquete(p, lista) {
   lista = lista || [];
   if (p.paquete_de) {
     var pr = lista.find(function (x) { return x.id === p.paquete_de; });
-    return '<span class="pq-chip" title="Póliza que acompaña a la principal (va en paquete)">📦 Va con ' + (pr ? (esRamoAuto(pr.ramo) ? 'el auto' : pr.ramo === 'Comercio' ? 'el integral' : 'el hogar') + ' N° ' + esc(pr.numero_poliza) : 'su paquete') + '</span>';
+    return '<span class="pq-chip" title="Póliza que acompaña a la principal (va en paquete)">📦 Va con ' + (pr ? (esRamoAuto(pr.ramo) ? 'el auto' : pr.ramo === 'Comercio' ? 'el integral' : /combinado|hogar/i.test(pr.ramo) ? 'el hogar' : pr.ramo === 'Robo' ? 'el robo' : 'la RC') + ' N° ' + esc(pr.numero_poliza) : 'su paquete') + '</span>';
   }
   var hs = lista.filter(function (x) { return x.paquete_de === p.id; });
   if (!hs.length) return '';
@@ -3373,11 +3373,11 @@ async function separarDePaquete(polId) {
   if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
 }
 async function unirAPaquete(polId) {
-  var nro = prompt('Número de la póliza principal (auto, integral de comercio o combinado/hogar) a la que pertenece:');
+  var nro = prompt('Número de la póliza principal (auto, integral, combinado/hogar, RC o robo) a la que pertenece:');
   if (!nro) return;
   var { data: pr } = await sb.from('polizas').select('id,numero_poliza,ramo').eq('numero_poliza', nro.trim()).limit(1);
   if (!pr || !pr.length) { alert('No encontré una póliza con ese número.'); return; }
-  if (!esRamoAuto(pr[0].ramo) && ['Comercio','Combinado','Hogar'].indexOf(pr[0].ramo) < 0) { alert('La póliza ' + nro + ' es de ' + (pr[0].ramo || 'otro ramo') + '. Los paquetes se arman con la póliza del auto, del integral de comercio o del combinado/hogar.'); return; }
+  if (!esRamoAuto(pr[0].ramo) && ['Comercio','Combinado','Hogar','Responsabilidad Civil','Robo'].indexOf(pr[0].ramo) < 0) { alert('La póliza ' + nro + ' es de ' + (pr[0].ramo || 'otro ramo') + '. Los paquetes se arman con la póliza del auto, integral de comercio, combinado/hogar, RC o robo.'); return; }
   var r = await sb.from('polizas').update({ paquete_de: pr[0].id, paquete_manual: true }).eq('id', polId);
   if (r.error) { alert('No se pudo: ' + r.error.message); return; }
   abrirDetallePol(polId);
