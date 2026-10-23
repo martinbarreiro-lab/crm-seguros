@@ -118,6 +118,10 @@
     <div class="topbar">
       <div class="topbar-t" id="topbar-title">Dashboard</div>
       <div style="display:flex;align-items:center;gap:8px">
+        <!-- Oficina: lo que hacen los chats del proyecto -->
+        <button type="button" id="of-btn" onclick="toggleOficina()" title="Oficina: avisos y mails para aprobar de los chats del proyecto" style="position:relative;padding:6px 10px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text)">🗂 <span class="of-btn-lbl">Oficina</span>
+          <span id="of-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#D97706;color:#fff;font-size:10px;font-weight:600;min-width:17px;height:17px;border-radius:20px;padding:0 4px;align-items:center;justify-content:center;line-height:1">0</span>
+        </button>
         <!-- Campana de notificaciones -->
         <div style="position:relative">
           <button type="button" id="notif-btn" onclick="toggleNotifPanel()" style="position:relative;padding:6px 8px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center">
@@ -2113,10 +2117,11 @@ function _nombreCorto(cl) {
 }
 
 async function abrirEnviarPoliza(polId, doc, tareaId) {
-  doc = doc || 'poliza';
+  var esRenov = doc === 'renovacion';
+  doc = esRenov ? 'poliza' : (doc || 'poliza');
   var m = _envModal();
   var cuerpo = document.getElementById('env-cuerpo');
-  document.getElementById('env-titulo').textContent = doc === 'endoso' ? 'Enviar endoso' : 'Enviar póliza';
+  document.getElementById('env-titulo').textContent = doc === 'endoso' ? 'Enviar endoso' : esRenov ? 'Enviar la renovación' : 'Enviar póliza';
   cuerpo.innerHTML = '<div style="padding:30px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Preparando el PDF...</div>';
   m.classList.add('open');
   try {
@@ -2139,7 +2144,9 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     var nombreArch = (doc === 'endoso' ? 'Endoso_' : 'Poliza_') + (pol.ramo || '').replace(/\s+/g, '_') + '_' + (pol.numero_poliza || '') + '.pdf';
     var file = new File([blob], nombreArch, { type: 'application/pdf' });
     var queEs = (doc === 'endoso' ? 'el endoso de tu póliza ' : 'tu póliza ') + (pol.ramo ? 'de ' + pol.ramo + ' ' : '') + (pol.numero_poliza ? 'N° ' + pol.numero_poliza : '');
-    var texto = 'Hola' + (_nombreCorto(cl) ? ' ' + _nombreCorto(cl) : '') + ', ¿cómo estás? Te paso ' + queEs.trim() + '. Te recomiendo guardarla en el celular.\n\nCualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
+    var texto = esRenov
+      ? 'Hola' + (_nombreCorto(cl) ? ' ' + _nombreCorto(cl) : '') + ', ¿cómo estás? Te paso la renovación de ' + queEs.trim() + ', vigente del ' + fmtDate(pol.fecha_inicio) + ' al ' + fmtDate(pol.fecha_vencimiento) + (pol.valor_cuota ? '. La cuota queda en $' + Math.round(pol.valor_cuota).toLocaleString('es-AR') + ' por mes' : '') + '. Te recomiendo guardarla en el celular.\n\nCualquier consulta, a disposición.\nMartín Barreiro – MB Seguros'
+      : 'Hola' + (_nombreCorto(cl) ? ' ' + _nombreCorto(cl) : '') + ', ¿cómo estás? Te paso ' + queEs.trim() + '. Te recomiendo guardarla en el celular.\n\nCualquier consulta, a disposición.\nMartín Barreiro – MB Seguros';
     var tel = cl.telefono_principal ? normalizarTelefono(cl.telefono_principal) : '';
     var mail = cl.email_principal || '';
     _envio = { pol: pol, cl: cl, doc: doc, tareaId: tareaId || null, file: file, tel: tel, mail: mail, hechos: {} };
@@ -2510,6 +2517,8 @@ async function mostrarApp() {
   setTimeout(actualizarBadgeNotif, 2000);
   setTimeout(actualizarAvisoEnvios, 1500);
   setTimeout(purgarPolizasViejas, 4000);
+  setTimeout(cargarOficina, 2500);
+  if (!_of.timer) _of.timer = setInterval(function(){ if (!document.hidden) cargarOficina(); }, 60000);
 }
 
 // ---- NAVEGACIÓN ----
@@ -2672,7 +2681,9 @@ async function cargarDashboard() {
     .sort(function(a,b){ return a.fecha_limite < b.fecha_limite ? -1 : 1; })
     .forEach(function(t){
       var cls = t.fecha_limite < hoy ? 'rj' : /^Enviar/i.test(t.tipo||'') ? 'az' : t.fecha_limite === hoy ? 'am' : '';
-      items.push({ o: t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="irASeccion(\'tareas\')"><span class="w">'+fmtD(t.fecha_limite)+'</span><div class="t"><b>'+esc_(t.tipo || 'Tarea')+'</b> · '+esc_(t.titulo||'')+(t.clientes ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">Tareas →</span></div>' });
+      var esRenov = t.tipo === 'Confirmar renovación' && t.poliza_id;
+      if (esRenov) cls = 'rj';
+      items.push({ o: esRenov ? '0000' : t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="'+(esRenov ? 'abrirConfirmarRenovacion(\''+t.poliza_id+'\',\''+t.id+'\')' : 'irASeccion(\'tareas\')')+'"><span class="w">'+(esRenov ? 'VENCIÓ' : fmtD(t.fecha_limite))+'</span><div class="t"><b>'+(esRenov ? '🔄 ¿Se renovó?' : esc_(t.tipo || 'Tarea'))+'</b> · '+esc_(t.titulo||'').replace(/^¿Se renovó\? — /,'')+(t.clientes && !esRenov ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">'+(esRenov ? 'Responder →' : 'Tareas →')+'</span></div>' });
     });
   pols.filter(function(p){ return p.fecha_vencimiento === hoy || p.fecha_vencimiento === manana; }).forEach(function(p){
     var cl = (venc.find(function(v){ return v.id === p.id; })||{}).clientes;
@@ -4341,6 +4352,9 @@ async function fichaSiniestros(c) {
     html.push('</div>');
 
     // Panel de etapa
+    window._ofRefs = window._ofRefs || {};
+    window._ofRefs[sinId] = { cliente_id: s.cliente_id, poliza_id: s.poliza_id || null, siniestro_id: s.id, texto: 'Siniestro ' + (s.numero_expediente ? 'N° ' + s.numero_expediente + ' · ' : '') + (s.tipo_siniestro || '') + (s.fecha_hecho ? ' del ' + fmtDate(s.fecha_hecho) : '') };
+    html.push('<div style="display:flex;justify-content:flex-end;margin:10px 0 4px"><button type="button" class="btn btn-sm" onclick="abrirGestionarPorMail(\'siniestros\', window._ofRefs[\''+sinId+'\'])">📧 Gestionar por mail</button></div>');
     html.push('<div id="sin-etapa-panel-'+sinId+'">'+renderSinEtapaPanel(s, etapa)+'</div>');
 
     // Gestiones enviadas
@@ -5333,11 +5347,11 @@ async function registrarHistorial(datos) {
 
 async function fichaHistorial(c) {
   const { data: ints } = await sb.from('interacciones').select('*').eq('cliente_id', c.id).order('created_at',{ascending:false});
-  const { data: pols } = await sb.from('polizas').select('numero,ramo,aseguradora,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
+  const { data: pols } = await sb.from('polizas').select('numero_poliza,ramo,aseguradora,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
   const { data: sins } = await sb.from('siniestros').select('numero_expediente,tipo_siniestro,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
   const { data: cotzs } = await sb.from('cotizaciones').select('ramo,aseguradora,estado,created_at').eq('cliente_id', c.id).order('created_at',{ascending:false});
   var eventos=[];
-  (ints||[]).forEach(function(i){eventos.push({tipo:'interaccion',fecha:i.created_at,titulo:i.resumen,sub:i.tipo,color:'blue'});});
+  (ints||[]).forEach(function(i){eventos.push({tipo:'interaccion',fecha:i.created_at,titulo:esc(i.resumen||'')+(i.gmail_url?' <a href="'+esc(i.gmail_url)+'" target="_blank" style="font-size:11px">Ver mail ↗</a>':''),sub:(i.categoria==='desde_mail'||(i.usuario_nombre||'').indexOf('desde mail')>=0?'📨 desde mail · ':'')+(i.tipo||''),color:i.categoria==='desde_mail'?'amber':'blue'});});
   (pols||[]).forEach(function(p){eventos.push({tipo:'poliza',fecha:p.created_at,titulo:'P\u00f3liza: '+p.numero_poliza,sub:p.ramo+' \u00b7 '+p.aseguradora,color:'green'});});
   (sins||[]).forEach(function(s){eventos.push({tipo:'siniestro',fecha:s.created_at,titulo:'Siniestro: '+(s.numero_expediente||'Sin N\u00b0'),sub:s.tipo_siniestro||'',color:'red'});});
   (cotzs||[]).forEach(function(ct){eventos.push({tipo:'cotizacion',fecha:ct.created_at,titulo:'Cotizaci\u00f3n: '+ct.ramo,sub:ct.aseguradora+' \u00b7 '+ct.estado,color:'amber'});});
@@ -6392,6 +6406,7 @@ async function cargarPolizas(estado) {
   // Tareas automáticas en background — no bloquea el render
   setTimeout(async function() {
     try { await generarTareasAutoVencimiento(); } catch(e) { console.warn('Auto-tareas:', e); }
+    try { await generarTareasConfirmarRenovacion(); } catch(e) { console.warn('Tareas ¿se renovó?:', e); }
   }, 500);
 }
 
@@ -7930,7 +7945,8 @@ function cobRender() {
         var waUrl = waNum ? 'https://wa.me/'+waNum+'?text='+msgWa : 'https://wa.me/?text='+msgWa;
         col7 = '<a href="'+waUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);color:var(--med);text-decoration:none">'
           + '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.016 22l4.985-1.397A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 0 1-4.076-1.124l-.29-.174-3.022.847.807-2.965-.19-.302A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>'
-          + 'Avisar</a>';
+          + 'Avisar</a>'
+          + ' <button type="button" title="Que el chat de Cobranzas arme el mail" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+c.id+'\']={cliente_id:\''+(c.cliente_id||'')+'\'||null,poliza_id:\''+(c.poliza_id||'')+'\'||null,texto:\'Cuota '+(c.numero_cuota||'')+' vencida · '+monto.replace(/'/g,'')+' · póliza N° '+String(pol).replace(/'/g,'')+'\'};abrirGestionarPorMail(\'cobranzas\',window._ofRefs[\''+c.id+'\'])" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📧</button>';
       } else {
         col6 = c.fecha_pago ? fmtDate(c.fecha_pago) : '—';
         col7 = comPct ? '<span style="font-size:12px;font-weight:500;color:var(--blue)">$'
@@ -8169,6 +8185,7 @@ async function cargarTareas() {
       parts.push('<button type="button" class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
       if (t.cliente_id) { parts.push('<button type="button" class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
       if ((t.tipo === 'Enviar póliza' || t.tipo === 'Enviar endoso') && t.poliza_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="enviar" data-pol="' + t.poliza_id + '" data-doc="' + (t.tipo === 'Enviar endoso' ? 'endoso' : 'poliza') + '" title="Enviar al cliente">&#128228;</button>'); }
+      if (t.tipo === 'Confirmar renovación' && t.poliza_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="renov" data-pol="' + t.poliza_id + '" title="¿Se renovó?" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;color:#0F766E">🔄 ¿Se renovó?</button>'); }
       if (sig[t.estado]) { parts.push('<button type="button" class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
       parts.push('</div>');
       if (fechaStr) {
@@ -8212,6 +8229,7 @@ document.addEventListener('click', function(e) {
   else if (act === 'cliente') { const clid = btn.getAttribute('data-clid'); if (clid) irACliente(clid); }
   else if (act === 'sig') { const sig = btn.getAttribute('data-sig'); if (sig) moverTarea(id, sig); }
   else if (act === 'enviar') { abrirEnviarPoliza(btn.getAttribute('data-pol'), btn.getAttribute('data-doc'), id); }
+  else if (act === 'renov') { abrirConfirmarRenovacion(btn.getAttribute('data-pol'), id); }
 });
 
 
@@ -10385,10 +10403,11 @@ function renderDetallePol() {
       '</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
-        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirRenovarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
+        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){renovarRapido(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirModalEndoso(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">✍ Endoso</button>'+
         (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar póliza</button>':'')+
         (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\',\'endoso\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar endoso</button>':'')+
+        '<button type="button" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+p.id+'\']={cliente_id:'+(p.cliente_id?'\''+p.cliente_id+'\'':'null')+',poliza_id:\''+p.id+'\',texto:\''+String((p.ramo||'')+' N° '+(p.numero_poliza||'')+' · '+(p.aseguradora||'')).replace(/'/g,'')+'\'};cerrarModal(\'modal-pol-det\');abrirGestionarPorMail(\'administracion\',window._ofRefs[\''+p.id+'\'])" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #DDD6FE;background:#F5F3FF;color:#5B21B6;font-size:12px;font-weight:500;cursor:pointer">📧 Gestionar por mail</button>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
         '<button type="button" onclick="eliminarPolizaFicha(\''+p.id+'\')" title="Eliminar del sistema sin dejar registro" style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:12px;cursor:pointer">🗑</button>'+
       '</div>'+
@@ -12499,6 +12518,322 @@ handleCompFile = async function(file) {
     document.getElementById('comp-result-card').style.display = 'block';
   }
 };
+
+// ══ OFICINA: bandeja compartida entre el CRM y los chats del proyecto MB Seguros ══════════════
+// Los chats del proyecto (Renovaciones, Siniestros, Cobranzas, Cotizaciones, Administración) dejan
+// avisos y mails para aprobar en la tabla `bandeja`; acá se ven y se aprueban. Lo que se pide desde
+// el CRM ("Gestionar por mail") queda como 'pedido' para que el chat lo arme.
+var OF_AREAS = {
+  renovaciones: ['🔄', 'Renovaciones', '#0F766E'], siniestros: ['🚨', 'Siniestros', '#B91C1C'], cobranzas: ['💰', 'Cobranzas', '#B45309'],
+  cotizaciones: ['📋', 'Cotizaciones', '#1D4ED8'], administracion: ['🗂', 'Administración', '#6D28D9'], general: ['📨', 'General', '#475569']
+};
+var OF_ESTADOS = {
+  pedido: ['Esperando que el chat lo arme', '#64748B', '#F1F5F9'], para_aprobar: ['Para aprobar', '#92400E', '#FEF3C7'],
+  aprobado: ['Aprobado · se envía cuando abras el chat', '#1D4ED8', '#DBEAFE'], enviado: ['✓ Enviado', '#166534', '#DCFCE7'],
+  hecho: ['✓ Hecho', '#166534', '#DCFCE7'], rechazado: ['No se envía', '#64748B', '#F1F5F9'], error: ['Error', '#B91C1C', '#FEE2E2'], aviso: ['Aviso', '#475569', '#F1F5F9']
+};
+var _of = { items: [], filtro: '', abierto: false, timer: null };
+
+function _ofHace(iso) {
+  var d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
+  if (min < 1) return 'recién'; if (min < 60) return 'hace ' + min + ' min';
+  var h = Math.round(min / 60); if (h < 24) return 'hace ' + h + ' h';
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+function _ofPendiente(b) { return b.estado === 'para_aprobar' || ((b.estado === 'aviso' || b.estado === 'enviado' || b.estado === 'hecho' || b.estado === 'error') && !b.visto); }
+
+function _ofPanel() {
+  var p = document.getElementById('of-panel'); if (p) return p;
+  p = document.createElement('div'); p.id = 'of-panel'; p.className = 'of-panel';
+  p.innerHTML = '<div class="of-head"><div><div class="of-t">🗂 Oficina</div><div class="of-sub">Lo que hacen los chats del proyecto MB Seguros</div></div><button type="button" class="of-x" onclick="toggleOficina(false)">✕</button></div>'
+    + '<div class="of-tabs" id="of-tabs"></div><div class="of-list" id="of-list"></div>';
+  document.body.appendChild(p);
+  return p;
+}
+async function cargarOficina() {
+  if (!user) return;
+  var desde = new Date(); desde.setDate(desde.getDate() - 30);
+  var r = await sb.from('bandeja').select('*,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)')
+    .eq('productor_id', user.id).or('estado.in.(pedido,para_aprobar,aprobado),created_at.gte.' + desde.toISOString())
+    .order('created_at', { ascending: false }).limit(150);
+  if (r.error) { console.warn('bandeja', r.error.message); return; }
+  _of.items = r.data || [];
+  var n = _of.items.filter(_ofPendiente).length;
+  var b = document.getElementById('of-badge');
+  if (b) { b.textContent = n; b.style.display = n ? 'flex' : 'none'; }
+  if (_of.abierto) renderOficina();
+}
+function toggleOficina(abrir) {
+  var p = _ofPanel();
+  _of.abierto = abrir === undefined ? !_of.abierto : abrir;
+  p.classList.toggle('open', _of.abierto);
+  if (_of.abierto) { renderOficina(); cargarOficina(); }
+}
+function filtrarOficina(a) { _of.filtro = a; renderOficina(); }
+function renderOficina() {
+  _ofPanel();
+  var cnt = {}; _of.items.forEach(function (b) { if (_ofPendiente(b)) cnt[b.area] = (cnt[b.area] || 0) + 1; });
+  document.getElementById('of-tabs').innerHTML = [''].concat(Object.keys(OF_AREAS)).map(function (a) {
+    var lbl = a ? OF_AREAS[a][0] + ' ' + OF_AREAS[a][1] : 'Todo';
+    var n = a ? cnt[a] : _of.items.filter(_ofPendiente).length;
+    return '<button type="button" class="of-tab' + (_of.filtro === a ? ' on' : '') + '" onclick="filtrarOficina(\'' + a + '\')">' + lbl + (n ? ' <b>' + n + '</b>' : '') + '</button>';
+  }).join('');
+  var lista = _of.items.filter(function (b) { return !_of.filtro || b.area === _of.filtro; });
+  var el = document.getElementById('of-list');
+  if (!lista.length) { el.innerHTML = '<div class="of-vacio">Nada por acá todavía.<br><span>Cuando un chat del proyecto arme un mail o te avise algo, aparece en esta lista. Lo que pidas con "📧 Gestionar por mail" también.</span></div>'; return; }
+  el.innerHTML = lista.map(_ofItemHtml).join('');
+  // marcar como vistos los avisos y resultados que se muestran
+  var ver = lista.filter(function (b) { return !b.visto && b.estado !== 'para_aprobar' && b.estado !== 'pedido' && b.estado !== 'aprobado'; }).map(function (b) { return b.id; });
+  if (ver.length) setTimeout(async function () {
+    await sb.from('bandeja').update({ visto: true }).in('id', ver);
+    _of.items.forEach(function (b) { if (ver.indexOf(b.id) >= 0) b.visto = true; });
+    var n = _of.items.filter(_ofPendiente).length, bd = document.getElementById('of-badge');
+    if (bd) { bd.textContent = n; bd.style.display = n ? 'flex' : 'none'; }
+  }, 2500);
+}
+function _ofItemHtml(b) {
+  var ar = OF_AREAS[b.area] || OF_AREAS.general, st = OF_ESTADOS[b.estado] || OF_ESTADOS.aviso;
+  var cl = b.clientes ? nombreClienteLista(b.clientes) : '';
+  var pol = b.polizas ? (b.polizas.ramo || '') + ' N° ' + b.polizas.numero_poliza : '';
+  var h = '<div class="of-item' + (_ofPendiente(b) ? ' nuevo' : '') + '">'
+    + '<div class="of-meta"><span style="color:' + ar[2] + ';font-weight:700">' + ar[0] + ' ' + ar[1] + '</span><span>' + (b.origen === 'crm' ? 'pedido desde el CRM · ' : '') + _ofHace(b.created_at) + '</span></div>'
+    + '<div class="of-tit">' + esc(b.titulo) + '</div>'
+    + ((cl || pol) ? '<div class="of-ref">' + (cl ? '<a href="#" onclick="event.preventDefault();' + (b.cliente_id ? 'toggleOficina(false);irAFichaCliente(\'' + b.cliente_id + '\')' : '') + '">👤 ' + esc(cl) + '</a>' : '') + (pol ? ' · ' + esc(pol) : '') + '</div>' : '')
+    + (b.detalle ? '<div class="of-det">' + esc(b.detalle).replace(/\n/g, '<br>') + '</div>' : '')
+    + (b.instrucciones && b.estado === 'pedido' ? '<div class="of-det" style="font-style:italic">Tu pedido: ' + esc(b.instrucciones) + '</div>' : '');
+  if (b.asunto || b.cuerpo) {
+    h += '<details class="of-mail"' + (b.estado === 'para_aprobar' ? ' open' : '') + '><summary>' + (b.canal === 'whatsapp' ? '💬 WhatsApp' : '📧 Mail') + (b.destinatario ? ' para <b>' + esc(b.destinatario) + '</b>' : '') + '</summary>'
+      + (b.asunto ? '<div class="of-asunto">' + esc(b.asunto) + '</div>' : '')
+      + '<div class="of-cuerpo">' + esc(b.cuerpo || '').replace(/\n/g, '<br>') + '</div>'
+      + ((b.adjuntos || []).length ? '<div class="of-adj">📎 ' + b.adjuntos.map(function (a) { return esc(a.nombre || a.name || 'adjunto'); }).join(', ') + '</div>' : '')
+      + '</details>';
+  }
+  h += '<div class="of-pie"><span class="of-est" style="color:' + st[1] + ';background:' + st[2] + '">' + st[0] + '</span>'
+    + (b.nota_resultado ? '<span class="of-nota">' + esc(b.nota_resultado) + '</span>' : '')
+    + (b.gmail_url ? '<a href="' + esc(b.gmail_url) + '" target="_blank" class="of-gm">Ver en Gmail ↗</a>' : '') + '</div>';
+  if (b.estado === 'para_aprobar') {
+    h += '<div class="of-acc"><button type="button" class="btn btn-p btn-sm" onclick="oficinaAprobar(\'' + b.id + '\')">✅ Enviar</button>'
+      + '<button type="button" class="btn btn-sm" onclick="oficinaCambiar(\'' + b.id + '\')">✏️ Cambiar</button>'
+      + '<button type="button" class="btn btn-sm" onclick="oficinaRechazar(\'' + b.id + '\')">❌ No</button></div>';
+  } else if (b.estado === 'pedido' || b.estado === 'aprobado') {
+    h += '<div class="of-acc"><button type="button" class="btn btn-sm" onclick="oficinaRechazar(\'' + b.id + '\')">Cancelar</button></div>';
+  }
+  return h + '</div>';
+}
+async function _ofUpd(id, cambios) {
+  cambios.updated_at = new Date().toISOString();
+  var r = await sb.from('bandeja').update(cambios).eq('id', id);
+  if (r.error) { alert('No se pudo: ' + r.error.message); return false; }
+  await cargarOficina(); return true;
+}
+async function oficinaAprobar(id) {
+  var b = _of.items.find(function (x) { return x.id === id; }); if (!b) return;
+  if (!confirm('¿Aprobás este ' + (b.canal === 'whatsapp' ? 'mensaje' : 'mail') + (b.destinatario ? ' para ' + b.destinatario : '') + '?\n\nSe envía cuando abras el chat de ' + (OF_AREAS[b.area] || OF_AREAS.general)[1] + ' del proyecto (o en el resumen del día).')) return;
+  // Los PDF están en un depósito privado: se arma un link de descarga de 30 días para que el chat lo pueda adjuntar o pegar en el mail
+  var adj = [];
+  for (var i = 0; i < (b.adjuntos || []).length; i++) {
+    var a = Object.assign({}, b.adjuntos[i]);
+    if (a.url && !a.link) { try { a.link = await linkArchivo(a.url, 30 * 86400); } catch (e) {} }
+    adj.push(a);
+  }
+  await _ofUpd(id, { estado: 'aprobado', visto: true, adjuntos: adj });
+}
+async function oficinaCambiar(id) {
+  var t = prompt('¿Qué hay que cambiar? (el chat lo vuelve a armar y te lo muestra acá)');
+  if (!t) return;
+  await _ofUpd(id, { estado: 'pedido', instrucciones: t, visto: true });
+}
+async function oficinaRechazar(id) {
+  if (!confirm('¿No se envía / se cancela?')) return;
+  await _ofUpd(id, { estado: 'rechazado', visto: true, resuelto_at: new Date().toISOString() });
+}
+// Crea un pedido para que lo arme el chat del área
+async function pedirAlProyecto(datos) {
+  var fila = Object.assign({ productor_id: user.id, origen: 'crm', estado: 'pedido', canal: 'mail', visto: true }, datos);
+  var r = await sb.from('bandeja').insert(fila);
+  if (r.error) { alert('No se pudo dejar el pedido: ' + r.error.message); return false; }
+  cargarOficina();
+  return true;
+}
+// Ventana "📧 Gestionar por mail": elegís qué querés y queda en la bandeja del chat correspondiente
+var OF_OPCIONES = {
+  siniestros: ['Hacer la denuncia a la compañía', 'Pedir el estado del siniestro a la compañía', 'Pedir documentación al cliente', 'Mandar la documentación a la compañía', 'Reclamar el pago de la liquidación'],
+  cobranzas: ['Mandar recordatorio de pago al cliente', 'Avisar al cliente que se rechazó el débito', 'Pedir a la compañía el estado de la cuenta'],
+  renovaciones: ['Mandar la renovación al cliente', 'Pedir la renovación a la compañía', 'Cotizar la renovación en otras compañías'],
+  cotizaciones: ['Pedir cotización a la compañía', 'Mandar la cotización al cliente'],
+  administracion: ['Pedir el PDF de la póliza a la compañía', 'Pedir un endoso', 'Pedir certificado de cobertura']
+};
+function abrirGestionarPorMail(area, ref) {
+  ref = ref || {};
+  var m = _envModal();
+  document.getElementById('env-titulo').textContent = '📧 Gestionar por mail · ' + (OF_AREAS[area] || OF_AREAS.general)[1];
+  window._ofRef = { area: area, ref: ref };
+  document.getElementById('env-cuerpo').innerHTML =
+    '<p style="font-size:12.5px;color:var(--text2);margin:0 0 10px">' + (ref.texto ? '<b>' + esc(ref.texto) + '</b><br>' : '') + 'El chat de <b>' + (OF_AREAS[area] || OF_AREAS.general)[1] + '</b> del proyecto arma el mail con los datos del CRM y te lo muestra en 🗂 Oficina para que lo apruebes.</p>'
+    + '<div class="frow"><label>Chat del proyecto</label><select id="of-area" onchange="_ofOpcionesArea()">' + Object.keys(OF_OPCIONES).map(function (a) { return '<option value="' + a + '"' + (a === area ? ' selected' : '') + '>' + OF_AREAS[a][0] + ' ' + OF_AREAS[a][1] + '</option>'; }).join('') + '</select></div>'
+    + '<div class="frow"><label>¿Qué hay que hacer?</label><select id="of-que"></select></div>'
+    + '<div class="frow"><label>Indicaciones para el chat (opcional)</label><textarea id="of-ind" style="min-height:70px" placeholder="Ej.: avisale que la franquicia es de $540.000, mandalo con copia a…"></textarea></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button><button type="button" class="btn btn-p" onclick="confirmarGestionarPorMail()">Dejar el pedido</button></div>';
+  _ofOpcionesArea();
+  m.classList.add('open');
+}
+function _ofOpcionesArea() {
+  var a = document.getElementById('of-area').value; window._ofRef.area = a;
+  document.getElementById('of-que').innerHTML = (OF_OPCIONES[a] || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '<option value="">Otra cosa (escribila abajo)</option>';
+}
+async function confirmarGestionarPorMail() {
+  var o = window._ofRef; if (!o) return;
+  var que = document.getElementById('of-que').value, ind = document.getElementById('of-ind').value.trim();
+  if (!que && !ind) { alert('Escribí qué hay que hacer.'); return; }
+  var ok = await pedirAlProyecto({ area: o.area, titulo: que || ind.slice(0, 80), instrucciones: ind || null, detalle: o.ref.texto || null,
+    cliente_id: o.ref.cliente_id || null, poliza_id: o.ref.poliza_id || null, siniestro_id: o.ref.siniestro_id || null, tarea_id: o.ref.tarea_id || null,
+    adjuntos: o.ref.adjuntos || [] });
+  if (ok) { cerrarModal('modal-envio'); mostrarAlerta('📨 Pedido dejado para el chat de ' + (OF_AREAS[o.area] || OF_AREAS.general)[1] + '. Lo vas a ver en 🗂 Oficina.'); }
+}
+
+// ══ RENOVACIÓN: ¿se renovó? → cargar la póliza nueva → enviarla al cliente ═════════════════════
+async function generarTareasConfirmarRenovacion() {
+  if (!user) return;
+  var hoy = new Date().toISOString().slice(0, 10), hace45 = new Date(); hace45.setDate(hace45.getDate() - 45);
+  var cands = (_allPolizas || []).filter(function (p) {
+    return p.estado === 'activa' && p.fecha_vencimiento && p.fecha_vencimiento <= hoy && p.fecha_vencimiento >= hace45.toISOString().slice(0, 10)
+      && !p.paquete_de && !/ART/i.test(p.ramo || '') && !/ART$/i.test(p.aseguradora || '');
+  });
+  if (!cands.length) return;
+  var ids = cands.map(function (p) { return p.id; });
+  var { data: ya } = await sb.from('tareas').select('poliza_id').in('poliza_id', ids).eq('tipo', 'Confirmar renovación');
+  var tiene = {}; (ya || []).forEach(function (t) { tiene[t.poliza_id] = 1; });
+  var faltan = cands.filter(function (p) { return !tiene[p.id]; });
+  if (!faltan.length) return;
+  var { data: pcl } = await sb.from('polizas').select('id,clientes(nombre,apellido,razon_social,tipo_cliente)').in('id', faltan.map(function (p) { return p.id; }));
+  var clPor = {}; (pcl || []).forEach(function (x) { clPor[x.id] = x.clientes; });
+  await sb.from('tareas').insert(faltan.map(function (p) {
+    var cl = clPor[p.id];
+    return { productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id, titulo: '¿Se renovó? — ' + (cl ? nombreClienteLista(cl) : 'Sin cliente'),
+      descripcion: textoPolizaTarea(p) + ' · Venció ' + fmtDate(p.fecha_vencimiento), tipo: 'Confirmar renovación', tablero: 'renovaciones', categoria: 'renovacion',
+      prioridad: 'urgente', vencimiento: p.fecha_vencimiento, fecha_limite: p.fecha_vencimiento, estado: 'pendiente', auto_generada: true };
+  }));
+}
+var _rv = null;
+async function abrirConfirmarRenovacion(polId, tareaId) {
+  var r = await sb.from('polizas').select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('id', polId).single();
+  if (r.error || !r.data) { alert('No encontré la póliza'); return; }
+  _rv = { pol: r.data, tareaId: tareaId || null, file: null };
+  var p = r.data, m = _envModal();
+  document.getElementById('env-titulo').textContent = '🔄 ¿Se renovó?';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<div style="font-size:13px;margin-bottom:12px"><b>' + esc(p.clientes ? nombreClienteLista(p.clientes) : '') + '</b><br>' + esc(textoPolizaTarea(p)) + '<br><span style="color:var(--muted)">Vence ' + fmtDate(p.fecha_vencimiento) + '</span></div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + '<button type="button" class="btn btn-p" onclick="renovacionSi(false)">✅ Sí, se renovó — cargar la póliza nueva</button>'
+    + '<button type="button" class="btn" onclick="renovacionSi(true)">🔀 Pasó a otra compañía — cargar la póliza nueva</button>'
+    + '<button type="button" class="btn" onclick="renovacionNo()">❌ No renueva</button></div>';
+  m.classList.add('open');
+}
+function _sumarMeses(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); }
+function renovacionSi(otraCia) {
+  var p = _rv.pol; _rv.otraCia = otraCia;
+  var ini = p.fecha_vencimiento || new Date().toISOString().slice(0, 10), vto = _sumarMeses(ini, p.periodo_meses || 12);
+  document.getElementById('env-titulo').textContent = otraCia ? '🔀 Cargar la póliza en la compañía nueva' : '🔄 Cargar la renovación';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<label id="rv-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:13px;color:#475569;margin-bottom:10px">📄 Subí el PDF de la póliza nueva (completa los datos solo)<input type="file" id="rv-pdf" accept="application/pdf,.pdf" style="display:none"></label>'
+    + '<div id="rv-leido" style="font-size:12px;color:var(--muted);margin:-4px 0 8px"></div>'
+    + '<div class="frow"><label>N° de póliza nueva *</label><input id="rv-num" placeholder="Número de la renovación"></div>'
+    + '<div class="frow"><label>Compañía</label><input id="rv-cia" value="' + (otraCia ? '' : esc(p.aseguradora || '')) + '"' + (otraCia ? ' placeholder="¿A qué compañía pasó?"' : '') + '></div>'
+    + '<div style="display:flex;gap:8px"><div class="frow" style="flex:1"><label>Desde</label><input type="date" id="rv-ini" value="' + ini + '"></div><div class="frow" style="flex:1"><label>Hasta</label><input type="date" id="rv-vto" value="' + vto + '"></div></div>'
+    + '<div class="frow"><label>Cuota mensual nueva ($)</label><input type="number" id="rv-cuota" value="' + (p.valor_cuota || '') + '"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="abrirConfirmarRenovacion(\'' + p.id + '\',' + (_rv.tareaId ? '\'' + _rv.tareaId + '\'' : 'null') + ')">← Volver</button><button type="button" class="btn btn-p" id="rv-ok" onclick="guardarRenovacion()">Guardar renovación</button></div>';
+  document.getElementById('rv-pdf').onchange = function () { var f = this.files[0]; if (f) _leerPdfRenovacion(f); };
+}
+async function _leerPdfRenovacion(f) {
+  _rv.file = f;
+  var info = document.getElementById('rv-leido'), drop = document.getElementById('rv-drop');
+  drop.firstChild.textContent = '📄 ' + f.name + ' ';
+  info.textContent = 'Leyendo el PDF…';
+  try {
+    var T = _normTxt(await _textoPdf(f)), viejo = _numSinCeros(_rv.pol.numero_poliza), num = '';
+    var m, re = /P[OÓ]LIZA[^0-9]{0,30}([0-9][0-9.\-]{3,14}[0-9])(?![0-9])/g;
+    while ((m = re.exec(T)) && !num) { var c = m[1].replace(/\D/g, ''); if (c.length >= 4 && _numSinCeros(c) !== viejo) num = c; }
+    var fechas = [], rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/g, x;
+    while ((x = rf.exec(T))) { var iso = x[3] + '-' + ('0' + x[2]).slice(-2) + '-' + ('0' + x[1]).slice(-2); if (fechas.indexOf(iso) < 0) fechas.push(iso); }
+    var ini = document.getElementById('rv-ini').value, msg = [];
+    if (num) { document.getElementById('rv-num').value = num; msg.push('N° ' + num); }
+    if (fechas.indexOf(ini) >= 0) {
+      // el "hasta" es la fecha que cae cerca de inicio + período (no las de las cuotas)
+      var obj = new Date(_sumarMeses(ini, _rv.pol.periodo_meses || 12) + 'T12:00:00');
+      var sig = fechas.filter(function (d) { return Math.abs(new Date(d + 'T12:00:00') - obj) <= 20 * 864e5; })
+        .sort(function (a, b) { return Math.abs(new Date(a + 'T12:00:00') - obj) - Math.abs(new Date(b + 'T12:00:00') - obj); })[0];
+      if (sig) { document.getElementById('rv-vto').value = sig; msg.push('vigencia ' + fmtDate(ini) + ' → ' + fmtDate(sig)); }
+    }
+    info.textContent = msg.length ? '✓ Leí del PDF: ' + msg.join(' · ') + '. Revisá y guardá.' : 'No pude sacar los datos del PDF: completalos a mano.';
+  } catch (e) { info.textContent = 'No pude leer el PDF (' + (e.message || e) + '): completá los datos a mano.'; }
+}
+async function guardarRenovacion() {
+  var p = _rv.pol, num = document.getElementById('rv-num').value.trim(), cia = document.getElementById('rv-cia').value.trim();
+  var ini = document.getElementById('rv-ini').value, vto = document.getElementById('rv-vto').value, cuota = parseFloat(document.getElementById('rv-cuota').value) || null;
+  if (!num) { alert('Falta el número de la póliza nueva.'); return; }
+  if (!cia) { alert('Falta la compañía.'); return; }
+  var btn = document.getElementById('rv-ok'); btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    var dr = p.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } }
+    dr = Object.assign({}, dr || {}); delete dr.verif_pdf; dr.renueva_a = p.numero_poliza;
+    var nueva = { productor_id: user.id, cliente_id: p.cliente_id, numero_poliza: num, aseguradora: cia, ramo: p.ramo, fecha_inicio: ini, fecha_vencimiento: vto,
+      valor_cuota: cuota, prima_anual: cuota ? null : p.prima_anual, forma_pago: p.forma_pago, medio_pago: p.medio_pago, cantidad_cuotas: p.cantidad_cuotas,
+      periodo_meses: p.periodo_meses, estado: 'activa', bien_asegurado: p.bien_asegurado, patente: p.patente, cobertura: p.cobertura, datos_ramo: dr,
+      cod_aseg_fedpat: cia === p.aseguradora ? p.cod_aseg_fedpat : null };
+    var ins = await sb.from('polizas').insert(nueva).select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
+    if (ins.error) throw ins.error;
+    var pn = ins.data;
+    if (_rv.file) {
+      var path = 'polizas/' + pn.id + '/' + Date.now() + '_poliza_' + _rv.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var up = await sb.storage.from('archivos').upload(path, _rv.file, { contentType: 'application/pdf' });
+      if (!up.error) {
+        var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+        await sb.from('polizas').update({ pdf_url: url }).eq('id', pn.id); pn.pdf_url = url;
+        try { await verificarArchivoPdf(_rv.file, pn); } catch (e) {}
+      }
+    }
+    await sb.from('polizas').update({ estado: 'renovada', motivo_cancelacion: _rv.otraCia ? 'Pasó a ' + cia + ' (N° ' + num + ')' : null }).eq('id', p.id);
+    await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Renovó: N° ' + num + (cia !== p.aseguradora ? ' en ' + cia : '') }).eq('poliza_id', p.id).neq('estado', 'cerrada');
+    await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: 'renovacion', tipo: 'sistema', poliza_id: pn.id, poliza_numero: num, poliza_ramo: p.ramo,
+      resumen: '🔄 Renovó ' + (p.ramo || '') + ' N° ' + p.numero_poliza + ' → N° ' + num + (cia !== p.aseguradora ? ' (pasó de ' + p.aseguradora + ' a ' + cia + ')' : '') + ' · ' + fmtDate(ini) + ' al ' + fmtDate(vto),
+      usuario_nombre: user.email, es_automatico: false });
+    try { await sb.rpc('armar_paquetes'); } catch (e) {}
+    if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
+    if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
+    _ofOfrecerEnvio(pn);
+  } catch (e) { btn.disabled = false; btn.textContent = 'Guardar renovación'; alert('No se pudo guardar: ' + (e.message || e)); }
+}
+function _ofOfrecerEnvio(pn) {
+  _rv.nueva = pn;
+  document.getElementById('env-titulo').textContent = '✅ Renovación cargada';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<p style="font-size:13px;margin:0 0 12px">Quedó la póliza nueva <b>N° ' + esc(pn.numero_poliza) + '</b> (' + fmtDate(pn.fecha_inicio) + ' → ' + fmtDate(pn.fecha_vencimiento) + ') y la anterior pasó a renovada.<br><br><b>¿Se la mandamos al cliente?</b></p>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + (pn.pdf_url ? '<button type="button" class="btn btn-p" onclick="abrirEnviarPoliza(\'' + pn.id + '\',\'renovacion\')">💬 Por WhatsApp (o Gmail) ahora</button>' : '<div style="font-size:12px;color:#92400E">Para mandarla por WhatsApp desde acá, primero subile el PDF.</div>')
+    + '<button type="button" class="btn" onclick="renovacionPedirMail()">📧 Que el chat de Renovaciones arme el mail</button>'
+    + '<button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Después</button></div>';
+}
+async function renovacionPedirMail() {
+  var pn = _rv && _rv.nueva; if (!pn) return;
+  var ok = await pedirAlProyecto({ area: 'renovaciones', titulo: 'Mandar la renovación al cliente', cliente_id: pn.cliente_id, poliza_id: pn.id, canal: 'mail',
+    detalle: 'Renovó N° ' + pn.numero_poliza + ' (' + fmtDate(pn.fecha_inicio) + ' → ' + fmtDate(pn.fecha_vencimiento) + ')' + (pn.valor_cuota ? ' · cuota $' + Math.round(pn.valor_cuota).toLocaleString('es-AR') : ''),
+    adjuntos: pn.pdf_url ? [{ nombre: 'Poliza_' + pn.numero_poliza + '.pdf', url: pn.pdf_url }] : [] });
+  if (ok) { cerrarModal('modal-envio'); mostrarAlerta('📨 Listo: el chat de Renovaciones arma el mail y te lo muestra en 🗂 Oficina para aprobar.'); }
+}
+async function renovacionNo() {
+  var motivo = prompt('¿Por qué no renueva? (vendió el auto, se va a otro productor, no paga…)');
+  if (motivo === null) return;
+  var p = _rv.pol;
+  await sb.from('polizas').update({ estado: 'no_renueva', motivo_cancelacion: motivo || 'No renueva' }).eq('id', p.id);
+  await sb.from('tareas').update({ estado: 'cerrada', resultado: 'No renueva' + (motivo ? ': ' + motivo : '') }).eq('poliza_id', p.id).neq('estado', 'cerrada');
+  await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: 'renovacion', tipo: 'sistema', poliza_id: p.id, poliza_numero: p.numero_poliza, poliza_ramo: p.ramo,
+    resumen: '❌ No renueva ' + (p.ramo || '') + ' N° ' + p.numero_poliza + (motivo ? ' — ' + motivo : ''), usuario_nombre: user.email, es_automatico: false });
+  cerrarModal('modal-envio');
+  if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
+  mostrarAlerta('Listo: la póliza quedó como "no renueva".');
+}
+
+async function renovarRapido(polId) { await abrirConfirmarRenovacion(polId, null); if (_rv) renovacionSi(false); }
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">
