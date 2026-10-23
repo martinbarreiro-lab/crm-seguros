@@ -2746,7 +2746,7 @@ async function cargarDashboard() {
   var polsPdf = pols.filter(requierePdf);
   var conPdf = polsPdf.filter(function(p){ return p.pdf_url; }).length;
   var pct = polsPdf.length ? Math.round(conPdf/polsPdf.length*100) : 0;
-  if (el('dz-obj-pdf')) el('dz-obj-pdf').innerHTML = '<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Pólizas con PDF cargado <span style="color:var(--lt);font-weight:400">(sin paquetes, vida obligatorio ni ART)</span></span><b>'+conPdf+' / '+polsPdf.length+'</b></div><div class="dz-bar"><div style="width:'+pct+'%;background:var(--amber)"></div></div></div>';
+  if (el('dz-obj-pdf')) el('dz-obj-pdf').innerHTML = '<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Pólizas con PDF cargado <span style="color:var(--lt);font-weight:400">(sin paquetes, AP, vida obligatorio ni ART)</span></span><b>'+conPdf+' / '+polsPdf.length+'</b></div><div class="dz-bar"><div style="width:'+pct+'%;background:var(--amber)"></div></div></div>';
 
   // Agenda + objetivos
   if (el('dz-agenda') && el('dz-agenda').style.display !== 'none') await dashCargarCalendario();
@@ -3322,7 +3322,8 @@ function requierePdf(p) {
   if (!p) return false;
   if (p.paquete_de) return false;
   var r = String(p.ramo || '');
-  if (/^ART$/i.test(r) || /vida obligatorio/i.test(r)) return false;
+  // No piden PDF: ART, vida obligatorio y accidentes personales (nunca es urgente pedirlas)
+  if (/^ART$/i.test(r) || /vida obligatorio/i.test(r) || /accidentes personales|accidentes a pasajeros/i.test(r)) return false;
   return true;
 }
 function faltaPdf(p) { return requierePdf(p) && !p.pdf_url; }
