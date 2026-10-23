@@ -1856,7 +1856,9 @@ function abrirCargaPdfs() {
   document.getElementById('env-cuerpo').innerHTML =
     '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>.</p>'
     + '<label id="cpdf-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📂 Elegir archivos o soltarlos acá<input type="file" id="cpdf-in" multiple accept="application/pdf,.pdf,.zip,application/zip" style="display:none"></label>'
-    + '<label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:10px 0"><input type="checkbox" id="cpdf-reemp"> Reemplazar el PDF si la póliza ya tiene uno</label>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0"><label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" id="cpdf-reemp"> Reemplazar el PDF si la póliza ya tiene uno</label>'
+    + '<button type="button" class="btn btn-sm" id="cpdf-verif" onclick="verificarPdfsCargados()" title="Lee cada PDF ya cargado y lo compara con la póliza: número, asegurado, ramo, patente y vencimiento">🔎 Verificar los PDFs ya cargados</button></div>'
+    + '<p style="font-size:11.5px;color:var(--text2);margin:0 0 8px">Cada PDF que subís se lee y se compara con la póliza. Si algo no coincide te lo marca; no cambia nada sin que lo confirmes.</p>'
     + '<div id="cpdf-lista" style="max-height:300px;overflow:auto;font-size:12px"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cerrar</button><button type="button" class="btn btn-p" id="cpdf-ok" disabled onclick="subirPdfsMasivo()">Subir</button></div>';
   var inp = document.getElementById('cpdf-in'), dz = document.getElementById('cpdf-drop');
@@ -1872,7 +1874,7 @@ async function _agregarArchivosPdf(files) {
   lista.innerHTML = '<div style="color:var(--text2)">Leyendo archivos…</div>';
   try {
     if (!_cpdf.pols) {
-      var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,clientes(nombre,apellido,razon_social,tipo_cliente)');
+      var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)');
       if (r.error) throw r.error;
       _cpdf.pols = {};
       (r.data || []).forEach(function (p) { var k = _numSinCeros(p.numero_poliza); if (k && !_cpdf.pols[k]) _cpdf.pols[k] = p; });
@@ -1896,7 +1898,7 @@ async function _agregarArchivosPdf(files) {
   _renderCargaPdfs();
 }
 function _estadoItemPdf(it, reemp) {
-  if (it.hecho) return ['✓ Subido', '#166534'];
+  if (it.hecho) return it.verif && !it.verif.ok ? ['✓ Subido · ⚠ revisar', '#B45309'] : ['✓ Subido' + (it.verif ? ' · verificada' : ''), '#166534'];
   if (it.error) return ['Error: ' + it.error, '#B91C1C'];
   if (!it.pol) return ['Sin póliza con ese número', '#B45309'];
   if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF (no se toca)', '#64748B'];
@@ -1908,7 +1910,7 @@ function _renderCargaPdfs() {
   var filas = _cpdf.items.map(function (it) {
     var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir') n++;
     var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : '—';
-    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
+    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
   }).join('');
   var lista = document.getElementById('cpdf-lista'); if (!lista) return;
   lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
@@ -1928,12 +1930,159 @@ async function subirPdfsMasivo() {
       var r = await sb.from('polizas').update({ pdf_url: url }).eq('id', it.pol.id);
       if (r.error) throw r.error;
       it.pol.pdf_url = url; it.hecho = true;
+      btn.textContent = 'Verificando ' + (i + 1) + ' de ' + cola.length + '…';
+      it.verif = await verificarArchivoPdf(it.file, it.pol);
     } catch (e) { it.error = e.message || String(e); }
     _renderCargaPdfs();
   }
   var ok = cola.filter(function (it) { return it.hecho; }).length;
   btn.textContent = ok + ' subido' + (ok === 1 ? '' : 's');
   if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
+}
+
+// ══ Verificación de la póliza contra su PDF ══════════════════════════════
+// Lee el texto del PDF y compara número, asegurado, ramo, patente y vencimiento con lo cargado.
+// Nunca corrige solo: muestra las diferencias y el usuario confirma.
+var _pdfjsP = null;
+function _cargarPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (_pdfjsP) return _pdfjsP;
+  _pdfjsP = new Promise(function (ok, mal) {
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload = function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); };
+    sc.onerror = function () { _pdfjsP = null; mal(new Error('No se pudo cargar el lector de PDF')); };
+    document.head.appendChild(sc);
+  });
+  return _pdfjsP;
+}
+async function _textoPdf(archivo) {
+  var lib = await _cargarPdfJs();
+  var doc = await lib.getDocument({ data: new Uint8Array(await archivo.arrayBuffer()) }).promise;
+  var t = [];
+  for (var i = 1; i <= Math.min(doc.numPages, 4); i++) {
+    var pg = await doc.getPage(i), tc = await pg.getTextContent();
+    t.push(tc.items.map(function (x) { return x.str; }).join(' '));
+  }
+  return t.join(' \n ');
+}
+function _normTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' '); }
+// Señales de ramo en el texto del PDF (de lo más específico a lo más general)
+var _SENALES_RAMO = [
+  ['Riesgos Varios', /ROBO DE IDENTIDAD|PROTECCION DE IDENTIDAD|IDENTIDAD DIGITAL|RIESGOS VARIOS/],
+  ['Vida Obligatorio', /VIDA OBLIGATORIO|COLECTIVO DE VIDA OBLIGATORIO|S\.?C\.?V\.?O\b|DECRETO 1567/],
+  ['ART', /RIESGOS DEL TRABAJO|LEY 24\.?557/],
+  ['Robo', /BICICLETA/],
+  ['Salud', /\bSALUD\b/],
+  ['Comercio', /INTEGRAL DE COMERCIO|INTEGRAL COMERCIO|COMERCIO INTEGRAL/],
+  ['Combinado', /COMBINADO FAMILIAR|INTEGRAL DE HOGAR|SEGURO DE HOGAR|COMBINADO/],
+  ['Accidentes Personales', /ACCIDENTES PERSONALES|ACCIDENTES A PASAJEROS|FAMILIARES TRANSPORTADOS/],
+  ['Vida Colectiva', /VIDA COLECTIV/],
+  ['Vida Individual', /VIDA INDIVIDUAL|SEGURO DE VIDA/],
+  ['Responsabilidad Civil', /RESPONSABILIDAD CIVIL/],
+  ['Automotor', /AUTOMOTOR|MOTOVEHICULO|VEHICULO|DOMINIO/]
+];
+function _senalDeRamo(ramo) {
+  ramo = String(ramo || '');
+  if (esRamoAuto(ramo)) ramo = 'Automotor';
+  if (/^hogar$/i.test(ramo)) ramo = 'Combinado';
+  var s = _SENALES_RAMO.find(function (x) { return x[0].toLowerCase() === ramo.toLowerCase(); });
+  return s ? s[1] : null;
+}
+function _fechasPosibles(iso) {
+  if (!iso) return [];
+  var p = String(iso).slice(0, 10).split('-'); if (p.length !== 3) return [];
+  return [p[2] + '/' + p[1] + '/' + p[0], p[2] + '/' + p[1] + '/' + p[0].slice(2), p[2] + '-' + p[1] + '-' + p[0], p[2] + '.' + p[1] + '.' + p[0], +p[2] + '/' + +p[1] + '/' + p[0]];
+}
+function verificarTextoContraPoliza(texto, pol) {
+  var T = _normTxt(texto), dif = [], ramoSug = null;
+  if (T.replace(/\s/g, '').length < 40) return { leido: false, ok: false, dif: ['No se pudo leer el texto del PDF (puede ser una imagen escaneada)'] };
+  var dig = T.replace(/[.\s\-\/]/g, '');
+  var nro = _numSinCeros(pol.numero_poliza);
+  if (nro && dig.indexOf(nro) < 0) dif.push('No encuentro el N° de póliza ' + pol.numero_poliza + ' en el PDF');
+  var cl = pol.clientes;
+  if (cl) {
+    var base = cl.razon_social || cl.apellido || cl.nombre || '';
+    var pals = _normTxt(base).replace(/[^A-Z ]/g, ' ').split(' ').filter(function (w) { return w.length >= 4 && ['SRL','S R L','SOCIEDAD','ANONIMA'].indexOf(w) < 0; });
+    if (pals.length && !pals.some(function (w) { return T.indexOf(w) >= 0; })) dif.push('El asegurado del PDF no parece ser ' + (nombreClienteLista(cl) || base));
+  }
+  var dr = pol.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } } dr = dr || {};
+  var pat = _normTxt(dr.patente || pol.patente || '').replace(/[^A-Z0-9]/g, '');
+  if (esRamoAuto(pol.ramo) && pat.length >= 6 && T.replace(/[^A-Z0-9]/g, '').indexOf(pat) < 0) dif.push('No encuentro la patente ' + pat + ' en el PDF');
+  var fv = _fechasPosibles(pol.fecha_vencimiento);
+  if (fv.length && !fv.some(function (f) { return T.indexOf(f) >= 0; })) dif.push('No encuentro el vencimiento ' + fmtDate(pol.fecha_vencimiento) + ' en el PDF');
+  var propia = _senalDeRamo(pol.ramo);
+  if (!propia || !propia.test(T)) {
+    // El ramo que aparece primero en el PDF (el encabezado "SECCIÓN ..." va arriba de todo)
+    var otra = null, pos = Infinity;
+    _SENALES_RAMO.forEach(function (x) { var m = T.search(x[1]); if (m >= 0 && m < pos) { pos = m; otra = x; } });
+    if (otra && otra[0] !== pol.ramo && !(otra[0] === 'Automotor' && esRamoAuto(pol.ramo)) && !(otra[0] === 'Combinado' && /^hogar$/i.test(pol.ramo || ''))) {
+      ramoSug = otra[0];
+      dif.unshift('El PDF dice ' + otra[0].toUpperCase() + ' y en el CRM figura como ' + (pol.ramo || 'sin ramo'));
+    }
+  }
+  return { leido: true, ok: !dif.length, dif: dif, ramoSugerido: ramoSug };
+}
+async function guardarVerificacionPdf(pol, res) {
+  var { data: act } = await sb.from('polizas').select('datos_ramo').eq('id', pol.id).single();
+  var dr = act && act.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } } dr = dr || {};
+  dr.verif_pdf = { fecha: new Date().toISOString().slice(0, 10), ok: !!res.ok, dif: res.dif || [], ramo_sug: res.ramoSugerido || null };
+  await sb.from('polizas').update({ datos_ramo: dr }).eq('id', pol.id);
+  pol.datos_ramo = dr;
+}
+async function verificarArchivoPdf(archivo, pol) {
+  try { var res = verificarTextoContraPoliza(await _textoPdf(archivo), pol); }
+  catch (e) { var res = { leido: false, ok: false, dif: ['No se pudo leer el PDF: ' + (e.message || e)] }; }
+  try { await guardarVerificacionPdf(pol, res); } catch (e) {}
+  return res;
+}
+async function corregirRamoPorPdf(polId, ramo, btn) {
+  if (!confirm('¿Cambio el ramo de esta póliza a "' + ramo + '"?')) return;
+  var { data: act } = await sb.from('polizas').select('datos_ramo').eq('id', polId).single();
+  var dr = act && act.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } } dr = dr || {};
+  if (dr.verif_pdf) { dr.verif_pdf.dif = (dr.verif_pdf.dif || []).filter(function (d) { return !/^El PDF dice /.test(d); }); dr.verif_pdf.ok = !dr.verif_pdf.dif.length; dr.verif_pdf.ramo_sug = null; }
+  var r = await sb.from('polizas').update({ ramo: ramo, datos_ramo: dr }).eq('id', polId);
+  if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  try { await sb.rpc('armar_paquetes'); } catch (e) {}
+  if (btn) { btn.outerHTML = '<span style="color:#166534;font-weight:600">✓ Ramo cambiado a ' + esc(ramo) + '</span>'; }
+}
+function htmlResultadoVerif(res, pol) {
+  if (!res) return '';
+  if (res.ok) return '<div style="color:#166534;font-size:11.5px;margin-top:3px">✓ Verificada: el PDF coincide con lo cargado</div>';
+  return '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px;margin-top:4px;font-size:11.5px;color:#92400E">'
+    + res.dif.map(function (d) { return '• ' + esc(d); }).join('<br>')
+    + (res.ramoSugerido ? '<div style="margin-top:5px"><button type="button" class="btn btn-sm" onclick="corregirRamoPorPdf(\'' + pol.id + '\',\'' + res.ramoSugerido + '\', this)">Cambiar ramo a ' + esc(res.ramoSugerido) + '</button></div>' : '')
+    + '</div>';
+}
+function _pathStorage(url) {
+  var m = String(url || '').match(/\/object\/(?:public|sign)\/archivos\/([^?]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+// Revisa todos los PDFs ya cargados contra sus pólizas
+async function verificarPdfsCargados() {
+  var lista = document.getElementById('cpdf-lista'), btn = document.getElementById('cpdf-verif');
+  if (btn) btn.disabled = true;
+  lista.innerHTML = '<div style="color:var(--text2)">Buscando pólizas con PDF…</div>';
+  var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('estado', 'activa').not('pdf_url', 'is', null);
+  if (r.error) { lista.innerHTML = 'Error: ' + esc(r.error.message); return; }
+  var pols = r.data || [], malas = [], buenas = 0, sinLeer = 0;
+  for (var i = 0; i < pols.length; i++) {
+    var p = pols[i];
+    lista.innerHTML = '<div style="color:var(--text2)">Revisando ' + (i + 1) + ' de ' + pols.length + '… (' + esc(p.numero_poliza) + ')</div>';
+    var res;
+    try {
+      var path = _pathStorage(p.pdf_url); if (!path) throw new Error('no encuentro el archivo');
+      var dl = await sb.storage.from('archivos').download(path); if (dl.error) throw dl.error;
+      res = await verificarArchivoPdf(dl.data, p);
+    } catch (e) { res = { leido: false, ok: false, dif: ['No se pudo abrir el PDF: ' + (e.message || e)] }; }
+    if (res.ok) buenas++; else { if (!res.leido) sinLeer++; malas.push({ p: p, res: res }); }
+  }
+  lista.innerHTML = '<div style="margin-bottom:8px;font-weight:600">' + pols.length + ' PDFs revisados · <span style="color:#166534">' + buenas + ' coinciden</span>' + (malas.length ? ' · <span style="color:#B45309">' + malas.length + ' para revisar</span>' : '') + '</div>'
+    + malas.map(function (x) {
+      return '<div style="padding:7px 0;border-bottom:1px solid #F1F5F9"><b>N° ' + esc(x.p.numero_poliza) + '</b> · ' + esc(x.p.clientes ? nombreClienteLista(x.p.clientes) : '') + ' · ' + esc(x.p.ramo || '') + ' · ' + esc(x.p.aseguradora || '')
+        + ' <a href="#" onclick="event.preventDefault();window.open(\'' + x.p.pdf_url + '\',\'_blank\')">ver PDF</a>' + htmlResultadoVerif(x.res, x.p) + '</div>';
+    }).join('');
+  if (btn) btn.disabled = false;
 }
 
 var _envio = null; // { pol, cl, doc, tareaId, file, texto }
@@ -2467,7 +2616,8 @@ async function cargarDashboard() {
   // ── Avisos (chips) ──
   var vence30 = pols.filter(function(p){ return p.fecha_vencimiento && p.fecha_vencimiento <= iso(en30); }).length;
   var artDeuda = pols.filter(function(p){ return /ART/i.test(p.ramo||'') && Number(dr(p).saldo) > 0; }).length;
-  var sinPdf = pols.filter(function(p){ return !p.pdf_url && !/ART/i.test(p.ramo||''); }).length;
+  var sinPdfAuto = pols.filter(function(p){ return faltaPdf(p) && esRamoAuto(p.ramo); }).length;
+  var sinPdf = pols.filter(function(p){ return faltaPdf(p) && !esRamoAuto(p.ramo); }).length;
   var aEnviar = tars.filter(function(t){ return /^Enviar (póliza|endoso)/i.test(t.tipo||''); }).length;
   var chips = [];
   var chip = function(n, txt, cls, js){ if (n) chips.push('<button type="button" class="dz-chip '+cls+'" onclick="'+js+'"><i></i><b>'+n+'</b> '+txt+'</button>'); };
@@ -2475,7 +2625,8 @@ async function cargarDashboard() {
   chip(cuotasVenc, cuotasVenc === 1 ? 'cuota vencida' : 'cuotas vencidas', 'rj', "irASeccion('cobranzas')");
   chip(artDeuda, 'ART con saldo deudor', 'rj', "irASeccion('polizas')");
   chip(aEnviar, aEnviar === 1 ? 'póliza para enviar' : 'pólizas para enviar', 'az', "irASeccion('tareas')");
-  chip(sinPdf, sinPdf === 1 ? 'póliza sin PDF' : 'pólizas sin PDF', '', "irASeccion('polizas')");
+  chip(sinPdfAuto, sinPdfAuto === 1 ? 'auto sin PDF (obligatorio)' : 'autos sin PDF (obligatorio)', 'rj', "irASeccion('polizas')");
+  chip(sinPdf, sinPdf === 1 ? 'otra póliza sin PDF' : 'otras pólizas sin PDF', '', "irASeccion('polizas')");
   if (el('dz-chips')) el('dz-chips').innerHTML = chips.length ? chips.join('') : '<span class="dz-chip ok"><i></i>Todo al día</span>';
 
   // ── Cartera vigente ──
@@ -2526,6 +2677,7 @@ async function cargarDashboard() {
   items.sort(function(a,b){ return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; });
   var tdHtml = items.slice(0, 7).map(function(x){ return x.h; }).join('');
   if (items.length > 7) tdHtml += '<div class="dz-sub" style="margin:4px 0 0">y '+(items.length-7)+' más en Tareas</div>';
+  if (sinPdfAuto) tdHtml = '<div class="dz-item rj" onclick="irASeccion(\'polizas\')"><span class="w">PENDIENTE</span><div class="t"><b>'+sinPdfAuto+(sinPdfAuto === 1 ? ' póliza de auto' : ' pólizas de auto')+' sin PDF</b> · es obligatorio tenerlas para mandarlas</div><span class="r">Pólizas →</span></div>' + tdHtml;
   if (cuotasVenc) tdHtml += '<div class="dz-item rj" onclick="irASeccion(\'cobranzas\')"><span class="w">PENDIENTE</span><div class="t"><b>Cuotas vencidas</b> · '+cuotasVenc+' para reclamar</div><span class="r">Cobranzas →</span></div>';
   if (el('dz-tudia')) el('dz-tudia').innerHTML = tdHtml || '<div style="font-size:13px;color:var(--lt);padding:8px 0">Nada para hoy ni mañana</div>';
 
@@ -2584,9 +2736,10 @@ async function cargarDashboard() {
   }).join('') : '<div style="font-size:13px;color:var(--lt);padding:8px 0">Sin movimientos hoy ni ayer</div>';
 
   // ── Objetivo fijo: pólizas con PDF ──
-  var conPdf = pols.filter(function(p){ return p.pdf_url; }).length;
-  var pct = pols.length ? Math.round(conPdf/pols.length*100) : 0;
-  if (el('dz-obj-pdf')) el('dz-obj-pdf').innerHTML = '<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Pólizas con PDF cargado</span><b>'+conPdf+' / '+pols.length+'</b></div><div class="dz-bar"><div style="width:'+pct+'%;background:var(--amber)"></div></div></div>';
+  var polsPdf = pols.filter(requierePdf);
+  var conPdf = polsPdf.filter(function(p){ return p.pdf_url; }).length;
+  var pct = polsPdf.length ? Math.round(conPdf/polsPdf.length*100) : 0;
+  if (el('dz-obj-pdf')) el('dz-obj-pdf').innerHTML = '<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Pólizas con PDF cargado <span style="color:var(--lt);font-weight:400">(sin paquetes, vida obligatorio ni ART)</span></span><b>'+conPdf+' / '+polsPdf.length+'</b></div><div class="dz-bar"><div style="width:'+pct+'%;background:var(--amber)"></div></div></div>';
 
   // Agenda + objetivos
   if (el('dz-agenda') && el('dz-agenda').style.display !== 'none') await dashCargarCalendario();
@@ -3156,6 +3309,34 @@ function ramoConProducto(p, vacio) {
   var pr = productoPoliza(p);
   return esc(p.ramo || (vacio == null ? '—' : vacio)) + (pr ? ' · <span style="color:var(--text);font-weight:500">' + esc(pr) + '</span>' : '');
 }
+function esRamoAuto(r) { return /^(automotor|motos?|motoveh[ií]culos?)$/i.test(String(r || '').trim()); }
+// Qué pólizas tienen que tener el PDF: autos (obligatorio) y el resto; NO las que van en paquete con el auto, ni vida obligatorio, ni ART
+function requierePdf(p) {
+  if (!p) return false;
+  if (p.paquete_de) return false;
+  var r = String(p.ramo || '');
+  if (/^ART$/i.test(r) || /vida obligatorio/i.test(r)) return false;
+  return true;
+}
+function faltaPdf(p) { return requierePdf(p) && !p.pdf_url; }
+// Paquete del auto plegado (▸ / ▾)
+var _pqAbiertos = {};
+function togglePaquete(id, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  _pqAbiertos[id] = !_pqAbiertos[id];
+  document.querySelectorAll('[data-pq="' + id + '"]').forEach(function (el) { el.classList.toggle('pq-cerrado', !_pqAbiertos[id]); });
+  document.querySelectorAll('[data-pq-flecha="' + id + '"]').forEach(function (el) { el.textContent = _pqAbiertos[id] ? '▾' : '▸'; });
+}
+// Atributos para una póliza que va dentro de un paquete plegable: data-pq + clase pq-cerrado si está cerrado
+function pqAttr(p, lista) {
+  if (!p.paquete_de || !(lista || []).some(function (x) { return x.id === p.paquete_de; })) return { attr: '', cls: '' };
+  return { attr: ' data-pq="' + p.paquete_de + '"', cls: _pqAbiertos[p.paquete_de] ? '' : ' pq-cerrado' };
+}
+function hijosDe(p, lista) { return (lista || []).filter(function (x) { return x.paquete_de === p.id; }); }
+function flechaPaquete(p, hijos) {
+  if (!hijos || !hijos.length) return '';
+  return '<span data-pq-flecha="' + p.id + '" onclick="togglePaquete(\'' + p.id + '\', event)" title="Ver las pólizas del paquete" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:4px;border-radius:5px;background:#EDE9FE;color:#5B21B6;font-size:12px;cursor:pointer;vertical-align:middle">' + (_pqAbiertos[p.id] ? '▾' : '▸') + '</span>';
+}
 function nombreCortoRamo(r) { r = r || ''; return /vida/i.test(r) ? 'Vida' : /accid/i.test(r) ? 'AP' : /salud/i.test(r) ? 'Salud' : r; }
 function nombrePrincipal(r) { r = r || ''; return /auto|moto/i.test(r) ? 'auto' : /combinado|hogar/i.test(r) ? 'hogar' : /comercio/i.test(r) ? 'integral' : esc(r.toLowerCase()); }
 function ordenarPorPaquete(lista) {
@@ -3169,12 +3350,12 @@ function lineaPaquete(p, lista) {
   lista = lista || [];
   if (p.paquete_de) {
     var pr = lista.find(function (x) { return x.id === p.paquete_de; });
-    return '<span class="pq-chip" title="Póliza que acompaña a la principal (va en paquete)">📦 Paquete' + (pr ? ' de ' + nombrePrincipal(pr.ramo) + ' N° ' + esc(pr.numero_poliza) : '') + '</span>';
+    return '<span class="pq-chip" title="Póliza que acompaña a la del auto (va en paquete)">📦 Va con el auto' + (pr ? ' N° ' + esc(pr.numero_poliza) : '') + '</span>';
   }
   var hs = lista.filter(function (x) { return x.paquete_de === p.id; });
   if (!hs.length) return '';
   var tot = getMensualNum(p) + hs.reduce(function (a, h) { return a + getMensualNum(h); }, 0);
-  return '<div class="pq-line">📦 Paquete · incluye ' + hs.map(function (h) { return esc(nombreCortoRamo(h.ramo)) + ' ' + esc(h.numero_poliza); }).join(' + ') + (tot ? ' · <b>Total $' + Math.round(tot).toLocaleString('es-AR') + '/mes</b>' : '') + '</div>';
+  return '<div class="pq-line" style="cursor:pointer" onclick="togglePaquete(\'' + p.id + '\', event)">📦 Paquete · incluye ' + hs.map(function (h) { return esc(nombreCortoRamo(h.ramo)) + ' ' + esc(h.numero_poliza); }).join(' + ') + (tot ? ' · <b>Total $' + Math.round(tot).toLocaleString('es-AR') + '/mes</b>' : '') + '</div>';
 }
 async function separarDePaquete(polId) {
   if (!confirm('¿Separar esta póliza del paquete? Va a quedar como póliza suelta y no se vuelve a agrupar sola.')) return;
@@ -3184,10 +3365,11 @@ async function separarDePaquete(polId) {
   if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
 }
 async function unirAPaquete(polId) {
-  var nro = prompt('Número de la póliza principal (auto, hogar o integral) a la que pertenece:');
+  var nro = prompt('Número de la póliza del auto a la que pertenece (solo se arman paquetes con autos):');
   if (!nro) return;
-  var { data: pr } = await sb.from('polizas').select('id,numero_poliza').eq('numero_poliza', nro.trim()).limit(1);
+  var { data: pr } = await sb.from('polizas').select('id,numero_poliza,ramo').eq('numero_poliza', nro.trim()).limit(1);
   if (!pr || !pr.length) { alert('No encontré una póliza con ese número.'); return; }
+  if (!esRamoAuto(pr[0].ramo)) { alert('La póliza ' + nro + ' es de ' + (pr[0].ramo || 'otro ramo') + '. Los paquetes se arman solo con la póliza del auto.'); return; }
   var r = await sb.from('polizas').update({ paquete_de: pr[0].id, paquete_manual: true }).eq('id', polId);
   if (r.error) { alert('No se pudo: ' + r.error.message); return; }
   abrirDetallePol(polId);
@@ -3212,7 +3394,16 @@ async function cargarPaqueteDetalle(p) {
 
 // ── Indicador de PDF de póliza (ficha del cliente) ──
 function chipPdf(p) {
-  if (p.pdf_url) return '<span onclick="event.stopPropagation();window.open(\'' + p.pdf_url + '\',\'_blank\')" title="Ver el PDF de la póliza" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#DCFCE7;color:#166534;cursor:pointer">📄 PDF cargado</span>';
+  if (p.pdf_url) {
+    var drv = p.datos_ramo; if (typeof drv === 'string') { try { drv = JSON.parse(drv); } catch (e) { drv = null; } }
+    var vf = drv && drv.verif_pdf;
+    var marca = vf ? (vf.ok ? ' · ✓ verificada' : '') : '';
+    var chip = '<span onclick="event.stopPropagation();window.open(\'' + p.pdf_url + '\',\'_blank\')" title="Ver el PDF de la póliza" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#DCFCE7;color:#166534;cursor:pointer">📄 PDF cargado' + marca + '</span>';
+    if (vf && !vf.ok) chip += ' <span title="' + esc((vf.dif || []).join(' · ')) + '" style="display:inline-flex;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E">⚠ El PDF no coincide: revisar</span>';
+    return chip;
+  }
+  if (!requierePdf(p)) return p.paquete_de ? '<span title="Va con la póliza del auto: no hace falta su PDF" style="display:inline-flex;margin-top:4px;font-size:10px;color:#9CA3AF">No pide PDF (va con el auto)</span>' : '';
+  if (esRamoAuto(p.ramo)) return '<span onclick="event.stopPropagation();subirPdfPoliza(\'' + p.id + '\')" title="Póliza de auto sin PDF: es obligatorio tenerlo. Tocá para subirlo" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FEE2E2;color:#B91C1C;border:1px dashed #EF4444;cursor:pointer">🔴 Sin PDF (obligatorio) · Subir</span>';
   return '<span onclick="event.stopPropagation();subirPdfPoliza(\'' + p.id + '\')" title="Esta póliza no tiene el PDF. Tocá para subirlo" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E;border:1px dashed #F59E0B;cursor:pointer">⚠ Sin PDF · Subir</span>';
 }
 function subirPdfPoliza(polId) {
@@ -3226,6 +3417,18 @@ function subirPdfPoliza(polId) {
       var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
       var r = await sb.from('polizas').update({ pdf_url: url }).eq('id', polId);
       if (r.error) throw r.error;
+      try {
+        var { data: polV } = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('id', polId).single();
+        if (polV) {
+          var res = await verificarArchivoPdf(f, polV);
+          if (!res.ok) {
+            var mv = _envModal();
+            document.getElementById('env-titulo').textContent = 'PDF subido · revisá estas diferencias';
+            document.getElementById('env-cuerpo').innerHTML = '<p style="font-size:13px;margin:0 0 8px">Póliza <b>N° ' + esc(polV.numero_poliza) + '</b> · ' + esc(polV.ramo || '') + '. Leí el PDF y esto no coincide con lo cargado:</p>' + htmlResultadoVerif(res, polV) + '<div style="text-align:right;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\');if(typeof fichaId!==\'undefined\'&&fichaId)renderFicha()">Listo</button></div>';
+            mv.classList.add('open');
+          }
+        }
+      } catch (e) {}
       var md = document.getElementById('modal-pol-det');
       if (md && md.classList.contains('open')) abrirDetallePol(polId);
       if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
@@ -3273,8 +3476,11 @@ async function fichaResumen(c) {
   html.push('<div style="display:flex;flex-direction:column;gap:12px">');
 
   // Aviso de pólizas vigentes sin PDF
-  var sinPdf = polsActivas.filter(function(p){ return !p.pdf_url; });
-  if (sinPdf.length) html.push('<div style="background:#FFFBEB;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12.5px">⚠ <b>' + (sinPdf.length === polsActivas.length ? (sinPdf.length === 1 ? 'La póliza vigente no tiene' : 'Ninguna de las ' + sinPdf.length + ' pólizas vigentes tiene') : sinPdf.length + ' de ' + polsActivas.length + ' pólizas vigentes no ' + (sinPdf.length === 1 ? 'tiene' : 'tienen')) + ' el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente. Tocá <b>⚠ Sin PDF · Subir</b> en cada una.</div>');
+  var sinPdf = polsActivas.filter(faltaPdf);
+  var sinPdfAuto = sinPdf.filter(function(p){ return esRamoAuto(p.ramo); });
+  var sinPdfOtras = sinPdf.length - sinPdfAuto.length;
+  if (sinPdfAuto.length) html.push('<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:12.5px">🔴 <b>' + (sinPdfAuto.length === 1 ? 'La póliza de auto N° ' + esc(sinPdfAuto[0].numero_poliza) + ' no tiene' : sinPdfAuto.length + ' pólizas de auto no tienen') + ' el PDF cargado.</b> Es obligatorio: te la pueden pedir en cualquier momento.' + (sinPdfOtras ? ' Además, ' + sinPdfOtras + (sinPdfOtras === 1 ? ' póliza más está' : ' pólizas más están') + ' sin PDF.' : '') + '</div>');
+  else if (sinPdfOtras) html.push('<div style="background:#FFFBEB;border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12.5px">⚠ <b>' + (sinPdfOtras === 1 ? '1 póliza vigente no tiene' : sinPdfOtras + ' pólizas vigentes no tienen') + ' el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente. Tocá <b>⚠ Sin PDF · Subir</b> en cada una.</div>');
 
   // Pólizas vigentes (solo en resumen)
   html.push('<div class="ficha-card">');
@@ -3283,8 +3489,9 @@ async function fichaResumen(c) {
     ordenarPorPaquete(polsActivas).forEach(function(p){
       var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
       var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
-      html.push('<div class="'+(p.paquete_de?'pq-hijo':'')+'" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
-      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>'+chipPdf(p)+lineaPaquete(p, polsActivas));
+      var pa = pqAttr(p, polsActivas);
+      html.push('<div class="'+(p.paquete_de?'pq-hijo':'')+pa.cls+'"'+pa.attr+' style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
+      html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+flechaPaquete(p, hijosDe(p, polsActivas))+p.numero_poliza+'</div>'+chipPdf(p)+lineaPaquete(p, polsActivas));
       html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+ramoConProducto(p)+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
@@ -3933,9 +4140,10 @@ async function fichaPolizas(c) {
       }
       const cobTexto = cobPartes.join(' · ');
 
-      html.push('<div class="poliza-row' + (p.paquete_de ? ' pq-hijo' : '') + '" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
+      var pa = pqAttr(p, polActivas);
+      html.push('<div class="poliza-row' + (p.paquete_de ? ' pq-hijo' : '') + pa.cls + '"' + pa.attr + ' onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
-           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
+           +      '<div style="font-size:14px;font-weight:600;color:#111827">' + flechaPaquete(p, hijosDe(p, polActivas)) + (p.numero_poliza || '—') + '</div>'
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + ramoConProducto(p, 'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +      chipPdf(p) + lineaPaquete(p, polActivas)
            +    '</div>'
@@ -6292,10 +6500,12 @@ function filtrarPolizasPanel() {
     var estadoColor = p.estado==='activa'||!p.estado ? '#1E40AF' : p.estado==='renovada'?'#27500A':'var(--muted)';
     var estadoLabel = p.estado ? p.estado.charAt(0).toUpperCase()+p.estado.slice(1) : 'Activa';
     var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
-    return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
-      +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 paquete</span>':(filtered.some(function(x){return x.paquete_de===p.id;})?' <span class="pq-chip">📦 +'+filtered.filter(function(x){return x.paquete_de===p.id;}).length+'</span>':''))+'</div></div>'
+    var pa = pqAttr(p, filtered), hs = hijosDe(p, filtered);
+    var totPq = hs.length ? getMensualNum(p) + hs.reduce(function(a,h){ return a + getMensualNum(h); }, 0) : 0;
+    return '<div class="'+pa.cls.trim()+'"'+pa.attr+' style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+(p.paquete_de && pa.attr ? 'background:#FAFAFF;' : '')+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+flechaPaquete(p, hs)+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 va con el auto</span>':(hs.length?' <span class="pq-chip" style="cursor:pointer" onclick="togglePaquete(\''+p.id+'\', event)">📦 +'+hs.length+'</span>':''))+(faltaPdf(p)?(esRamoAuto(p.ramo)?' <span style="font-size:10px;font-weight:700;color:#B91C1C">🔴 Sin PDF</span>':' <span style="font-size:10px;font-weight:600;color:#92400E">⚠ Sin PDF</span>'):'')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+'</div>'
-      +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div></div>'
+      +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div>'+(totPq?'<div style="font-size:10.5px;color:#5B21B6;margin-top:1px">Paquete $'+Math.round(totPq).toLocaleString('es-AR')+'/mes</div>':'')+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
       +'<div><span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+estadoLabel+'</span></div>'
@@ -10543,7 +10753,10 @@ function renderMpdDocumentos(p) {
   if (p.endoso_pdf_url) docs.push({label:'Último endoso'+(p.endoso_fecha?' — '+fmtDate(p.endoso_fecha):''),url:p.endoso_pdf_url,icon:'📎',sub:(p.endoso_detalle||'Endoso')});
   if (p.cedula_verde_frente_url) docs.push({label:'Cédula verde — frente',url:p.cedula_verde_frente_url,icon:'🪪',sub:'Imagen / PDF'});
   if (p.cedula_verde_dorso_url) docs.push({label:'Cédula verde — dorso',url:p.cedula_verde_dorso_url,icon:'🪪',sub:'Imagen / PDF'});
-  var avisoPdf = p.pdf_url ? '' : '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:12.5px;color:#92400E"><span>⚠ <b>Esta póliza no tiene el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente.</span><button type="button" onclick="subirPdfPoliza(\''+p.id+'\')" style="padding:5px 12px;border-radius:6px;border:1px solid #F59E0B;background:#fff;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Subir PDF</button></div>';
+  var avisoPdf = !faltaPdf(p) ? '' : '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:12.5px;color:#92400E"><span>' + (esRamoAuto(p.ramo) ? '🔴 <b>Póliza de auto sin PDF.</b> Es obligatorio tenerlo: te la pueden pedir en cualquier momento.' : '⚠ <b>Esta póliza no tiene el PDF cargado.</b> Sin el PDF no se la podés enviar al cliente.') + '</span><button type="button" onclick="subirPdfPoliza(\''+p.id+'\')" style="padding:5px 12px;border-radius:6px;border:1px solid #F59E0B;background:#fff;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Subir PDF</button></div>';
+  var drVf = p.datos_ramo; if (typeof drVf === 'string') { try { drVf = JSON.parse(drVf); } catch (e) { drVf = null; } }
+  if (p.pdf_url && drVf && drVf.verif_pdf && !drVf.verif_pdf.ok) avisoPdf += '<div style="margin:8px 0"><div style="font-size:12px;font-weight:600;color:#92400E">⚠ El PDF no coincide con lo cargado (revisado el ' + fmtDate(drVf.verif_pdf.fecha) + ')</div>' + htmlResultadoVerif({ ok: false, dif: drVf.verif_pdf.dif || [], ramoSugerido: drVf.verif_pdf.ramo_sug || null }, p) + '</div>';
+  else if (p.pdf_url && drVf && drVf.verif_pdf && drVf.verif_pdf.ok) avisoPdf += '<div style="font-size:11.5px;color:#166534;margin:6px 0">✓ PDF verificado el ' + fmtDate(drVf.verif_pdf.fecha) + ': coincide con lo cargado</div>';
   if (!docs.length) return avisoPdf;
   return avisoPdf + docs.map(function(d){
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F3F4F6">'+
@@ -11826,7 +12039,7 @@ async function normalizarYSincronizar(parsed, filename) {
 // ── Análisis post-importación ──────────────────────────────
 async function analizarPostImportacion(uid) {
   compLog('info', 'Analizando cartera...');
-  try { var rp = await sb.rpc('armar_paquetes'); if (!rp.error && rp.data) compLog('ok', rp.data + ' pólizas agrupadas en paquetes (auto/hogar/integral + vida/AP)'); } catch (e) {}
+  try { var rp = await sb.rpc('armar_paquetes'); if (!rp.error && rp.data) compLog('ok', rp.data + ' pólizas agrupadas en paquetes (auto + vida/AP)'); } catch (e) {}
   var hoy = new Date();
   var diasRenov = parseInt(_cfg.dias_renov) || 30;
   var diasCobr  = parseInt(_cfg.dias_cobr)  || 5;

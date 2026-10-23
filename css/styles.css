@@ -584,3 +584,4 @@ tr:hover td{background:var(--bg)}
 .pq-line{font-size:11.5px;color:#5B21B6;background:#F5F3FF;border-radius:6px;padding:5px 9px;margin:6px 0 8px;line-height:1.5}
 .pq-line a{color:#5B21B6;font-weight:600}
 .pq-hijo{margin-left:22px!important;border-left:3px solid #DDD6FE!important;padding-left:10px!important}
+.pq-cerrado{display:none!important}
