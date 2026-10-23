@@ -2069,9 +2069,10 @@ async function verificarPdfsCargados() {
   var lista = document.getElementById('cpdf-lista'), btn = document.getElementById('cpdf-verif');
   if (btn) btn.disabled = true;
   lista.innerHTML = '<div style="color:var(--text2)">Buscando pólizas con PDF…</div>';
-  var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('estado', 'activa').not('pdf_url', 'is', null);
+  var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('estado', 'activa').not('pdf_url', 'is', null);
   if (r.error) { lista.innerHTML = 'Error: ' + esc(r.error.message); return; }
-  var pols = r.data || [], malas = [], buenas = 0, sinLeer = 0;
+  // Solo las que tienen que tener PDF (no las del paquete del auto, vida obligatorio ni ART)
+  var pols = (r.data || []).filter(requierePdf), malas = [], buenas = 0, sinLeer = 0;
   for (var i = 0; i < pols.length; i++) {
     var p = pols[i];
     lista.innerHTML = '<div style="color:var(--text2)">Revisando ' + (i + 1) + ' de ' + pols.length + '… (' + esc(p.numero_poliza) + ')</div>';
