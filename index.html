@@ -378,7 +378,8 @@
             <option>Automotor</option><option>Hogar</option><option>Integral de comercio</option>
             <option>ART</option><option>Accidentes Personales</option>
             <option>Responsabilidad Civil</option><option>Vida Individual</option>
-            <option>Vida Colectiva</option><option>Otros</option>
+            <option>Vida Colectiva</option><option>Vida Obligatorio</option><option>Combinado</option>
+            <option>Riesgos Varios</option><option>Salud</option><option>Robo</option><option>Otros</option>
           </select>
           <select id="fil-pol-aseg" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
             <option value="">Todas las compañías</option>
@@ -1660,6 +1661,11 @@
           <option value="Responsabilidad Civil">Responsabilidad Civil</option>
           <option value="Vida Individual">Vida Individual</option>
           <option value="Vida Colectiva">Vida Colectiva</option>
+          <option value="Vida Obligatorio">Vida Obligatorio (SCVO)</option>
+          <option value="Combinado">Combinado familiar</option>
+          <option value="Riesgos Varios">Riesgos Varios (ej. robo de identidad)</option>
+          <option value="Salud">Salud</option>
+          <option value="Robo">Robo (ej. bicicleta)</option>
           <option value="Otros">Otros</option>
         </select>
       </div>
@@ -3141,6 +3147,15 @@ async function renderFichaTab(c) {
 }
 
 // ── Paquetes: auto/hogar/integral + vida/AP/salud del mismo cliente y misma vigencia ──
+function productoPoliza(p) {
+  var d = p && p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
+  var t = d && d.producto ? String(d.producto) : '';
+  return t && t.toLowerCase() !== String(p.ramo || '').toLowerCase() ? t : '';
+}
+function ramoConProducto(p, vacio) {
+  var pr = productoPoliza(p);
+  return esc(p.ramo || (vacio == null ? '—' : vacio)) + (pr ? ' · <span style="color:var(--text);font-weight:500">' + esc(pr) + '</span>' : '');
+}
 function nombreCortoRamo(r) { r = r || ''; return /vida/i.test(r) ? 'Vida' : /accid/i.test(r) ? 'AP' : /salud/i.test(r) ? 'Salud' : r; }
 function nombrePrincipal(r) { r = r || ''; return /auto|moto/i.test(r) ? 'auto' : /combinado|hogar/i.test(r) ? 'hogar' : /comercio/i.test(r) ? 'integral' : esc(r.toLowerCase()); }
 function ordenarPorPaquete(lista) {
@@ -3270,7 +3285,7 @@ async function fichaResumen(c) {
       var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
       html.push('<div class="'+(p.paquete_de?'pq-hijo':'')+'" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
       html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+p.numero_poliza+'</div>'+chipPdf(p)+lineaPaquete(p, polsActivas));
-      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
+      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+ramoConProducto(p)+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
       html.push('<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#166534">'+fmtCuota(p)+'</div></div></div>');
@@ -3921,7 +3936,7 @@ async function fichaPolizas(c) {
       html.push('<div class="poliza-row' + (p.paquete_de ? ' pq-hijo' : '') + '" onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + (p.numero_poliza || '—') + '</div>'
-           +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
+           +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + ramoConProducto(p, 'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +      chipPdf(p) + lineaPaquete(p, polActivas)
            +    '</div>'
            +    '<div style="flex:1;padding:0 16px;border-left:0.5px solid #E5E7EB;border-right:0.5px solid #E5E7EB;align-self:stretch;display:flex;flex-direction:column;justify-content:center">'
@@ -3949,7 +3964,7 @@ async function fichaPolizas(c) {
     return '<div style="background:var(--white);border:0.5px solid #F3F4F6;border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">'
       +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#374151">'+p.numero_poliza
         +' <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;'+badgeStyle+'">'+badgeTxt+'</span></div>'
-      +'<div style="font-size:11px;color:#6B7280;margin-top:2px">'+(p.ramo||'—')+' · '+p.aseguradora+(p.cobertura?' · '+p.cobertura:'')+'</div>'
+      +'<div style="font-size:11px;color:#6B7280;margin-top:2px">'+ramoConProducto(p)+' · '+p.aseguradora+(p.cobertura?' · '+p.cobertura:'')+'</div>'
       +(sub2?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>':'')
       +(p.suma_asegurada?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Suma: $'+parseFloat(p.suma_asegurada).toLocaleString('es-AR')+sumaFranq2+'</div>':'')
       +'</div>'
@@ -4002,7 +4017,7 @@ async function fichaPolizas(c) {
            +      '<span style="font-size:10px;color:' + sc.text + ';font-weight:700;text-transform:uppercase">' + d + ' ' + (d === 1 ? 'día' : 'días') + '</span>'
            +    '</div>'
            +    '<div style="font-size:12px;color:#111827;font-weight:600">' + (p.numero_poliza || '—') + '</div>'
-           +    '<div style="font-size:11px;color:#6B7280">' + (p.ramo||'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
+           +    '<div style="font-size:11px;color:#6B7280">' + ramoConProducto(p, 'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +    (p.fecha_vencimiento ? '<div style="font-size:10px;color:#9CA3AF;margin-top:2px">Vence ' + fmtDate(p.fecha_vencimiento) + '</div>' : '')
            +  '</div>');
     });
@@ -6279,7 +6294,7 @@ function filtrarPolizasPanel() {
     var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
     return '<div style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 paquete</span>':(filtered.some(function(x){return x.paquete_de===p.id;})?' <span class="pq-chip">📦 +'+filtered.filter(function(x){return x.paquete_de===p.id;}).length+'</span>':''))+'</div></div>'
-      +'<div style="font-size:12px;color:var(--muted)">'+(p.ramo||'—')+' · '+(p.aseguradora||'—')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+'</div>'
       +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
@@ -10128,7 +10143,7 @@ function renderDetallePol() {
             '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero_poliza||'—')+'</span>'+
             '<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;background:'+badgeBg+';color:'+badgeColor+'">'+badgeText+'</span>'+
           '</div>'+
-          '<div style="font-size:13px;color:#6B7280">'+p.ramo+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
+          '<div style="font-size:13px;color:#6B7280">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
         '</div>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\')" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;padding:4px;line-height:1">✕</button>'+
         '<button type="button" id="mpd-expand-btn" onclick="toggleMpdExpand()" title="Ampliar modal" style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:4px;line-height:1;margin-right:4px">'+
@@ -10989,15 +11004,52 @@ function parseFedPatronal(buffer) {
   var RAMO_MAP = {
     'AUTOMOTORES':'Automotor','MOTOVEHICULOS':'Automotor',
     'INCENDIO':'Hogar','COMBINADO FAMILIAR':'Combinado',
-    'INTEGRAL DE COMERCIO':'Comercio','RIESGOS VARIOS':'Comercio',
+    'INTEGRAL DE COMERCIO':'Comercio','RIESGOS VARIOS':'Riesgos Varios',
     'RESPONSABILIDAD CIVIL':'Responsabilidad Civil',
     'ACCIDENTES PERSONALES':'Accidentes Personales',
     'ACCIDENTES A PASAJEROS':'Accidentes Personales',
     'VIDA INDIVIDUAL':'Vida Individual','VIDA COLECTIVO':'Vida Colectiva',
-    'VIDA OBLIGATORIO':'Vida Individual','CAUCION':'Otros',
-    'TRANSPORTES':'Otros','ROBO':'Otros','CRISTALES':'Otros',
-    'ART':'ART','SEPELIO':'Otros',
+    'VIDA OBLIGATORIO':'Vida Obligatorio','CAUCION':'Caución',
+    'TRANSPORTES':'Transporte','ROBO':'Robo','CRISTALES':'Cristales',
+    'ART':'ART','SEPELIO':'Sepelio','SALUD':'Salud',
   };
+
+  // ── Producto/plan de cada póliza (para verificar el ramo) ─
+  // CART_CERTIFICADOS_ENDOSOS: A ramo, B póliza, C certificado, D endoso, X producto, L plan
+  // CART_PRODPLANES: A ramo, B producto, C plan, D descripción
+  var prodPlan = {}, prodBase = {}, productoPorPol = {};
+  try {
+    parse('CART_PRODPLANES.xml').querySelectorAll('ROW').forEach(function(r){
+      var a = r.getAttribute('A'), b = r.getAttribute('B'), d = r.getAttribute('D');
+      if (!d) return;
+      prodPlan[a + '|' + b + '|' + r.getAttribute('C')] = d;
+      if (!prodBase[a + '|' + b]) prodBase[a + '|' + b] = d;
+    });
+    parse('CART_CERTIFICADOS_ENDOSOS.xml').querySelectorAll('ROW').forEach(function(r){
+      var cert = r.getAttribute('C');
+      if (cert && cert !== '0') return;
+      var nro = r.getAttribute('B'); if (!nro) return;
+      var e = parseInt(r.getAttribute('D')) || 0;
+      if (productoPorPol[nro] && productoPorPol[nro].e > e) return;
+      var a = r.getAttribute('A'), x = r.getAttribute('X');
+      productoPorPol[nro] = { e: e, producto: prodPlan[a + '|' + x + '|' + r.getAttribute('L')] || prodBase[a + '|' + x] || null };
+    });
+  } catch(e) { compLog('warn', 'productos: ' + e.message); }
+  function lindoProducto(t) {
+    if (!t) return null;
+    t = String(t).trim().replace(/\s+/g, ' ');
+    if (/^plan b[aá]sico$/i.test(t)) return null; // no dice nada
+    var fijos = {
+      'scvo - afip': 'Seguro colectivo de vida obligatorio (SCVO)', 'ap familiares transportados': 'AP Familiares Transportados',
+      'accidentes a pasajeros': 'AP Accidentes a pasajeros', 'rc comprensiva asegura2': 'RC Comprensiva Asegura2',
+      'rc hechos privados ciclista': 'RC hechos privados ciclista', 'a.p. ciclistas plan 100': 'AP Ciclistas plan 100',
+      'rc.perd total inc. y robo': 'RC + pérdida total incendio y robo', 'rc.perd total accid. inc. y robo': 'RC + pérdida total accidente, incendio y robo',
+      'resp.civil limite maximo unica': 'RC límite máximo', 'tradicional + inc. edif. pra': 'Tradicional + incendio edificio'
+    };
+    if (fijos[t.toLowerCase()]) return fijos[t.toLowerCase()];
+    t = t.toLowerCase();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
 
   var multiRamo = {};
   try {
@@ -11101,6 +11153,10 @@ function parseFedPatronal(buffer) {
     if (Object.keys(v).length) { datosRamo.patente = v.patente; datosRamo.chasis = v.chasis; datosRamo.motor = v.motor; datosRamo.anio = v.anio; datosRamo.marca = v.marca; datosRamo.modelo = v.modelo; datosRamo.marca_modelo = v.marca_modelo; }
     if (s.suma_asegurada) datosRamo.suma_asegurada = s.suma_asegurada;
     if (f.desc || f.min) { datosRamo.franquicia_desc = f.desc || null; datosRamo.franquicia_monto = f.min || null; }
+    if (ramoRaw) datosRamo.ramo_compania = ramoRaw.charAt(0) + ramoRaw.slice(1).toLowerCase();
+    var prodInfo = productoPorPol[nro];
+    if (prodInfo && lindoProducto(prodInfo.producto)) datosRamo.producto = lindoProducto(prodInfo.producto);
+    else if (ramoRaw === 'ACCIDENTES A PASAJEROS') datosRamo.producto = 'AP Accidentes a pasajeros';
     if (items.length) {
       datosRamo.certificados = items;
       datosRamo.cant_certificados = items.length;
@@ -11308,7 +11364,7 @@ async function normalizarYSincronizar(parsed, filename) {
     // ── Traer TODO de Supabase en 3 consultas ──────────────
     var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
       sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,email_principal,telefono_principal').eq('productor_id', uid),
-      sb.from('polizas').select('id,numero_poliza,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at').eq('productor_id', uid).order('created_at'),
+      sb.from('polizas').select('id,numero_poliza,ramo,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at,clientes(nombre,apellido,razon_social)').eq('productor_id', uid).order('created_at'),
       sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
     ]);
 
@@ -11419,6 +11475,7 @@ async function normalizarYSincronizar(parsed, filename) {
 
     // ── Clasificar pólizas: nuevas vs actualizar ──────────
     var polInsertar = [], polActualizar = [];
+    var correccionesRamo = [];
 
     parsed.polizas.forEach(function(p) {
       var nro     = String(p.numero_poliza||'').trim();
@@ -11463,6 +11520,14 @@ async function normalizarYSincronizar(parsed, filename) {
         if (!existe.cliente_id && cl) cambios.cliente_id = cl.id;
         if (p._codCliente && String(existe.cod_aseg_fedpat||'') !== String(p._codCliente)) cambios.cod_aseg_fedpat = p._codCliente;
         if (p.cobertura && p.cobertura !== existe.cobertura) cambios.cobertura = p.cobertura;
+        // Revisión del ramo: si en el CRM figura distinto a lo que dice la compañía, se corrige
+        var AUTOS = ['Automotor','Motos','Motovehículos'];
+        if (p.ramo && p.ramo !== existe.ramo && !(AUTOS.indexOf(p.ramo) >= 0 && AUTOS.indexOf(existe.ramo) >= 0)) {
+          cambios.ramo = p.ramo;
+          var prodTxt = ''; try { prodTxt = JSON.parse(p.datos_ramo || '{}').producto || ''; } catch(e) {}
+          var clTxt = existe.clientes ? (existe.clientes.razon_social || ((existe.clientes.apellido || '') + ' ' + (existe.clientes.nombre || '')).trim()) : '';
+          correccionesRamo.push('N° ' + nro + (clTxt ? ' (' + clTxt + ')' : '') + ': ' + (existe.ramo || 'sin ramo') + ' → ' + p.ramo + (prodTxt ? ' · ' + prodTxt : ''));
+        }
         // Datos del ramo: sumar lo que trae la compañía sin borrar lo cargado a mano
         if (p.datos_ramo) {
           var drViejo = existe.datos_ramo; try { if (typeof drViejo === 'string') drViejo = JSON.parse(drViejo); } catch(e) { drViejo = {}; }
@@ -11475,6 +11540,11 @@ async function normalizarYSincronizar(parsed, filename) {
     });
 
     stats.polizas = polInsertar.length + polActualizar.length;
+    if (correccionesRamo.length) {
+      compLog('warn', '🔎 Revisión de ramos: ' + correccionesRamo.length + ' póliza' + (correccionesRamo.length > 1 ? 's estaban mal registradas' : ' estaba mal registrada') + ' y se corrigen según la compañía');
+      correccionesRamo.slice(0, 40).forEach(function(t){ compLog('info', '   ' + t); });
+      if (correccionesRamo.length > 40) compLog('info', '   … y ' + (correccionesRamo.length - 40) + ' más');
+    }
 
     // Insertar pólizas nuevas en lotes de 100
     if (polInsertar.length) {
@@ -12028,7 +12098,7 @@ function repRenderFiltros() {
     if (f==='compania') {
       html += '<label>Compañía</label><select id="rep-f-compania" style="font-size:13px"><option value="">Todas</option><option>Federación Patronal</option><option>Seguro Metal</option><option>Provincia ART</option><option>La Equitativa del Plata</option><option>Sancor Seguros</option><option>Zurich Argentina</option></select>';
     } else if (f==='ramo') {
-      html += '<label>Ramo</label><select id="rep-f-ramo" style="font-size:13px"><option value="">Todos</option><option>Automotor</option><option>Hogar</option><option>Combinado</option><option>Vida Individual</option><option>Vida Colectiva</option><option>Accidentes Personales</option><option>Responsabilidad Civil</option><option>ART</option><option>Comercio</option><option>Otros</option></select>';
+      html += '<label>Ramo</label><select id="rep-f-ramo" style="font-size:13px"><option value="">Todos</option><option>Automotor</option><option>Hogar</option><option>Combinado</option><option>Vida Individual</option><option>Vida Colectiva</option><option>Vida Obligatorio</option><option>Accidentes Personales</option><option>Responsabilidad Civil</option><option>ART</option><option>Comercio</option><option>Riesgos Varios</option><option>Salud</option><option>Robo</option><option>Otros</option></select>';
     } else if (f==='cliente') {
       html += '<label>Cliente</label><input type="text" id="rep-f-cliente" placeholder="Buscar cliente..." style="font-size:13px">';
     } else if (f==='estado_sin') {
@@ -12156,7 +12226,7 @@ handleCompFile = async function(file) {
         'CART_RECIBOS.xml','CART_CERTIFICADOS_COMISIONES.xml','SINT_SINIESTROS.xml',
         'CART_CERTIFICADOS_SUMAS.xml','CART_CIUDADES.xml',
         'CART_COBERTURAS.xml','CARH_RIESGOS_CUBIERTOS.xml','CART_MULTIRRAMICA.xml',
-        'CRET_PRODUCTOS_DATOS.xml','CRET_TABLAS.xml'];
+        'CRET_PRODUCTOS_DATOS.xml','CRET_TABLAS.xml','CART_PRODPLANES.xml','CART_CERTIFICADOS_ENDOSOS.xml'];
       window._compZipXmls = {};
 
       // Buscar XMLs en el ZIP raíz y también en ZIPs anidados (secuencial para no pisarse)
