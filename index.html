@@ -1992,7 +1992,13 @@ function _senalDeRamo(ramo) {
 function _fechasPosibles(iso) {
   if (!iso) return [];
   var p = String(iso).slice(0, 10).split('-'); if (p.length !== 3) return [];
-  return [p[2] + '/' + p[1] + '/' + p[0], p[2] + '/' + p[1] + '/' + p[0].slice(2), p[2] + '-' + p[1] + '-' + p[0], p[2] + '.' + p[1] + '.' + p[0], +p[2] + '/' + +p[1] + '/' + p[0]];
+  var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  var mes = MESES[+p[1] - 1] || '';
+  var out = [p[2] + '/' + p[1] + '/' + p[0], p[2] + '/' + p[1] + '/' + p[0].slice(2), p[2] + '-' + p[1] + '-' + p[0], p[2] + '.' + p[1] + '.' + p[0], +p[2] + '/' + +p[1] + '/' + p[0]];
+  // Fechas escritas con el mes en letras, ej. "7 Noviembre de 2026" o "07 de noviembre de 2026" (SMG y otras)
+  [+p[2] + '', p[2]].forEach(function (d) { out.push(d + ' ' + mes + ' DE ' + p[0], d + ' DE ' + mes + ' DE ' + p[0], d + ' ' + mes + ' ' + p[0], d + '-' + mes.slice(0, 3) + '-' + p[0]); });
+  if (mes === 'SEPTIEMBRE') out = out.concat(out.filter(function (f) { return f.indexOf('SEPTIEMBRE') >= 0; }).map(function (f) { return f.replace('SEPTIEMBRE', 'SETIEMBRE'); }));
+  return out;
 }
 function verificarTextoContraPoliza(texto, pol) {
   var T = _normTxt(texto), dif = [], ramoSug = null;
