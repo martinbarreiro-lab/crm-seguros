@@ -3317,7 +3317,7 @@ function ramoConProducto(p, vacio) {
   return esc(p.ramo || (vacio == null ? '—' : vacio)) + (pr ? ' · <span style="color:var(--text);font-weight:500">' + esc(pr) + '</span>' : '');
 }
 function esRamoAuto(r) { return /^(automotor|motos?|motoveh[ií]culos?)$/i.test(String(r || '').trim()); }
-// Qué pólizas tienen que tener el PDF: autos (obligatorio) y el resto; NO las que van en paquete con el auto, ni vida obligatorio, ni ART
+// Qué pólizas tienen que tener el PDF: autos (obligatorio) y el resto; NO las que van en paquete (con el auto o el integral), ni AP, ni vida obligatorio, ni ART
 function requierePdf(p) {
   if (!p) return false;
   if (p.paquete_de) return false;
@@ -3358,7 +3358,7 @@ function lineaPaquete(p, lista) {
   lista = lista || [];
   if (p.paquete_de) {
     var pr = lista.find(function (x) { return x.id === p.paquete_de; });
-    return '<span class="pq-chip" title="Póliza que acompaña a la del auto (va en paquete)">📦 Va con el auto' + (pr ? ' N° ' + esc(pr.numero_poliza) : '') + '</span>';
+    return '<span class="pq-chip" title="Póliza que acompaña a la principal (va en paquete)">📦 Va con ' + (pr ? (esRamoAuto(pr.ramo) ? 'el auto' : 'el integral') + ' N° ' + esc(pr.numero_poliza) : 'su paquete') + '</span>';
   }
   var hs = lista.filter(function (x) { return x.paquete_de === p.id; });
   if (!hs.length) return '';
@@ -3373,11 +3373,11 @@ async function separarDePaquete(polId) {
   if (typeof fichaId !== 'undefined' && fichaId && typeof renderFicha === 'function') renderFicha();
 }
 async function unirAPaquete(polId) {
-  var nro = prompt('Número de la póliza del auto a la que pertenece (solo se arman paquetes con autos):');
+  var nro = prompt('Número de la póliza del auto o del integral de comercio a la que pertenece:');
   if (!nro) return;
   var { data: pr } = await sb.from('polizas').select('id,numero_poliza,ramo').eq('numero_poliza', nro.trim()).limit(1);
   if (!pr || !pr.length) { alert('No encontré una póliza con ese número.'); return; }
-  if (!esRamoAuto(pr[0].ramo)) { alert('La póliza ' + nro + ' es de ' + (pr[0].ramo || 'otro ramo') + '. Los paquetes se arman solo con la póliza del auto.'); return; }
+  if (!esRamoAuto(pr[0].ramo) && pr[0].ramo !== 'Comercio') { alert('La póliza ' + nro + ' es de ' + (pr[0].ramo || 'otro ramo') + '. Los paquetes se arman solo con la póliza del auto o del integral de comercio.'); return; }
   var r = await sb.from('polizas').update({ paquete_de: pr[0].id, paquete_manual: true }).eq('id', polId);
   if (r.error) { alert('No se pudo: ' + r.error.message); return; }
   abrirDetallePol(polId);
@@ -3410,7 +3410,7 @@ function chipPdf(p) {
     if (vf && !vf.ok) chip += ' <span title="' + esc((vf.dif || []).join(' · ')) + '" style="display:inline-flex;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E">⚠ El PDF no coincide: revisar</span>';
     return chip;
   }
-  if (!requierePdf(p)) return p.paquete_de ? '<span title="Va con la póliza del auto: no hace falta su PDF" style="display:inline-flex;margin-top:4px;font-size:10px;color:#9CA3AF">No pide PDF (va con el auto)</span>' : '';
+  if (!requierePdf(p)) return p.paquete_de ? '<span title="Va en paquete con la póliza principal: no hace falta su PDF" style="display:inline-flex;margin-top:4px;font-size:10px;color:#9CA3AF">No pide PDF (va en el paquete)</span>' : '';
   if (esRamoAuto(p.ramo)) return '<span onclick="event.stopPropagation();subirPdfPoliza(\'' + p.id + '\')" title="Póliza de auto sin PDF: es obligatorio tenerlo. Tocá para subirlo" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FEE2E2;color:#B91C1C;border:1px dashed #EF4444;cursor:pointer">🔴 Sin PDF (obligatorio) · Subir</span>';
   return '<span onclick="event.stopPropagation();subirPdfPoliza(\'' + p.id + '\')" title="Esta póliza no tiene el PDF. Tocá para subirlo" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E;border:1px dashed #F59E0B;cursor:pointer">⚠ Sin PDF · Subir</span>';
 }
@@ -6511,7 +6511,7 @@ function filtrarPolizasPanel() {
     var pa = pqAttr(p, filtered), hs = hijosDe(p, filtered);
     var totPq = hs.length ? getMensualNum(p) + hs.reduce(function(a,h){ return a + getMensualNum(h); }, 0) : 0;
     return '<div class="'+pa.cls.trim()+'"'+pa.attr+' style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+(p.paquete_de && pa.attr ? 'background:#FAFAFF;' : '')+border+'" onclick="irAFichaCliente(\''+p.cliente_id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
-      +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+flechaPaquete(p, hs)+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 va con el auto</span>':(hs.length?' <span class="pq-chip" style="cursor:pointer" onclick="togglePaquete(\''+p.id+'\', event)">📦 +'+hs.length+'</span>':''))+(faltaPdf(p)?(esRamoAuto(p.ramo)?' <span style="font-size:10px;font-weight:700;color:#B91C1C">🔴 Sin PDF</span>':' <span style="font-size:10px;font-weight:600;color:#92400E">⚠ Sin PDF</span>'):'')+'</div></div>'
+      +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+flechaPaquete(p, hs)+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 en paquete</span>':(hs.length?' <span class="pq-chip" style="cursor:pointer" onclick="togglePaquete(\''+p.id+'\', event)">📦 +'+hs.length+'</span>':''))+(faltaPdf(p)?(esRamoAuto(p.ramo)?' <span style="font-size:10px;font-weight:700;color:#B91C1C">🔴 Sin PDF</span>':' <span style="font-size:10px;font-weight:600;color:#92400E">⚠ Sin PDF</span>'):'')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+'</div>'
       +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div>'+(totPq?'<div style="font-size:10.5px;color:#5B21B6;margin-top:1px">Paquete $'+Math.round(totPq).toLocaleString('es-AR')+'/mes</div>':'')+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
@@ -12047,7 +12047,7 @@ async function normalizarYSincronizar(parsed, filename) {
 // ── Análisis post-importación ──────────────────────────────
 async function analizarPostImportacion(uid) {
   compLog('info', 'Analizando cartera...');
-  try { var rp = await sb.rpc('armar_paquetes'); if (!rp.error && rp.data) compLog('ok', rp.data + ' pólizas agrupadas en paquetes (auto + vida/AP)'); } catch (e) {}
+  try { var rp = await sb.rpc('armar_paquetes'); if (!rp.error && rp.data) compLog('ok', rp.data + ' pólizas agrupadas en paquetes (auto o integral + acompañantes)'); } catch (e) {}
   var hoy = new Date();
   var diasRenov = parseInt(_cfg.dias_renov) || 30;
   var diasCobr  = parseInt(_cfg.dias_cobr)  || 5;
