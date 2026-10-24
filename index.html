@@ -6163,6 +6163,7 @@ document.getElementById('btn-guardar-sin').onclick = async function() {
   }
   cerrarModal('modal-sin');
   if (fichaId) renderFicha();
+  cargarSiniestros(); // que aparezca enseguida en el apartado Siniestros
   cargarDashboard();
 };
 // ===== FIN MODAL SINIESTRO =====
@@ -7713,7 +7714,7 @@ document.getElementById('btn-ncotz').onclick = function() {
 var _sinPanelData = [];
 
 async function cargarSiniestros() {
-  const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido)').eq('productor_id', user.id).order('created_at', { ascending: false });
+  const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', user.id).order('created_at', { ascending: false });
   _sinPanelData = data || [];
 
   // Métricas
