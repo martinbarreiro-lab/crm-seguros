@@ -12525,7 +12525,8 @@ handleCompFile = async function(file) {
 // el CRM ("Gestionar por mail") queda como 'pedido' para que el chat lo arme.
 var OF_AREAS = {
   renovaciones: ['🔄', 'Renovaciones', '#0F766E'], siniestros: ['🚨', 'Siniestros', '#B91C1C'], cobranzas: ['💰', 'Cobranzas', '#B45309'],
-  cotizaciones: ['📋', 'Cotizaciones', '#1D4ED8'], administracion: ['🗂', 'Administración', '#6D28D9'], general: ['📨', 'General', '#475569']
+  cotizaciones: ['📋', 'Cotizaciones', '#1D4ED8'], administracion: ['🗂', 'Administración', '#6D28D9'], comisiones: ['💵', 'Comisiones', '#047857'],
+  art: ['👷', 'ART', '#9333EA'], general: ['📨', 'General', '#475569']
 };
 var OF_ESTADOS = {
   pedido: ['Esperando que el chat lo arme', '#64748B', '#F1F5F9'], para_aprobar: ['Para aprobar', '#92400E', '#FEF3C7'],
@@ -12661,7 +12662,9 @@ var OF_OPCIONES = {
   cobranzas: ['Mandar recordatorio de pago al cliente', 'Avisar al cliente que se rechazó el débito', 'Pedir a la compañía el estado de la cuenta'],
   renovaciones: ['Mandar la renovación al cliente', 'Pedir la renovación a la compañía', 'Cotizar la renovación en otras compañías'],
   cotizaciones: ['Pedir cotización a la compañía', 'Mandar la cotización al cliente'],
-  administracion: ['Pedir el PDF de la póliza a la compañía', 'Pedir un endoso', 'Pedir certificado de cobertura']
+  administracion: ['Pedir el PDF de la póliza a la compañía', 'Pedir un endoso', 'Pedir certificado de cobertura'],
+  comisiones: ['Pedir la liquidación de comisiones', 'Mandar la factura de comisiones', 'Reclamar una comisión que falta'],
+  art: ['Pedir el estado de cuenta a la ART', 'Avisar al cliente la deuda de ART', 'Pedir certificado de cobertura (nómina)', 'Pedir alta o baja de personal']
 };
 function abrirGestionarPorMail(area, ref) {
   ref = ref || {};
