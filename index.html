@@ -463,13 +463,14 @@
           <div class="metric" style="border-top:3px solid var(--green)"><div class="m-body"><div class="lbl">Cerrados</div><div class="val" id="sin-cerrados" style="color:var(--green)">—</div><div class="sub">Resueltos</div></div></div>
           <div class="metric" style="border-top:3px solid var(--amber)"><div class="m-body"><div class="lbl">Sin movimiento +30d</div><div class="val" id="sin-sin-mov" style="color:var(--amber)">—</div><div class="sub">Requieren seguimiento</div></div></div>
         </div>
+        <div class="sin-tabs" style="display:flex;gap:4px;border-bottom:0.5px solid var(--border);margin:14px 0 10px">
+          <button type="button" id="sin-tab-curso" class="sin-tab on" onclick="sinSetTab('curso')">En curso <span id="sin-tab-n-curso" class="sin-tab-n">—</span></button>
+          <button type="button" id="sin-tab-cerrados" class="sin-tab" onclick="sinSetTab('cerrados')">Cerrados <span id="sin-tab-n-cerrados" class="sin-tab-n">—</span></button>
+        </div>
+        <div id="sin-cerr-resumen" style="display:none"></div>
         <div class="sin-panel-filter-card">
-          <input type="text" id="sin-srch" placeholder="Buscar cliente, N° siniestro..." oninput="filtrarSiniestros()">
-          <select id="sin-fil-estado" onchange="filtrarSiniestros()">
-            <option value="">Todos los estados</option>
-            <option value="abierto">Abiertos</option>
-            <option value="cerrado">Cerrados</option>
-          </select>
+          <input type="text" id="sin-srch" placeholder="Buscar cliente, N° siniestro, póliza..." oninput="filtrarSiniestros()">
+          <select id="sin-fil-anio" onchange="filtrarSiniestros()" style="display:none"></select>
           <select id="sin-fil-ramo" onchange="filtrarSiniestros()">
             <option value="">Todos los ramos</option>
             <option value="auto">Automotor</option>
@@ -494,7 +495,8 @@
             <option value="">Todas las compañías</option>
           </select>
         </div>
-        <div class="sin-panel-wrap">
+        <div id="sin-cerr-list" style="display:none"></div>
+        <div class="sin-panel-wrap" id="sin-curso-wrap">
           <div class="sin-panel-head">
             <div class="sin-panel-th" onclick="sinSortBy('num')">N° Siniestro <span id="sin-sort-num"></span></div>
             <div class="sin-panel-th" onclick="sinSortBy('cliente')">Cliente <span id="sin-sort-cliente"></span></div>
@@ -7841,7 +7843,7 @@ document.getElementById('btn-ncotz').onclick = function() {
 var _sinPanelData = [];
 
 async function cargarSiniestros() {
-  const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', user.id).order('created_at', { ascending: false });
+  const { data } = await sb.from('siniestros').select('*,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo)').eq('productor_id', user.id).order('created_at', { ascending: false });
   _sinPanelData = data || [];
 
   // Métricas
@@ -7868,6 +7870,140 @@ async function cargarSiniestros() {
   filtrarSiniestros();
 }
 
+// ══ Siniestros: pestañas En curso / Cerrados e historial completo ══
+var _sinTab = 'curso', _sinAbierto = null;
+function _plata(n) { return '$ ' + Math.round(Number(n) || 0).toLocaleString('es-AR'); }
+function sinSetTab(t) {
+  _sinTab = t; _sinAbierto = null;
+  document.getElementById('sin-tab-curso').classList.toggle('on', t === 'curso');
+  document.getElementById('sin-tab-cerrados').classList.toggle('on', t === 'cerrados');
+  document.getElementById('sin-curso-wrap').style.display = t === 'curso' ? '' : 'none';
+  document.getElementById('sin-cerr-list').style.display = t === 'cerrados' ? '' : 'none';
+  document.getElementById('sin-cerr-resumen').style.display = t === 'cerrados' ? '' : 'none';
+  var et = document.getElementById('sin-fil-etapa'); if (et) { et.value = ''; et.style.display = t === 'cerrados' ? 'none' : ''; }
+  var an = document.getElementById('sin-fil-anio');
+  if (an) {
+    an.style.display = t === 'cerrados' ? '' : 'none';
+    var anios = [...new Set(_sinPanelData.filter(function(x){ return x.estado === 'cerrado'; }).map(function(x){ return String(x.fecha_cierre||x.updated_at||'').slice(0,4); }).filter(Boolean))].sort().reverse();
+    var prev = an.value; an.innerHTML = '<option value="">Todos los años</option>' + anios.map(function(a){ return '<option'+(a===prev?' selected':'')+'>'+a+'</option>'; }).join('');
+  }
+  filtrarSiniestros();
+}
+function _sinInicio(s) { return s.fecha_denuncia || s.fecha_hecho || String(s.created_at||'').slice(0,10); }
+function _sinDuracion(s) { var a = _sinInicio(s), b = s.fecha_cierre || String(s.updated_at||'').slice(0,10); if (!a || !b) return null; return Math.max(0, Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 864e5)); }
+function _sinResultado(s) {
+  var r = String(s.resultado_cierre||'').toLowerCase();
+  if (/rechaz|declin|sin cobertura/.test(r)) return ['Rechazado', 'rj'];
+  if (Number(s.monto_liquidado) > 0) return ['Pagado ' + _plata(Number(s.monto_liquidado)), 'vd'];
+  if (s.resultado_cierre) return [s.resultado_cierre.charAt(0).toUpperCase() + s.resultado_cierre.slice(1), 'vd'];
+  if (s.taller || s.fecha_ingreso_taller) return ['Reparado', 'vd'];
+  return ['Cerrado', 'gr'];
+}
+function renderSinCerrados(lista) {
+  lista = lista.slice().sort(function(a,b){ var x = a.fecha_cierre||a.updated_at||'', y = b.fecha_cierre||b.updated_at||''; return x < y ? 1 : -1; });
+  var tot = lista.reduce(function(a,s){ return a + (Number(s.monto_liquidado)||0); }, 0);
+  var durs = lista.map(_sinDuracion).filter(function(d){ return d !== null; });
+  var prom = durs.length ? Math.round(durs.reduce(function(a,b){ return a+b; }, 0) / durs.length) : null;
+  var an = (document.getElementById('sin-fil-anio')||{}).value||'';
+  document.getElementById('sin-cerr-resumen').innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px">'
+    + '<div class="sin-cr-m"><span>Cerrados' + (an ? ' en ' + an : '') + '</span><b>' + lista.length + '</b></div>'
+    + '<div class="sin-cr-m"><span>Total liquidado</span><b>' + (tot ? _plata(tot) : '—') + '</b></div>'
+    + '<div class="sin-cr-m"><span>Duración promedio</span><b>' + (prom !== null ? prom + ' días' : '—') + '</b></div></div>';
+  var ft = document.getElementById('sin-panel-footer'); if (ft) ft.textContent = lista.length ? lista.length + ' siniestro' + (lista.length !== 1 ? 's' : '') + ' cerrado' + (lista.length !== 1 ? 's' : '') : '';
+  var cont = document.getElementById('sin-cerr-list');
+  if (!lista.length) { cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">' + (_sinPanelData.some(function(x){ return x.estado === 'cerrado'; }) ? 'Sin siniestros cerrados con esos filtros' : 'Todavía no hay siniestros cerrados. Cuando uno llega a Cierre, pasa a esta pestaña con todo su historial.') + '</div>'; return; }
+  cont.innerHTML = '<div class="sin-cr-wrap"><div class="sin-cr-row sin-cr-head"><span></span><span>Cliente / siniestro</span><span>Póliza</span><span>Resultado</span><span>Cerrado</span><span>Duración</span></div>'
+    + lista.map(function(s){
+      var r = _sinResultado(s), d = _sinDuracion(s), ab = _sinAbierto === s.id;
+      return '<div class="sin-cr-row' + (ab ? ' ab' : '') + '" onclick="sinToggleCerrado(\'' + s.id + '\')">'
+        + '<span class="sin-cr-ch">' + (ab ? '▾' : '▸') + '</span>'
+        + '<span><b>' + esc(s.clientes ? nombreClienteLista(s.clientes) : '—') + '</b><br><small>' + esc((s.tipo_siniestro || 'Siniestro') + (s.numero_expediente ? ' · N° ' + s.numero_expediente : '')) + '</small></span>'
+        + '<span>' + esc(s.polizas ? (s.polizas.ramo || '') + ' ' + (s.polizas.numero_poliza || '') : (s.tipo_ramo || '—')) + '<br><small>' + esc(s.aseguradora || '') + '</small></span>'
+        + '<span><span class="sin-cr-pill ' + r[1] + '">' + esc(r[0]) + '</span></span>'
+        + '<span>' + (s.fecha_cierre ? fmtDate(s.fecha_cierre) : '—') + '</span>'
+        + '<span>' + (d !== null ? d + ' días' : '—') + '</span></div>'
+        + (ab ? '<div class="sin-cr-det" id="sin-cr-det-' + s.id + '"><div style="color:var(--muted);font-size:12px">Cargando el historial…</div></div>' : '');
+    }).join('') + '</div>';
+  if (_sinAbierto && document.getElementById('sin-cr-det-' + _sinAbierto)) cargarHistorialSin(_sinAbierto);
+}
+function sinToggleCerrado(id) { _sinAbierto = _sinAbierto === id ? null : id; filtrarSiniestros(); }
+// Junta todo lo que pasó en el siniestro: datos de cada etapa, notas, mails, pedidos de la Oficina y archivos
+async function _historialSin(s) {
+  var ev = [], L = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación',resolucion:'Resolución'};
+  var ne = s.notas_etapa || {}, usadas = {};
+  var add = function (f, et, txt, link, archivo) { ev.push({ f: f || '', et: et, txt: txt || '', link: link || null, archivo: archivo || null }); };
+  var conNota = function (k, txt) { if (ne[k]) { usadas[k] = 1; return (txt ? txt + ' ' : '') + '“' + ne[k] + '”'; } return txt; };
+  if (s.fecha_hecho) add(s.fecha_hecho, 'Hecho', [s.tipo_siniestro, s.lugar_hecho ? 'en ' + s.lugar_hecho : '', s.descripcion].filter(Boolean).join(' · '));
+  add(s.fecha_denuncia || String(s.created_at||'').slice(0,10), 'Denuncia', conNota('denuncia', s.numero_expediente ? 'Siniestro N° ' + s.numero_expediente + ' (' + (s.aseguradora||'') + ').' : 'Denuncia en ' + (s.aseguradora||'la compañía') + '.'), null, s.denuncia_url);
+  if (s.fecha_inspeccion || s.inspector || s.perito || ne.inspeccion || ne.peritaje) add(s.fecha_inspeccion, s.perito && !s.inspector ? 'Peritaje' : 'Inspección', conNota(ne.peritaje ? 'peritaje' : 'inspeccion', [s.inspector ? 'Inspector: ' + s.inspector : '', s.perito ? 'Perito: ' + s.perito : '', s.resultado_inspeccion, s.obs_inspeccion].filter(Boolean).join(' · ')), null, s.inspeccion_url);
+  if (s.fecha_ingreso_taller || s.taller || s.presupuesto_taller || ne.taller) add(s.fecha_ingreso_taller, 'Taller', conNota('taller', [s.taller, s.presupuesto_taller ? 'Presupuesto ' + _plata(Number(s.presupuesto_taller)) : '', s.fecha_entrega_taller ? 'Entrega ' + fmtDate(s.fecha_entrega_taller) : ''].filter(Boolean).join(' · ')), null, s.presupuesto_url);
+  if (s.fecha_liquidacion || s.monto_liquidado || ne.liquidacion) add(s.fecha_liquidacion, 'Liquidación', conNota('liquidacion', [s.monto_liquidado ? 'Liquidado ' + _plata(Number(s.monto_liquidado)) : '', s.aplica_deducible && s.monto_deducible ? 'franquicia ' + _plata(Number(s.monto_deducible)) : '', s.numero_liquidacion ? 'N° ' + s.numero_liquidacion : '', s.forma_pago_liquidacion].filter(Boolean).join(' · ')), null, s.liquidacion_url);
+  Object.keys(ne).forEach(function (k) { if (!usadas[k] && k !== 'cierre' && ne[k]) add('', L[k] || k, '“' + ne[k] + '”'); });
+  // Notas sueltas: "26/10/2026: ..." quedan con su fecha; los "Mail: link" pasan a ser links
+  String(s.notas || '').split('\n').forEach(function (ln) {
+    ln = ln.trim(); if (!ln) return;
+    var mf = ln.match(/^(\d{2})\/(\d{2})\/(\d{4}):\s*(.*)$/), f = mf ? mf[3] + '-' + mf[2] + '-' + mf[1] : '', t = mf ? mf[4] : ln;
+    var ml = t.match(/(?:Mail:\s*)?(https:\/\/mail\.google\.com\S+)/), link = ml ? ml[1] : null;
+    t = t.replace(/\s*(?:Mail:\s*)?https:\/\/mail\.google\.com\S+/, '').trim();
+    add(f, 'Nota', t, link);
+  });
+  try {
+    var q = await Promise.all([
+      sb.from('bandeja').select('titulo,estado,gmail_url,created_at,updated_at').eq('siniestro_id', s.id).order('created_at'),
+      sb.from('documentos').select('nombre_archivo,url,created_at').eq('siniestro_id', s.id).order('created_at'),
+      s.cliente_id ? sb.from('interacciones').select('resumen,gmail_url,created_at').eq('cliente_id', s.cliente_id).ilike('resumen', '%iniestro%').order('created_at') : Promise.resolve({ data: [] })
+    ]);
+    (q[0].data || []).forEach(function (b) { add(String(b.updated_at || b.created_at).slice(0,10), 'Oficina', b.titulo + ' — ' + (b.estado === 'enviado' ? 'mail enviado' : b.estado), b.gmail_url); });
+    (q[1].data || []).forEach(function (d) { add(String(d.created_at).slice(0,10), 'Archivo', d.nombre_archivo, null, d.url); });
+    var num = String(s.numero_expediente || '').replace(/\s/g, '');
+    (q[2].data || []).forEach(function (i) {
+      var r = String(i.resumen || ''); if (num && r.replace(/\s/g, '').indexOf(num) < 0 && /N°/.test(r)) return;
+      var f = String(i.created_at).slice(0,10); if (f < _sinInicio(s) || (s.fecha_cierre && f > s.fecha_cierre)) return;
+      add(f, 'Mail', r.replace(/^🚨\s*/, ''), i.gmail_url);
+    });
+  } catch (e) {}
+  if (s.estado === 'cerrado') add(s.fecha_cierre || String(s.updated_at||'').slice(0,10), 'Cierre', [_sinResultado(s)[0] + '.', s.notas_cierre, ne.cierre ? '“' + ne.cierre + '”' : ''].filter(Boolean).join(' '));
+  var orden = { Hecho: 0, Denuncia: 1 };
+  ev.sort(function (a, b) { if (a.et === 'Cierre') return 1; if (b.et === 'Cierre') return -1; if (!a.f && !b.f) return 0; if (!a.f) return 1; if (!b.f) return -1; return a.f < b.f ? -1 : a.f > b.f ? 1 : (orden[a.et] || 9) - (orden[b.et] || 9); });
+  return ev;
+}
+async function cargarHistorialSin(id) {
+  var s = _sinPanelData.find(function (x) { return x.id === id; }), box = document.getElementById('sin-cr-det-' + id); if (!s || !box) return;
+  var ev = await _historialSin(s); box = document.getElementById('sin-cr-det-' + id); if (!box) return;
+  var nArch = ev.filter(function (e) { return e.archivo; }).length;
+  box.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Todo el proceso</div><div class="sin-tl">'
+    + ev.map(function (e) {
+      return '<div class="sin-tl-it"><span class="sin-tl-f">' + (e.f ? fmtDate(e.f) : '—') + '</span> · <b>' + esc(e.et) + '</b>' + (e.txt ? ' — ' + esc(e.txt) : '')
+        + (e.link ? ' <a href="' + esc(e.link) + '" target="_blank" onclick="event.stopPropagation()">📧 ver mail</a>' : '')
+        + (e.archivo ? ' <a href="#" onclick="event.stopPropagation();window.open(\'' + e.archivo + '\',\'_blank\');return false">📎 ver archivo</a>' : '') + '</div>';
+    }).join('') + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'
+    + '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();irAFichaConSin(\'' + s.cliente_id + '\',\'' + s.id + '\')">Ver en la ficha del cliente</button>'
+    + '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();reabrirSiniestro(\'' + s.id + '\')">↺ Reabrir</button>'
+    + '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();descargarResumenSin(\'' + s.id + '\')">⬇ Descargar resumen</button>'
+    + (nArch ? '<span style="font-size:12px;color:var(--muted);align-self:center">' + nArch + ' archivo' + (nArch > 1 ? 's' : '') + '</span>' : '') + '</div>';
+}
+async function reabrirSiniestro(id) {
+  var s = _sinPanelData.find(function (x) { return x.id === id; }); if (!s) return;
+  if (!confirm('¿Reabrir este siniestro? Vuelve a "En curso" con todo su historial.')) return;
+  var ne = Object.keys(s.notas_etapa || {}).filter(function (k) { return k !== 'cierre'; });
+  var etapa = s.monto_liquidado || s.fecha_liquidacion ? 'liquidacion' : (ne[ne.length - 1] || 'denuncia');
+  var nota = (s.notas ? s.notas + '\n' : '') + new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ': Siniestro reabierto.';
+  var r = await sb.from('siniestros').update({ estado: 'abierto', etapa_actual: etapa, fecha_cierre: null, notas: nota, updated_at: new Date().toISOString() }).eq('id', id);
+  if (r.error) { alert('No se pudo reabrir: ' + r.error.message); return; }
+  await cargarSiniestros(); sinSetTab('curso');
+}
+async function descargarResumenSin(id) {
+  var s = _sinPanelData.find(function (x) { return x.id === id; }); if (!s) return;
+  var w = window.open('', '_blank'); if (!w) { alert('Permití las ventanas emergentes para descargar el resumen.'); return; }
+  var ev = await _historialSin(s), r = _sinResultado(s), d = _sinDuracion(s);
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Siniestro ' + esc(s.numero_expediente || '') + '</title><style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;max-width:720px;margin:30px auto;padding:0 16px}h1{font-size:18px;margin:0 0 4px}.s{color:#555;margin-bottom:16px}.it{padding:6px 0;border-bottom:1px solid #eee}.f{color:#666;display:inline-block;width:80px}a{color:#1D4ED8}@media print{a{color:#111;text-decoration:none}}</style></head><body>'
+    + '<h1>Siniestro ' + esc(s.numero_expediente ? 'N° ' + s.numero_expediente : '') + ' — ' + esc(s.clientes ? nombreClienteLista(s.clientes) : '') + '</h1>'
+    + '<div class="s">' + esc([s.tipo_siniestro, s.aseguradora, s.polizas ? (s.polizas.ramo || '') + ' ' + (s.polizas.numero_poliza || '') : ''].filter(Boolean).join(' · ')) + '<br>Resultado: <b>' + esc(r[0]) + '</b>' + (d !== null ? ' · Duración: ' + d + ' días' : '') + '</div>'
+    + ev.map(function (e) { return '<div class="it"><span class="f">' + (e.f ? fmtDate(e.f) : '—') + '</span><b>' + esc(e.et) + '</b>' + (e.txt ? ' — ' + esc(e.txt) : '') + '</div>'; }).join('')
+    + '<p style="color:#888;font-size:11px;margin-top:20px">MB Seguros · ' + new Date().toLocaleDateString('es-AR') + '</p><script>setTimeout(function(){window.print()},300)<\/script></body></html>');
+  w.document.close();
+}
 var _sinSortCol = 'fecha', _sinSortDir = -1;
 
 function sinSortBy(col) {
@@ -7881,7 +8017,7 @@ function sinSortBy(col) {
 
 function filtrarSiniestros() {
   var q = (document.getElementById('sin-srch')||{}).value||'';
-  var filEst = (document.getElementById('sin-fil-estado')||{}).value||'';
+  var filEst = '';
   var filRamo = (document.getElementById('sin-fil-ramo')||{}).value||'';
   var filEtapa = (document.getElementById('sin-fil-etapa')||{}).value||'';
   var filAseg = (document.getElementById('sin-fil-aseg')||{}).value||'';
@@ -7890,8 +8026,11 @@ function filtrarSiniestros() {
   var filtered = _sinPanelData.filter(function(s) {
     var nombre = s.clientes ? (s.clientes.nombre+' '+s.clientes.apellido).toLowerCase() : '';
     var numSin = (s.numero_expediente||'').toLowerCase();
-    if (ql && !nombre.includes(ql) && !numSin.includes(ql)) return false;
-    if (filEst && s.estado !== filEst) return false;
+    var numPol = s.polizas ? String(s.polizas.numero_poliza||'').toLowerCase() : '';
+    var nombre2 = s.clientes ? nombreClienteLista(s.clientes).toLowerCase() : '';
+    if (ql && !nombre.includes(ql) && !nombre2.includes(ql) && !numSin.includes(ql) && !numPol.includes(ql) && !String(s.tipo_siniestro||'').toLowerCase().includes(ql)) return false;
+    if (_sinTab === 'cerrados') { var an = (document.getElementById('sin-fil-anio')||{}).value||''; if (an && String(s.fecha_cierre||s.updated_at||'').slice(0,4) !== an) return false; }
+    if (_sinTab === 'cerrados' ? s.estado !== 'cerrado' : s.estado === 'cerrado') return false;
     if (filRamo && (s.tipo_ramo||'') !== filRamo) return false;
     if (filEtapa && s.etapa_actual !== filEtapa) return false;
     if (filAseg && s.aseguradora !== filAseg) return false;
@@ -7911,11 +8050,15 @@ function filtrarSiniestros() {
   var etapaLabels = {denuncia:'Denuncia',inspeccion:'Inspección',taller:'Taller',liquidacion:'Liquidación',cierre:'Cierre',peritaje:'Peritaje',presupuesto:'Presupuesto',atencion:'Atención médica',tramite:'Trámite SRT',gestion:'Gestión',documentacion:'Documentación',evaluacion:'Evaluación',resolucion:'Resolución'};
   var ramoLabels = {auto:'Automotor',hogar:'Hogar',comercio:'Comercio',art:'ART',vida:'Vida / AP',general:'General'};
 
+  var nCurso = _sinPanelData.filter(function(s){ return s.estado !== 'cerrado'; }).length;
+  if (document.getElementById('sin-tab-n-curso')) document.getElementById('sin-tab-n-curso').textContent = nCurso;
+  if (document.getElementById('sin-tab-n-cerrados')) document.getElementById('sin-tab-n-cerrados').textContent = _sinPanelData.length - nCurso;
+  if (_sinTab === 'cerrados') { renderSinCerrados(filtered); return; }
   var cont = document.getElementById('sin-panel-list');
   if (!cont) return;
 
   if (!filtered.length) {
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">Sin siniestros con esos filtros</div>';
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--lt);font-size:13px">' + (_sinPanelData.some(function(x){ return x.estado !== 'cerrado'; }) ? 'Sin siniestros con esos filtros' : 'No hay siniestros en curso') + '</div>';
     if (document.getElementById('sin-panel-footer')) document.getElementById('sin-panel-footer').textContent = '';
     return;
   }
