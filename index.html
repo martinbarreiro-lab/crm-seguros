@@ -1856,14 +1856,15 @@ function _buscarPolizaPorArchivo(nombre) {
 function abrirCargaPdfs() {
   var m = _envModal();
   document.getElementById('env-titulo').textContent = 'Subir PDFs de pólizas';
-  _cpdf.items = []; _cpdf.pols = null; // siempre trae las pólizas actualizadas
+  _cpdf.items = []; _cpdf.pols = null; _cpdf.clientes = null; // siempre trae las pólizas actualizadas
+  var bxc = m.querySelector('.modal-box'); if (bxc) bxc.style.maxWidth = '720px';
   document.getElementById('env-cuerpo').innerHTML =
-    '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>.</p>'
+    '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>. Si la póliza no está en el CRM, se lee el PDF y te propone crearla (con el cliente).</p>'
     + '<label id="cpdf-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📂 Elegir archivos o soltarlos acá<input type="file" id="cpdf-in" multiple accept="application/pdf,.pdf,.zip,application/zip" style="display:none"></label>'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0"><label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" id="cpdf-reemp"> Reemplazar el PDF si la póliza ya tiene uno</label>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0"><label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" id="cpdf-reemp" style="width:auto;margin:0"> Reemplazar el PDF si la póliza ya tiene uno</label>'
     + '<button type="button" class="btn btn-sm" id="cpdf-verif" onclick="verificarPdfsCargados()" title="Lee cada PDF ya cargado y lo compara con la póliza: número, asegurado, ramo, patente y vencimiento">🔎 Verificar los PDFs ya cargados</button></div>'
     + '<p style="font-size:11.5px;color:var(--text2);margin:0 0 8px">Cada PDF que subís se lee y se compara con la póliza. Si algo no coincide te lo marca; no cambia nada sin que lo confirmes.</p>'
-    + '<div id="cpdf-lista" style="max-height:300px;overflow:auto;font-size:12px"></div>'
+    + '<div id="cpdf-lista" style="max-height:55vh;overflow:auto;font-size:12px"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cerrar</button><button type="button" class="btn btn-p" id="cpdf-ok" disabled onclick="subirPdfsMasivo()">Subir</button></div>';
   var inp = document.getElementById('cpdf-in'), dz = document.getElementById('cpdf-drop');
   inp.onchange = function () { var fs = Array.prototype.slice.call(inp.files); inp.value = ''; _agregarArchivosPdf(fs); };
@@ -1898,35 +1899,38 @@ async function _agregarArchivosPdf(files) {
       }
     }
     _cpdf.items.forEach(function (it) { if (it.pol === undefined) it.pol = _buscarPolizaPorArchivo(it.file.name); });
+    await _prepararNuevas();
   } catch (e) { alert('Error leyendo los archivos: ' + (e.message || e)); }
   _renderCargaPdfs();
 }
 function _estadoItemPdf(it, reemp) {
-  if (it.hecho) return it.verif && !it.verif.ok ? ['✓ Subido · ⚠ revisar', '#B45309'] : ['✓ Subido' + (it.verif ? ' · verificada' : ''), '#166534'];
+  if (it.hecho) return it.verif && !it.verif.ok ? ['✓ ' + (it.creada ? 'Creada' : 'Subido') + ' · ⚠ revisar', '#B45309'] : ['✓ ' + (it.creada ? 'Póliza creada' : 'Subido') + (it.verif ? ' · verificada' : ''), '#166534'];
   if (it.error) return ['Error: ' + it.error, '#B91C1C'];
+  if (!it.pol && it.nueva) return it.nueva.crear ? ['Póliza nueva · se crea al subir', '#1D4ED8'] : ['No está en el CRM · no se crea', '#B45309'];
   if (!it.pol) return ['Sin póliza con ese número', '#B45309'];
   if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF (no se toca)', '#64748B'];
   return ['Listo para subir', '#1D4ED8'];
 }
 function _renderCargaPdfs() {
   var reemp = (document.getElementById('cpdf-reemp') || {}).checked;
-  var n = 0;
-  var filas = _cpdf.items.map(function (it) {
-    var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir') n++;
-    var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : '—';
-    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
+  var n = 0, nn = 0;
+  var filas = _cpdf.items.map(function (it, idx) {
+    var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir') n++; if (/se crea al subir/.test(st[0])) { n++; nn++; }
+    var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : (it.nueva ? '' : '—');
+    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + (it.nueva && !it.hecho && !it.creada ? _htmlNueva(it, idx) : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
   }).join('');
   var lista = document.getElementById('cpdf-lista'); if (!lista) return;
-  lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
+  lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir' + (nn ? ' <span style="color:#1D4ED8">(' + nn + ' póliza' + (nn > 1 ? 's nuevas' : ' nueva') + ': revisá los datos antes de subir)</span>' : '') + '</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
   var btn = document.getElementById('cpdf-ok'); if (btn) { btn.disabled = !n; btn.textContent = n ? 'Subir ' + n + ' PDF' + (n > 1 ? 's' : '') : 'Subir'; }
 }
 async function subirPdfsMasivo() {
   var reemp = document.getElementById('cpdf-reemp').checked;
   var btn = document.getElementById('cpdf-ok'); btn.disabled = true;
-  var cola = _cpdf.items.filter(function (it) { return _estadoItemPdf(it, reemp)[0] === 'Listo para subir'; });
+  var cola = _cpdf.items.filter(function (it) { var e = _estadoItemPdf(it, reemp)[0]; return e === 'Listo para subir' || /se crea al subir/.test(e); });
   for (var i = 0; i < cola.length; i++) {
     var it = cola[i]; btn.textContent = 'Subiendo ' + (i + 1) + ' de ' + cola.length + '…';
     try {
+      if (!it.pol && it.nueva && it.nueva.crear) { btn.textContent = 'Creando póliza ' + (i + 1) + ' de ' + cola.length + '…'; await _crearPolizaNueva(it); }
       var path = 'polizas/' + it.pol.id + '/' + Date.now() + '_poliza_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
       var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' });
       if (up.error) throw up.error;
@@ -1939,8 +1943,9 @@ async function subirPdfsMasivo() {
     } catch (e) { it.error = e.message || String(e); }
     _renderCargaPdfs();
   }
-  var ok = cola.filter(function (it) { return it.hecho; }).length;
-  btn.textContent = ok + ' subido' + (ok === 1 ? '' : 's');
+  var ok = cola.filter(function (it) { return it.hecho; }).length, creadas = cola.filter(function (it) { return it.creada; }).length;
+  if (creadas) { try { await sb.rpc('armar_paquetes'); } catch (e) {} _cpdf.pols = null; }
+  btn.textContent = ok + ' subido' + (ok === 1 ? '' : 's') + (creadas ? ' · ' + creadas + ' póliza' + (creadas > 1 ? 's creadas' : ' creada') : '');
   if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
 }
 
@@ -2101,7 +2106,7 @@ const CUENTA_GMAIL = 'martinbarreiro@mbseguros.com.ar'; // cuenta de Gmail con l
 
 function _envModal() {
   var m = document.getElementById('modal-envio');
-  if (m) return m;
+  if (m) { var bx = m.querySelector('.modal-box'); if (bx) bx.style.maxWidth = '520px'; return m; }
   m = document.createElement('div');
   m.className = 'modal-ov'; m.id = 'modal-envio';
   m.innerHTML = '<div class="modal-box" style="max-width:520px">'
@@ -12838,6 +12843,160 @@ async function renovacionNo() {
 }
 
 async function renovarRapido(polId) { await abrirConfirmarRenovacion(polId, null); if (_rv) renovacionSi(false); }
+
+// ══ PÓLIZAS NUEVAS DESDE EL PDF ══════════════════════════════════════════════
+// Si un PDF no coincide con ninguna póliza del CRM, se lee y se propone crearla (con el cliente).
+var _CIAS_PDF = [
+  ['Federación Patronal', /FEDERACI[OÓ]N PATRONAL|FED\.? PATRONAL/], ['La Segunda', /LA SEGUNDA/], ['Sancor Seguros', /SANCOR/],
+  ['Swiss Medical Seguros', /SWISS MEDICAL|\bSMG\b/], ['Zurich', /ZURICH/], ['La Equitativa del Plata', /EQUITATIVA DEL PLATA/],
+  ['Segurometal', /SEGUROMETAL|SEGURO METAL/], ['La Holando Sudamericana', /HOLANDO/], ['Provincia ART', /PROVINCIA A\.?R\.?T/],
+  ['Provincia Seguros', /PROVINCIA SEGUROS/], ['Experta ART', /EXPERTA/], ['Berkley', /BERKLEY/], ['Omint', /OMINT/], ['Allianz', /ALLIANZ/],
+  ['Mapfre', /MAPFRE/], ['Rivadavia', /RIVADAVIA/], ['San Cristóbal', /SAN CRIST[OÓ]BAL/], ['Mercantil Andina', /MERCANTIL ANDINA/],
+  ['Río Uruguay', /R[IÍ]O URUGUAY/], ['Galeno', /GALENO/], ['Prudencia', /PRUDENCIA/], ['Integrity', /INTEGRITY/], ['Orbis', /ORBIS/], ['Triunfo', /TRIUNFO/]
+];
+var _MESES_TXT = { ENERO: 1, FEBRERO: 2, MARZO: 3, ABRIL: 4, MAYO: 5, JUNIO: 6, JULIO: 7, AGOSTO: 8, SEPTIEMBRE: 9, SETIEMBRE: 9, OCTUBRE: 10, NOVIEMBRE: 11, DICIEMBRE: 12 };
+function _isoFecha(d, m, a) { a = +a; if (a < 100) a += 2000; if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12 && a > 2000 && a < 2100)) return null; return a + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2); }
+function extraerDatosPoliza(texto, nombreArchivo) {
+  var T = _normTxt(texto), d = {};
+  // Compañía: la que aparece primero
+  var pos = Infinity; _CIAS_PDF.forEach(function (c) { var i = T.search(c[1]); if (i >= 0 && i < pos) { pos = i; d.aseguradora = c[0]; } });
+  // Ramo: la señal que aparece primero
+  var pr = Infinity; _SENALES_RAMO.forEach(function (x) { var i = T.search(x[1]); if (i >= 0 && i < pr) { pr = i; d.ramo = x[0]; } });
+  // Número: del nombre del archivo o del texto después de "PÓLIZA"
+  var runs = (String(nombreArchivo || '').replace(/\.pdf$/i, '').match(/\d{5,}/g) || []);
+  var mp = T.match(/P[OÓ]LIZA\s*(?:N[°ºO.]*|NRO\.?|NUMERO|N[UÚ]MERO)?\s*:?\s*([0-9][0-9.\-\/]{3,18}[0-9])(?![0-9])/);
+  var delTexto = mp ? mp[1].replace(/\D/g, '') : '';
+  d.numero_poliza = runs.find(function (r) { return delTexto && (delTexto.indexOf(r) >= 0 || r.indexOf(delTexto) >= 0); }) || delTexto || runs[0] || '';
+  if (!d.numero_poliza) {
+    // Último recurso: el número de 6 a 10 cifras que más se repite en el PDF (sin contar CUIT, DNI ni montos)
+    var cnt = {}, prim = {}, mm, rn = /(?:^|[^0-9.,\-\/])(\d{6,10})(?![0-9.,\-\/])/g;
+    while ((mm = rn.exec(T))) { cnt[mm[1]] = (cnt[mm[1]] || 0) + 1; if (prim[mm[1]] === undefined) prim[mm[1]] = mm.index; }
+    var excl = [String(T.match(/\b(20|23|24|27|30|33|34)-?(\d{8})-?(\d)\b/) || '')];
+    var cands = Object.keys(cnt).filter(function (k) { return excl.join(' ').indexOf(k) < 0; });
+    // si alguno aparece al principio del PDF (encabezado), ese; si no, el más repetido
+    var arriba = cands.filter(function (k) { return prim[k] < 250; }).sort(function (a, b) { return prim[a] - prim[b]; });
+    var rep = cands.sort(function (a, b) { return cnt[b] - cnt[a]; });
+    d.numero_poliza = arriba[0] || (rep.length && cnt[rep[0]] >= 2 ? rep[0] : '');
+  }
+  // CUIT / DNI
+  var mc = T.match(/\b(20|23|24|27|30|33|34)-?(\d{8})-?(\d)\b/); if (mc) d.cuit = mc[1] + mc[2] + mc[3];
+  var md = T.match(/D\.?\s?N\.?\s?I\.?\s*(?:N[°º]?)?\s*:?\s*(\d{1,2}\.?\d{3}\.?\d{3})/); if (md) d.dni = md[1].replace(/\D/g, '');
+  if (!d.dni && d.cuit && /^(20|23|24|27)/.test(d.cuit)) d.dni = d.cuit.slice(2, 10).replace(/^0+/, '');
+  // Asegurado / tomador
+  var NO_NOMBRE = /^(EMISION|FECHA|DATOS|VIGENCIA|POLIZA|SECCION|PRODUCTOR|DOMICILIO|CONDICIONES|SEGURADO|CERTIFICADO|SUMA|RIESGO|EL|LA|LOS)\b/;
+  var rra = /(?:ASEGURADO|TOMADOR|CONTRATANTE)\s*(?:\/\s*SEGURADO)?\s*:?\s*(?:\d{3,}\s+)?([A-ZÑ][A-ZÑ.,&' ]{4,60}?)(?=\s+(?:CUIT|CUIL|C\.U\.I|DNI|D\.N\.I|DOC|DOMICILIO|DIRECCI|CALLE|LOCALIDAD|N[°º]|NRO|VIGENCIA|\d))/g, ma;
+  while ((ma = rra.exec(T)) && !d.asegurado) { var cand = ma[1].replace(/[.,]+$/, '').replace(/\s+/g, ' ').trim(); if (!NO_NOMBRE.test(cand) && cand.indexOf(' ') > 0 && !/\b(VISA|MASTER|CREDITO|DEBITO|TARJETA|CBU|PRINCIPAL|AMEX|CABAL|NARANJA)\b/.test(cand)) d.asegurado = cand; }
+  // Fechas (numéricas y con el mes en letras)
+  var fechas = [], x, rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
+  while ((x = rf.exec(T))) { var f = _isoFecha(+x[1], +x[2], x[3]); if (f) fechas.push({ f: f, i: x.index }); }
+  var rl = /\b(\d{1,2})\s+(?:DE\s+)?(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(?:DE\s+|DEL\s+)?(\d{4})\b/g;
+  while ((x = rl.exec(T))) { var f2 = _isoFecha(+x[1], _MESES_TXT[x[2]], x[3]); if (f2) fechas.push({ f: f2, i: x.index }); }
+  fechas.sort(function (a, b) { return a.i - b.i; });
+  // Vigencia: el primer par de fechas separadas por 1, 3, 4, 6 o 12 meses
+  // (se prueba primero el período más largo, así no se confunde con las fechas de las cuotas)
+  var meses = [12, 6, 4, 3, 1], vig = null;
+  for (var k = 0; k < meses.length && !vig; k++) {
+    var mejorDif = Infinity;
+    for (var a = 0; a < fechas.length; a++) for (var b = 0; b < fechas.length; b++) {
+      if (fechas[b].f <= fechas[a].f) continue;
+      var obj = new Date(_sumarMeses(fechas[a].f, meses[k]) + 'T12:00:00'), dif = Math.abs(new Date(fechas[b].f + 'T12:00:00') - obj);
+      if (dif <= 3 * 864e5 && dif < mejorDif) { mejorDif = dif; vig = [fechas[a].f, fechas[b].f, meses[k]]; }
+    }
+  }
+  if (vig) { d.fecha_inicio = vig[0]; d.fecha_vencimiento = vig[1]; d.periodo_meses = vig[2]; }
+  // Patente y vehículo
+  var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
+  if (mpat) d.patente = mpat[1].replace(/\s/g, '');
+  return d;
+}
+function _buscarClienteNuevo(d) {
+  var cls = _cpdf.clientes || [];
+  var dig = function (s) { return String(s || '').replace(/\D/g, '').replace(/^0+/, ''); };
+  if (d.cuit) { var c1 = cls.find(function (c) { return dig(c.cuit) === dig(d.cuit); }); if (c1) return c1; }
+  if (d.dni) { var c2 = cls.find(function (c) { return dig(c.dni) && dig(c.dni) === dig(d.dni); }); if (c2) return c2; }
+  if (d.asegurado) {
+    var pals = _normTxt(d.asegurado).replace(/[^A-Z ]/g, ' ').split(' ').filter(function (w) { return w.length >= 3; });
+    var mejor = null, pts = 0;
+    cls.forEach(function (c) {
+      var n = _normTxt((c.razon_social || '') + ' ' + (c.apellido || '') + ' ' + (c.nombre || ''));
+      var p = pals.filter(function (w) { return n.indexOf(w) >= 0; }).length;
+      if (p > pts) { pts = p; mejor = c; }
+    });
+    if (mejor && pts >= Math.min(2, pals.length)) return mejor;
+  }
+  return null;
+}
+async function _prepararNuevas() {
+  var nuevos = _cpdf.items.filter(function (it) { return !it.pol && !it.nueva && !it.hecho; });
+  if (!nuevos.length) return;
+  if (!_cpdf.clientes) {
+    var rc = await sb.from('clientes').select('id,nombre,apellido,razon_social,tipo_cliente,dni,cuit').eq('productor_id', user.id);
+    _cpdf.clientes = rc.data || [];
+  }
+  for (var i = 0; i < nuevos.length; i++) {
+    var it = nuevos[i];
+    document.getElementById('cpdf-lista').innerHTML = '<div style="color:var(--text2)">Leyendo las pólizas que no están en el CRM… (' + (i + 1) + ' de ' + nuevos.length + ')</div>';
+    try {
+      var d = extraerDatosPoliza(await _textoPdf(it.file), it.file.name);
+      var cl = _buscarClienteNuevo(d);
+      it.nueva = { d: d, cliente: cl, crear: !!(d.numero_poliza && d.aseguradora && d.fecha_inicio && (cl || d.asegurado)) };
+    } catch (e) { it.nueva = { d: { numero_poliza: (it.file.name.match(/\d{5,}/) || [''])[0] }, error: 'No se pudo leer el PDF', crear: false }; }
+  }
+}
+function _nvCampo(idx, campo, valor) {
+  var it = _cpdf.items[idx]; if (!it || !it.nueva) return;
+  if (campo === 'crear') it.nueva.crear = valor; else it.nueva.d[campo] = valor;
+  if (campo === 'cliente_id') it.nueva.cliente = valor ? (_cpdf.clientes || []).find(function (c) { return c.id === valor; }) : null;
+  _renderCargaPdfs();
+}
+function _htmlNueva(it, idx) {
+  var n = it.nueva, d = n.d;
+  var RAMOS = ['Automotor', 'Motos', 'Combinado', 'Hogar', 'Comercio', 'Accidentes Personales', 'Vida Individual', 'Vida Colectiva', 'Vida Obligatorio', 'Responsabilidad Civil', 'Riesgos Varios', 'Robo', 'Salud', 'ART', 'Caución', 'Transporte', 'Otros'];
+  var inp = function (campo, val, ph, tipo, w) { return '<input type="' + (tipo || 'text') + '" value="' + esc(val || '') + '" placeholder="' + ph + '" onchange="_nvCampo(' + idx + ',\'' + campo + '\',this.value)" style="font-size:12px;padding:4px 6px;width:' + (w || '100%') + '">'; };
+  var opCl = (n.cliente ? '<option value="' + n.cliente.id + '" selected>✓ ' + esc(nombreClienteLista(n.cliente)) + ' (ya existe)</option>' : '')
+    + '<option value=""' + (n.cliente ? '' : ' selected') + '>' + (d.asegurado ? '➕ Crear cliente: ' + esc(d.asegurado) : '— Elegí o escribí el asegurado —') + '</option>';
+  return '<div class="cpdf-nueva">'
+    + '<label style="display:flex;gap:6px;align-items:center;font-weight:600;color:#1D4ED8"><input type="checkbox" style="width:auto;margin:0"' + (n.crear ? ' checked' : '') + ' onchange="_nvCampo(' + idx + ',\'crear\',this.checked)"> Crear esta póliza en el CRM</label>'
+    + (n.error ? '<div style="color:#B91C1C">' + esc(n.error) + '</div>' : '')
+    + '<div class="cpdf-grid">'
+    + '<div><span>N° póliza</span>' + inp('numero_poliza', d.numero_poliza, 'Número') + '</div>'
+    + '<div><span>Compañía</span>' + inp('aseguradora', d.aseguradora, 'Compañía') + '</div>'
+    + '<div><span>Ramo</span><select onchange="_nvCampo(' + idx + ',\'ramo\',this.value)" style="font-size:12px;padding:4px">' + '<option value="">—</option>' + RAMOS.map(function (r) { return '<option' + (r === d.ramo ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select></div>'
+    + '<div><span>Desde</span>' + inp('fecha_inicio', d.fecha_inicio, '', 'date') + '</div>'
+    + '<div><span>Hasta</span>' + inp('fecha_vencimiento', d.fecha_vencimiento, '', 'date') + '</div>'
+    + '<div><span>Patente</span>' + inp('patente', d.patente, 'Si es auto') + '</div>'
+    + '<div style="grid-column:1/-1"><span>Cliente</span><select onchange="_nvCampo(' + idx + ',\'cliente_id\',this.value)" style="font-size:12px;padding:4px;width:100%">' + opCl
+    + (_cpdf.clientes || []).slice().sort(function (a, b) { return nombreClienteLista(a).localeCompare(nombreClienteLista(b)); }).filter(function (c) { return !n.cliente || c.id !== n.cliente.id; }).map(function (c) { return '<option value="' + c.id + '">' + esc(nombreClienteLista(c)) + '</option>'; }).join('') + '</select>'
+    + (!n.cliente ? '<div style="display:flex;gap:6px;margin-top:4px">' + inp('asegurado', d.asegurado, 'Nombre o razón social del cliente nuevo', 'text', '60%') + inp(d.cuit ? 'cuit' : 'dni', d.cuit || d.dni, 'DNI o CUIT', 'text', '40%') + '</div>' : '')
+    + '</div></div></div>';
+}
+async function _crearPolizaNueva(it) {
+  var n = it.nueva, d = n.d;
+  if (!d.numero_poliza || !d.aseguradora || !d.fecha_inicio) throw new Error('faltan número, compañía o fecha desde');
+  var cl = n.cliente;
+  if (!cl) {
+    var nombre = (d.asegurado || '').trim(); if (!nombre) throw new Error('falta el cliente');
+    var cuit = String(d.cuit || '').replace(/\D/g, ''), dni = String(d.dni || '').replace(/\D/g, '');
+    var sep = separarNombreFedPat(nombre, null, cuit);
+    var fila = sep.empresa ? { apellido: nombre, nombre: '', razon_social: nombre, tipo_cliente: 'empresa' } : { apellido: sep.apellido, nombre: sep.nombre || '', tipo_cliente: 'cliente' };
+    fila = Object.assign(fila, { productor_id: user.id, estado: 'activo', cuit: cuit || null, dni: dni || null, notas: 'Creado desde el PDF de la póliza ' + d.numero_poliza });
+    var rc = await sb.from('clientes').insert(fila).select('id,nombre,apellido,razon_social,tipo_cliente,dni,cuit').single();
+    if (rc.error) throw rc.error;
+    cl = rc.data; (_cpdf.clientes = _cpdf.clientes || []).push(cl); n.cliente = cl; n.clienteNuevo = true;
+  }
+  var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
+  var dr = {}; if (d.patente) dr.patente = d.patente; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
+  var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim(), aseguradora: d.aseguradora,
+    ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
+    estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr })
+    .select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
+  if (rp.error) throw rp.error;
+  it.pol = rp.data; it.creada = true;
+  _cpdf.pols[_numSinCeros(rp.data.numero_poliza)] = rp.data;
+  await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: cl.id, categoria: 'poliza_nueva', tipo: 'sistema', poliza_id: rp.data.id, poliza_numero: rp.data.numero_poliza, poliza_ramo: rp.data.ramo,
+    resumen: '📄 Póliza cargada desde el PDF: ' + rp.data.ramo + ' N° ' + rp.data.numero_poliza + ' · ' + rp.data.aseguradora + (n.clienteNuevo ? ' (cliente nuevo)' : ''), usuario_nombre: user.email, es_automatico: true });
+}
+
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">

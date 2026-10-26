@@ -617,3 +617,7 @@ tr:hover td{background:var(--bg)}
 .of-gm{font-size:11px;margin-left:auto;color:var(--med,#2563EB);text-decoration:none}
 .of-acc{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
 @media (max-width:640px){.of-btn-lbl{display:none}}
+.cpdf-nueva{margin-top:6px;padding:8px 10px;border:1px solid #BFDBFE;background:#EFF6FF;border-radius:8px;font-size:12px}
+.cpdf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 8px;margin-top:6px}
+.cpdf-grid span{display:block;font-size:10.5px;color:#64748B;margin-bottom:2px}
+@media (max-width:600px){.cpdf-grid{grid-template-columns:1fr 1fr}}
