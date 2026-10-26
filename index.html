@@ -12879,13 +12879,25 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     d.numero_poliza = arriba[0] || (rep.length && cnt[rep[0]] >= 2 ? rep[0] : '');
   }
   // CUIT / DNI
-  var mc = T.match(/\b(20|23|24|27|30|33|34)-?(\d{8})-?(\d)\b/); if (mc) d.cuit = mc[1] + mc[2] + mc[3];
+  // CUIT del asegurado: se saltean los de la compañía (los que vienen pegados a "SEGUROS", "COOPERATIVA", "S.A.", etc.)
+  var rcu = /\b(20|23|24|27|30|33|34)-?(\d{8})-?(\d)\b/g, mc;
+  while ((mc = rcu.exec(T)) && !d.cuit) {
+    var antes = T.slice(Math.max(0, mc.index - 70), mc.index);
+    if (!/SEGUROS|COOPERATIVA|ASEGURADORA|COMPA[NÑ]IA|S\.?\s?A\.?\s*(?:CUIT)?|LTDA/.test(antes)) d.cuit = mc[1] + mc[2] + mc[3];
+  }
+  var mref = T.match(/\bREF(?:ERENCIA)?\.?\s*:?\s*(\d{4,})/); if (mref) d.referencia = mref[1];
   var md = T.match(/D\.?\s?N\.?\s?I\.?\s*(?:N[°º]?)?\s*:?\s*(\d{1,2}\.?\d{3}\.?\d{3})/); if (md) d.dni = md[1].replace(/\D/g, '');
   if (!d.dni && d.cuit && /^(20|23|24|27)/.test(d.cuit)) d.dni = d.cuit.slice(2, 10).replace(/^0+/, '');
   // Asegurado / tomador
   var NO_NOMBRE = /^(EMISION|FECHA|DATOS|VIGENCIA|POLIZA|SECCION|PRODUCTOR|DOMICILIO|CONDICIONES|SEGURADO|CERTIFICADO|SUMA|RIESGO|EL|LA|LOS)\b/;
-  var rra = /(?:ASEGURADO|TOMADOR|CONTRATANTE)\s*(?:\/\s*SEGURADO)?\s*:?\s*(?:\d{3,}\s+)?([A-ZÑ][A-ZÑ.,&' ]{4,60}?)(?=\s+(?:CUIT|CUIL|C\.U\.I|DNI|D\.N\.I|DOC|DOMICILIO|DIRECCI|CALLE|LOCALIDAD|N[°º]|NRO|VIGENCIA|\d))/g, ma;
-  while ((ma = rra.exec(T)) && !d.asegurado) { var cand = ma[1].replace(/[.,]+$/, '').replace(/\s+/g, ' ').trim(); if (!NO_NOMBRE.test(cand) && cand.indexOf(' ') > 0 && !/\b(VISA|MASTER|CREDITO|DEBITO|TARJETA|CBU|PRINCIPAL|AMEX|CABAL|NARANJA)\b/.test(cand)) d.asegurado = cand; }
+  var rra = /\b(?:ASEGURADO|TOMADOR|CONTRATANTE)\b\s*(?:\/\s*SEGURADO)?\s*:?\s*(?:\d{3,}\s+)?([A-ZÑ][A-ZÑ.,&' ]{4,70}?)(?=\s+(?:CUIT|CUIL|C\.U\.I|DNI|D\.N\.I|DOC|DOMICILIO|DIRECCI|CALLE|LOCALIDAD|N[°º]|NRO|VIGENCIA|\d))/g, ma;
+  var DIREC = /\s+(?:AVENIDA|AVDA|AV\.?|CALLE|BV\.?|BOULEVARD|BOULEVAR|PJE\.?|PASAJE|RUTA|BARRIO|B°|LOTE|DOMICILIO|MANZANA)\b.*$/;
+  var RUIDO = /\b(SI|NO|QUE|RECLAMA|ASUME|DEBER[AÁ]|SERVICIO|DENTRO|CARGA|PODR[AÁ]|SEGUN|CONFORME|VISA|MASTER|CREDITO|DEBITO|TARJETA|CBU|PRINCIPAL|AMEX|CABAL|NARANJA)\b/;
+  var ciaRe = (_CIAS_PDF.find(function (c) { return c[0] === d.aseguradora; }) || [])[1];
+  while ((ma = rra.exec(T)) && !d.asegurado) {
+    var cand = ma[1].replace(DIREC, '').replace(/[.,]+$/, '').replace(/\s+/g, ' ').trim();
+    if (!NO_NOMBRE.test(cand) && cand.indexOf(' ') > 0 && !RUIDO.test(cand) && !(ciaRe && ciaRe.test(cand))) d.asegurado = cand;
+  }
   // Fechas (numéricas y con el mes en letras)
   var fechas = [], x, rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
   while ((x = rf.exec(T))) { var f = _isoFecha(+x[1], +x[2], x[3]); if (f) fechas.push({ f: f, i: x.index }); }
@@ -12985,7 +12997,7 @@ async function _crearPolizaNueva(it) {
     cl = rc.data; (_cpdf.clientes = _cpdf.clientes || []).push(cl); n.cliente = cl; n.clienteNuevo = true;
   }
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
-  var dr = {}; if (d.patente) dr.patente = d.patente; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
+  var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
   var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim(), aseguradora: d.aseguradora,
     ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
     estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr })
