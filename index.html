@@ -12948,6 +12948,33 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     }
   }
   if (vig) { d.fecha_inicio = vig[0]; d.fecha_vencimiento = vig[1]; d.periodo_meses = vig[2]; }
+  // ¿Refactura mensual? (además de la vigencia anual hay un tramo de 1 mes que arranca el mismo día)
+  if (d.fecha_inicio && d.periodo_meses !== 1) {
+    var mes1 = _sumarMeses(d.fecha_inicio, 1);
+    if (fechas.some(function (f) { return Math.abs(new Date(f.f + 'T12:00:00') - new Date(mes1 + 'T12:00:00')) <= 3 * 864e5; }) || /REFACTURACI[OÓ]N MENSUAL|PRORROGA AUTOMATICA/.test(T)) d.mensual = true;
+  }
+  // Producto / plan
+  var reProd = { Combinado: /\b(COMBINADO FAMILIAR|HOGAR [A-Z]+)\b/, Comercio: /\b(INTEGRAL DE COMERCIO|INTEGRAL COMERCIO)\b/, Automotor: /\b(TODO RIESGO|TERCEROS COMPLETO)\b/ }[d.ramo];
+  var mprod = reProd ? T.match(reProd) : null;
+  if (mprod) d.producto = mprod[1].charAt(0) + mprod[1].slice(1).toLowerCase();
+  // Ubicación del riesgo (hogar / comercio)
+  var mub = T.match(/UBICACI[OÓ]N DEL RIESGO\s*:?\s*([A-Z0-9ÑÁÉÍÓÚ.°º' ]{4,60}?\d{1,5})\b/); if (mub) d.ubicacion = mub[1].replace(/\s+/g, ' ').trim();
+  // Coberturas con suma asegurada: "• INCENDIO EDIFICIO $ 539.432.964,00 • ..."
+  var bloque = T.match(/COBERTURAS?\s+(?:COBERTURA\s+)?SUMA ASEGURADA([\s\S]{20,4000}?)(?:ANEXOS Y CL[AÁ]USULAS|CONDICIONES GENERALES|LIQUIDACI[OÓ]N DEL PREMIO|$)/);
+  if (bloque) {
+    d.coberturas = bloque[1].split('•').map(function (x) {
+      x = x.trim(); if (x.length < 4) return null;
+      var mm2 = x.match(/^(.*?)\s*\$\s*([\d.]+,\d{2})(.*)$/);
+      var nom = (mm2 ? mm2[1] : x).replace(/\s+/g, ' ').trim(), resto = mm2 ? mm2[3] : '';
+      var ded = (resto.match(/DEDUCIBLE[^:]*:\s*([\d.,]+\s*%)/) || [])[1];
+      if (nom.length > 140 || /^\d/.test(nom)) return null;
+      return { descripcion: nom.charAt(0) + nom.slice(1).toLowerCase() + (ded ? ' (deducible ' + ded.replace(/\s/g, '') + ')' : ''), suma: mm2 ? parseFloat(mm2[2].replace(/\./g, '').replace(',', '.')) : null };
+    }).filter(Boolean);
+    if (!d.coberturas.length) delete d.coberturas;
+  }
+  // Premio: el último importe de la liquidación del premio (TOTAL)
+  var mliq = T.match(/LIQUIDACI[OÓ]N DEL PREMIO([\s\S]{20,600}?)(?:FORMA DE PAGO|CUOTAS|VENCIMIENTO|PRODUCTOR|$)/);
+  if (mliq) { var imps = mliq[1].match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) || []; if (imps.length) d.premio = parseFloat(imps[imps.length - 1].replace(/\./g, '').replace(',', '.')); }
   // Patente y vehículo
   var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
   if (mpat) d.patente = mpat[1].replace(/\s/g, '');
@@ -13035,12 +13062,16 @@ async function _crearPolizaNueva(it) {
   }
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
+  if (d.producto) dr.producto = d.producto; if (d.ubicacion) dr.direccion_riesgo = tituloDir(d.ubicacion); if (d.mensual) dr.refacturacion = 'mensual';
   var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim(), aseguradora: d.aseguradora,
     ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
-    estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr })
+    estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr,
+    valor_cuota: d.premio && d.mensual ? d.premio : null, prima_anual: d.premio && !d.mensual ? d.premio : null, forma_pago: d.mensual ? 'Mensual' : null,
+    bien_asegurado: d.ubicacion ? tituloDir(d.ubicacion) : null })
     .select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
   if (rp.error) throw rp.error;
   it.pol = rp.data; it.creada = true;
+  if (d.coberturas && d.coberturas.length) await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: rp.data.id, descripcion: c.descripcion, suma_asegurada: c.suma }; }));
   if (n.clienteNuevo) {
     // Tarea para completar el cliente: se cierra sola cuando le cargás teléfono o mail
     var lim = new Date(); lim.setDate(lim.getDate() + 2);
