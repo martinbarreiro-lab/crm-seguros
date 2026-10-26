@@ -2121,15 +2121,24 @@ function extraerFactura(texto) {
 }
 async function _guardarFactura(it) {
   var fx = it.factura, pol = it.pol; if (!pol) throw new Error('la póliza no está en el CRM');
+  if (!fx.total) throw new Error('no pude leer el total de la factura');
   // 1) el PDF queda guardado como documento de la póliza (no reemplaza el PDF de la póliza)
-  var path = 'polizas/' + pol.id + '/facturas/' + Date.now() + '_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
-  var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' }); if (up.error) throw up.error;
-  var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+  var yaDoc = await sb.from('documentos').select('id').eq('poliza_id', pol.id).eq('tipo', 'factura').ilike('nombre_archivo', '%Factura ' + fx.numero + '%').limit(1);
   var nombre = fx.desde + ' · Factura ' + fx.numero + ' · ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta) + (fx.total ? ' · $' + fx.total.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '');
-  await sb.from('documentos').insert({ productor_id: user.id, cliente_id: pol.cliente_id || null, poliza_id: pol.id, tipo: 'factura', nombre_archivo: nombre, url: url, tamanio: it.file.size });
+  if (!(yaDoc.data && yaDoc.data.length)) {
+    var path = 'polizas/' + pol.id + '/facturas/' + Date.now() + '_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' }); if (up.error) throw up.error;
+    var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
+    var rd = await sb.from('documentos').insert({ productor_id: user.id, cliente_id: pol.cliente_id || null, poliza_id: pol.id, tipo: 'factura', nombre_archivo: nombre, url: url, tamanio: it.file.size }); if (rd.error) throw rd.error;
+  }
   // 2) la cuota del mes en cobranzas (si esa factura ya estaba, se actualiza)
   var notas = 'Factura ' + fx.numero + ' · período ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta) + (fx.premio ? ' · premio $' + fx.premio.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '') + (fx.aum_capital ? ' + aum. de capital $' + fx.aum_capital.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '');
-  var fila = { productor_id: user.id, poliza_id: pol.id, cliente_id: pol.cliente_id || null, monto: fx.total, fecha_vencimiento: fx.vto || fx.desde, numero_recibo: fx.numero, endoso: fx.endoso || null, medio_pago: fx.medio || null, notas: notas };
+  // N° de cuota: meses desde el inicio de la vigencia anual (cuota 1 = primer mes)
+  var nCuota = 1, totCuotas = 12;
+  if (pol.fecha_inicio && fx.desde) { var a1 = new Date(pol.fecha_inicio + 'T12:00:00'), b1 = new Date(fx.desde + 'T12:00:00'); nCuota = Math.max(1, (b1.getFullYear() - a1.getFullYear()) * 12 + b1.getMonth() - a1.getMonth() + (b1.getDate() >= a1.getDate() - 3 ? 1 : 0)); }
+  if (pol.fecha_inicio && pol.fecha_vencimiento) { var a2 = new Date(pol.fecha_inicio + 'T12:00:00'), b2 = new Date(pol.fecha_vencimiento + 'T12:00:00'); totCuotas = Math.max(1, Math.round((b2 - a2) / (30.44 * 864e5))); }
+  if (nCuota > totCuotas) nCuota = totCuotas;
+  var fila = { productor_id: user.id, poliza_id: pol.id, numero_cuota: nCuota, total_cuotas: totCuotas, cliente_id: pol.cliente_id || null, monto: fx.total, fecha_vencimiento: fx.vto || fx.desde, numero_recibo: fx.numero, endoso: fx.endoso || null, medio_pago: fx.medio || null, notas: notas };
   var ex = await sb.from('cobranzas').select('id,estado').eq('poliza_id', pol.id).eq('numero_recibo', fx.numero).limit(1);
   if (ex.data && ex.data.length) { var r0 = await sb.from('cobranzas').update(fila).eq('id', ex.data[0].id); if (r0.error) throw r0.error; }
   else { fila.estado = 'pendiente'; var r1 = await sb.from('cobranzas').insert(fila); if (r1.error) throw r1.error; }
