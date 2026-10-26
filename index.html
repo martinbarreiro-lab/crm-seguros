@@ -8136,7 +8136,9 @@ async function cargarTareas() {
   // Para "Hoy": filtrar más estrictamente en el cliente (fecha_limite === hoy)
   if (tablerof === 'hoy') {
     lista = lista.filter(function(t) {
-      return t.fecha_limite === hoy || (!t.fecha_limite && t.estado === 'pendiente');
+      // Hoy = lo de hoy + lo atrasado que sigue abierto
+      var abierta = ['cerrada','cancelada','completada'].indexOf(t.estado) < 0;
+      return t.fecha_limite === hoy || (t.fecha_limite && t.fecha_limite < hoy && abierta) || (!t.fecha_limite && t.estado === 'pendiente');
     });
   }
 
@@ -13063,7 +13065,7 @@ async function _crearPolizaNueva(it) {
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
   if (d.producto) dr.producto = d.producto; if (d.ubicacion) dr.direccion_riesgo = tituloDir(d.ubicacion); if (d.mensual) dr.refacturacion = 'mensual';
-  var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim(), aseguradora: d.aseguradora,
+  var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim().replace(/^0+(?=\d)/, ''), aseguradora: d.aseguradora,
     ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
     estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr,
     valor_cuota: d.premio && d.mensual ? d.premio : null, prima_anual: d.premio && !d.mensual ? d.premio : null, forma_pago: d.mensual ? 'Mensual' : null,
@@ -13074,7 +13076,7 @@ async function _crearPolizaNueva(it) {
   if (d.coberturas && d.coberturas.length) await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: rp.data.id, descripcion: c.descripcion, suma_asegurada: c.suma }; }));
   if (n.clienteNuevo) {
     // Tarea para completar el cliente: se cierra sola cuando le cargás teléfono o mail
-    var lim = new Date(); lim.setDate(lim.getDate() + 2);
+    var lim = new Date(); // para hoy: así aparece en "Hoy" y en "Tu día" 
     var tiene = [cl.dni ? 'DNI' : '', cl.cuit ? 'CUIT' : '', cl.direccion ? 'domicilio' : '', cl.localidad ? 'localidad' : ''].filter(Boolean);
     await sb.from('tareas').insert({ productor_id: user.id, cliente_id: cl.id, poliza_id: rp.data.id, titulo: 'Completar datos del cliente — ' + nombreClienteLista(cl),
       descripcion: 'Cliente creado desde el PDF de la póliza ' + rp.data.ramo + ' N° ' + rp.data.numero_poliza + ' (' + rp.data.aseguradora + ').' + (tiene.length ? ' Del PDF se cargó: ' + tiene.join(', ') + '.' : '') + ' Falta: teléfono, mail, fecha de nacimiento y lo que corresponda.',
