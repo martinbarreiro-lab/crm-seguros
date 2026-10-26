@@ -1946,6 +1946,13 @@ async function subirPdfsMasivo() {
   var ok = cola.filter(function (it) { return it.hecho; }).length, creadas = cola.filter(function (it) { return it.creada; }).length;
   if (creadas) { try { await sb.rpc('armar_paquetes'); } catch (e) {} _cpdf.pols = null; }
   btn.textContent = ok + ' subido' + (ok === 1 ? '' : 's') + (creadas ? ' · ' + creadas + ' póliza' + (creadas > 1 ? 's creadas' : ' creada') : '');
+  var cn = _cpdf.clientesNuevos || [];
+  if (cn.length) {
+    var lst = document.getElementById('cpdf-lista');
+    if (lst) lst.insertAdjacentHTML('afterbegin', '<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:#92400E">👤 <b>' + cn.length + (cn.length > 1 ? ' clientes nuevos' : ' cliente nuevo') + ' para completar</b> (' + cn.map(function (c) { return esc(nombreClienteLista(c)); }).join(', ') + '). Te dejé una tarea "Completar datos del cliente" para cada uno: se cierra sola cuando le cargás el teléfono o el mail.'
+      + '<div style="margin-top:8px"><button type="button" class="btn btn-sm btn-p" onclick="completarCliente(\'' + cn[0].id + '\')">✏️ Completar ' + esc(nombreClienteLista(cn[0])) + ' ahora</button></div></div>');
+    _cpdf.clientesNuevos = [];
+  }
   if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
 }
 
@@ -2687,6 +2694,7 @@ async function cargarDashboard() {
     .forEach(function(t){
       var cls = t.fecha_limite < hoy ? 'rj' : /^Enviar/i.test(t.tipo||'') ? 'az' : t.fecha_limite === hoy ? 'am' : '';
       var esRenov = t.tipo === 'Confirmar renovación' && t.poliza_id;
+      if (t.tipo === 'Completar cliente' && t.cliente_id) { items.push({ o: t.fecha_limite, h: '<div class="dz-item am" onclick="completarCliente(\''+t.cliente_id+'\')"><span class="w">'+fmtD(t.fecha_limite)+'</span><div class="t"><b>✏️ Completar cliente</b> · '+esc_(t.titulo||'').replace(/^Completar datos del cliente — /,'')+'</div><span class="r">Completar →</span></div>' }); return; }
       if (esRenov) cls = 'rj';
       items.push({ o: esRenov ? '0000' : t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="'+(esRenov ? 'abrirConfirmarRenovacion(\''+t.poliza_id+'\',\''+t.id+'\')' : 'irASeccion(\'tareas\')')+'"><span class="w">'+(esRenov ? 'VENCIÓ' : fmtD(t.fecha_limite))+'</span><div class="t"><b>'+(esRenov ? '🔄 ¿Se renovó?' : esc_(t.tipo || 'Tarea'))+'</b> · '+esc_(t.titulo||'').replace(/^¿Se renovó\? — /,'')+(t.clientes && !esRenov ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">'+(esRenov ? 'Responder →' : 'Tareas →')+'</span></div>' });
     });
@@ -3944,7 +3952,11 @@ async function guardarEdicionCliente(id) {
     await sb.from('clientes').update(docUpdates).eq('id', id);
   }
 
-  mostrarAlerta('✅ Datos actualizados correctamente');
+  if (updates.telefono_principal || updates.email_principal) {
+    var rt = await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Datos del cliente completados' }).eq('cliente_id', id).eq('tipo', 'Completar cliente').neq('estado', 'cerrada').select('id');
+    if (rt.data && rt.data.length) mostrarAlerta('✅ Datos actualizados. Tarea "Completar cliente" cerrada.');
+    else mostrarAlerta('✅ Datos actualizados correctamente');
+  } else mostrarAlerta('✅ Datos actualizados correctamente');
   await cargarClientes();
   fichaId = id;
   fichaTab = 'datos';
@@ -8191,6 +8203,7 @@ async function cargarTareas() {
       parts.push('<button type="button" class="t-action" data-act="ver" title="Ver detalle">&#9999;</button>');
       if (t.cliente_id) { parts.push('<button type="button" class="t-action" data-act="cliente" data-clid="' + t.cliente_id + '" title="Ver cliente">&#128100;</button>'); }
       if ((t.tipo === 'Enviar póliza' || t.tipo === 'Enviar endoso') && t.poliza_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="enviar" data-pol="' + t.poliza_id + '" data-doc="' + (t.tipo === 'Enviar endoso' ? 'endoso' : 'poliza') + '" title="Enviar al cliente">&#128228;</button>'); }
+      if (t.tipo === 'Completar cliente' && t.cliente_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="complcl" data-cl="' + t.cliente_id + '" title="Completar los datos del cliente" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;color:#B45309">✏️ Completar</button>'); }
       if (t.tipo === 'Confirmar renovación' && t.poliza_id && t.estado !== 'cerrada') { parts.push('<button type="button" class="t-action" data-act="renov" data-pol="' + t.poliza_id + '" title="¿Se renovó?" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;color:#0F766E">🔄 ¿Se renovó?</button>'); }
       if (sig[t.estado]) { parts.push('<button type="button" class="t-action" data-act="sig" data-sig="' + sig[t.estado] + '" title="Avanzar">&#8594;</button>'); }
       parts.push('</div>');
@@ -8236,6 +8249,7 @@ document.addEventListener('click', function(e) {
   else if (act === 'sig') { const sig = btn.getAttribute('data-sig'); if (sig) moverTarea(id, sig); }
   else if (act === 'enviar') { abrirEnviarPoliza(btn.getAttribute('data-pol'), btn.getAttribute('data-doc'), id); }
   else if (act === 'renov') { abrirConfirmarRenovacion(btn.getAttribute('data-pol'), id); }
+  else if (act === 'complcl') { completarCliente(btn.getAttribute('data-cl')); }
 });
 
 
@@ -12898,6 +12912,23 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     var cand = ma[1].replace(DIREC, '').replace(/[.,]+$/, '').replace(/\s+/g, ' ').trim();
     if (!NO_NOMBRE.test(cand) && cand.indexOf(' ') > 0 && !RUIDO.test(cand) && !(ciaRe && ciaRe.test(cand))) d.asegurado = cand;
   }
+  // Domicilio, localidad y CP del asegurado
+  var mdom = T.match(/DOMICILIO\s*:?\s*([A-Z0-9ÑÁÉÍÓÚ.°º*' ]{4,60}?)\s+(?:LOCALIDAD|LOC\.|CIUDAD|C\.?P\.?|PCIA|PROVINCIA|TEL)/);
+  if (mdom) d.direccion = mdom[1].replace(/\s*N\*\s*/, ' ').replace(/\s+/g, ' ').trim();
+  else if (d.asegurado) {
+    var ia = T.indexOf(d.asegurado);
+    var trasNombre = ia >= 0 ? T.slice(ia + d.asegurado.length, ia + d.asegurado.length + 90) : '';
+    var mdir = trasNombre.match(/^\s*((?:AVENIDA|AVDA|AV\.?|CALLE|BV\.?|BOULEVARD|PJE\.?|PASAJE|RUTA|BARRIO)\b[A-Z0-9ÑÁÉÍÓÚ.°º' ]{2,50}?\d{1,5})\b/);
+    if (mdir) d.direccion = mdir[1].replace(/\s+/g, ' ').trim();
+  }
+  var mloc = T.match(/LOCALIDAD\s*:?\s*([A-ZÑ][A-ZÑ ]{2,30}?)\s+(?:PCIA|PROVINCIA|C\.?P\.?|CP|\(|TEL|$)/);
+  if (mloc) d.localidad = mloc[1].trim();
+  else {
+    // "ROLDAN (SANTA FE)": se saltea la sede de la compañía (ej. Sunchales en Sancor)
+    var rloc = /\b([A-ZÑ]{3,}(?: [A-ZÑ]{3,}){0,2})\s*\((?:SANTA FE|SF|BUENOS AIRES|BS\.? AS\.?|CORDOBA|ENTRE RIOS|CAPITAL FEDERAL|CABA)\)/g, ml;
+    while ((ml = rloc.exec(T)) && !d.localidad) if (!/SUNCHALES|SANCOR|ROSARIO SA|SEGUROS/.test(ml[1]) && T.slice(Math.max(0, ml.index - 40), ml.index).indexOf('SEGUROS') < 0) d.localidad = ml[1].trim();
+  }
+  var mcp = T.match(/\bC\.?P\.?\s*:?\s*(\d{4})\b/); if (mcp) d.cp = mcp[1];
   // Fechas (numéricas y con el mes en letras)
   var fechas = [], x, rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
   while ((x = rf.exec(T))) { var f = _isoFecha(+x[1], +x[2], x[3]); if (f) fechas.push({ f: f, i: x.index }); }
@@ -12991,10 +13022,13 @@ async function _crearPolizaNueva(it) {
     var cuit = String(d.cuit || '').replace(/\D/g, ''), dni = String(d.dni || '').replace(/\D/g, '');
     var sep = separarNombreFedPat(nombre, null, cuit);
     var fila = sep.empresa ? { apellido: nombre, nombre: '', razon_social: nombre, tipo_cliente: 'empresa' } : { apellido: sep.apellido, nombre: sep.nombre || '', tipo_cliente: 'cliente' };
-    fila = Object.assign(fila, { productor_id: user.id, estado: 'activo', cuit: cuit || null, dni: dni || null, notas: 'Creado desde el PDF de la póliza ' + d.numero_poliza });
+    fila = Object.assign(fila, { productor_id: user.id, estado: 'activo', cuit: cuit || null, dni: dni || null, direccion: d.direccion || null,
+      localidad: d.localidad ? d.localidad.charAt(0) + d.localidad.slice(1).toLowerCase() : null, zona_geografica: d.cp || null,
+      notas: 'Creado desde el PDF de la póliza ' + d.numero_poliza + ' (' + d.aseguradora + '). Faltan datos: completar teléfono, mail y lo que falte.' });
     var rc = await sb.from('clientes').insert(fila).select('id,nombre,apellido,razon_social,tipo_cliente,dni,cuit').single();
     if (rc.error) throw rc.error;
     cl = rc.data; (_cpdf.clientes = _cpdf.clientes || []).push(cl); n.cliente = cl; n.clienteNuevo = true;
+    (_cpdf.clientesNuevos = _cpdf.clientesNuevos || []).push(cl);
   }
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
@@ -13004,11 +13038,25 @@ async function _crearPolizaNueva(it) {
     .select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
   if (rp.error) throw rp.error;
   it.pol = rp.data; it.creada = true;
+  if (n.clienteNuevo) {
+    // Tarea para completar el cliente: se cierra sola cuando le cargás teléfono o mail
+    var lim = new Date(); lim.setDate(lim.getDate() + 2);
+    var tiene = [cl.dni ? 'DNI' : '', cl.cuit ? 'CUIT' : '', cl.direccion ? 'domicilio' : '', cl.localidad ? 'localidad' : ''].filter(Boolean);
+    await sb.from('tareas').insert({ productor_id: user.id, cliente_id: cl.id, poliza_id: rp.data.id, titulo: 'Completar datos del cliente — ' + nombreClienteLista(cl),
+      descripcion: 'Cliente creado desde el PDF de la póliza ' + rp.data.ramo + ' N° ' + rp.data.numero_poliza + ' (' + rp.data.aseguradora + ').' + (tiene.length ? ' Del PDF se cargó: ' + tiene.join(', ') + '.' : '') + ' Falta: teléfono, mail, fecha de nacimiento y lo que corresponda.',
+      tipo: 'Completar cliente', tablero: 'general', categoria: 'general', prioridad: 'alta', estado: 'pendiente', fecha_limite: lim.toISOString().slice(0, 10), auto_generada: true });
+  }
   _cpdf.pols[_numSinCeros(rp.data.numero_poliza)] = rp.data;
   await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: cl.id, categoria: 'poliza_nueva', tipo: 'sistema', poliza_id: rp.data.id, poliza_numero: rp.data.numero_poliza, poliza_ramo: rp.data.ramo,
     resumen: '📄 Póliza cargada desde el PDF: ' + rp.data.ramo + ' N° ' + rp.data.numero_poliza + ' · ' + rp.data.aseguradora + (n.clienteNuevo ? ' (cliente nuevo)' : ''), usuario_nombre: user.email, es_automatico: true });
 }
 
+async function completarCliente(clId) {
+  cerrarModal('modal-envio');
+  if (typeof cargarClientes === 'function') await cargarClientes();
+  if (typeof irAFichaCliente === 'function') irAFichaCliente(clId); else verFicha(clId);
+  setTimeout(function () { setFichaTab('datos'); mostrarFormEditCliente(clId); }, 500);
+}
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">
