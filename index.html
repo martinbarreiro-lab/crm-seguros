@@ -3765,8 +3765,9 @@ function mostrarFormEditCliente(id) {
 
   // === DOMICILIO ===
   html.push('<div style="'+sl+'">Domicilio</div>');
-  html.push('<div class="fg2"><div class="frow"><label>Calle</label><input type="text" id="ed-calle" value="'+(cl.calle||( cl.direccion?cl.direccion.split(' ')[0]:''))+'"></div>');
-  html.push('<div class="frow"><label>Número</label><input type="text" id="ed-num-dom" value="'+(cl.numero_dom||(cl.direccion?cl.direccion.split(' ')[1]:''))+'"></div></div>');
+  var _pd = partirDireccion(cl.direccion);
+  html.push('<div class="fg2"><div class="frow"><label>Calle</label><input type="text" id="ed-calle" value="'+esc(cl.calle||_pd.calle)+'"></div>');
+  html.push('<div class="frow"><label>Número</label><input type="text" id="ed-num-dom" value="'+esc(cl.numero_dom||_pd.numero)+'"></div></div>');
   html.push('<div class="fg2"><div class="frow"><label>Piso</label><input type="text" id="ed-piso" value="'+(cl.piso||'')+'"></div>');
   html.push('<div class="frow"><label>Departamento</label><input type="text" id="ed-dpto" value="'+(cl.departamento||'')+'"></div></div>');
   html.push('<div class="fg2"><div class="frow"><label>Localidad</label><input type="text" id="ed-loc" value="'+(cl.localidad||'')+'"></div>');
@@ -13022,7 +13023,9 @@ async function _crearPolizaNueva(it) {
     var cuit = String(d.cuit || '').replace(/\D/g, ''), dni = String(d.dni || '').replace(/\D/g, '');
     var sep = separarNombreFedPat(nombre, null, cuit);
     var fila = sep.empresa ? { apellido: nombre, nombre: '', razon_social: nombre, tipo_cliente: 'empresa' } : { apellido: sep.apellido, nombre: sep.nombre || '', tipo_cliente: 'cliente' };
-    fila = Object.assign(fila, { productor_id: user.id, estado: 'activo', cuit: cuit || null, dni: dni || null, direccion: d.direccion || null,
+    var pdir = partirDireccion(d.direccion ? tituloDir(d.direccion) : '');
+    fila = Object.assign(fila, { productor_id: user.id, estado: 'activo', cuit: cuit || null, dni: dni || null, direccion: d.direccion ? tituloDir(d.direccion) : null,
+      calle: pdir.calle || null, numero_dom: pdir.numero || null,
       localidad: d.localidad ? d.localidad.charAt(0) + d.localidad.slice(1).toLowerCase() : null, zona_geografica: d.cp || null,
       notas: 'Creado desde el PDF de la póliza ' + d.numero_poliza + ' (' + d.aseguradora + '). Faltan datos: completar teléfono, mail y lo que falte.' });
     var rc = await sb.from('clientes').insert(fila).select('id,nombre,apellido,razon_social,tipo_cliente,dni,cuit').single();
@@ -13057,6 +13060,13 @@ async function completarCliente(clId) {
   if (typeof irAFichaCliente === 'function') irAFichaCliente(clId); else verFicha(clId);
   setTimeout(function () { setFichaTab('datos'); mostrarFormEditCliente(clId); }, 500);
 }
+// "AVENIDA DEL LAGO 221" → { calle: 'AVENIDA DEL LAGO', numero: '221' }  (el número es el último número de la dirección)
+function partirDireccion(dir) {
+  dir = String(dir || '').trim(); if (!dir) return { calle: '', numero: '' };
+  var m = dir.match(/^(.*?)[\s,]+(?:N[°º*.]?\s*)?(\d{1,6}[A-Z]?)\s*(?:,.*)?$/i);
+  return m ? { calle: m[1].trim(), numero: m[2] } : { calle: dir, numero: '' };
+}
+function tituloDir(t) { return String(t || '').toLowerCase().replace(/(^|[\s.(])([a-zñáéíóú])/g, function (m, a, b) { return a + b.toUpperCase(); }).replace(/\b(Del|De|La|Las|Los|Y)\b/g, function (w) { return w.toLowerCase(); }).replace(/^./, function (c) { return c.toUpperCase(); }); }
 </script>
 <!-- MODAL BAJA PÓLIZA -->
 <div class="modal-ov" id="modal-baja">
