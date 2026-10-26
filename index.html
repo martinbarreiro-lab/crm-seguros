@@ -1916,20 +1916,21 @@ async function _agregarArchivosPdf(files) {
   _renderCargaPdfs();
 }
 function _estadoItemPdf(it, reemp) {
+  if (it.hecho && it.soloDatos) return [it.completados ? '✓ Datos completados' : '✓ Ya tenía todos los datos', '#166534'];
   if (it.hecho) return it.verif && !it.verif.ok ? ['✓ ' + (it.creada ? 'Creada' : 'Subido') + ' · ⚠ revisar', '#B45309'] : ['✓ ' + (it.creada ? 'Póliza creada' : 'Subido') + (it.verif ? ' · verificada' : ''), '#166534'];
   if (it.error) return ['Error: ' + it.error, '#B91C1C'];
   if (!it.pol && it.nueva) return it.nueva.crear ? ['Póliza nueva · se crea al subir', '#1D4ED8'] : ['No está en el CRM · no se crea', '#B45309'];
   if (!it.pol) return ['Sin póliza con ese número', '#B45309'];
-  if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF (no se toca)', '#64748B'];
+  if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF · completo los datos que falten', '#1D4ED8'];
   return ['Listo para subir', '#1D4ED8'];
 }
 function _renderCargaPdfs() {
   var reemp = (document.getElementById('cpdf-reemp') || {}).checked;
   var n = 0, nn = 0;
   var filas = _cpdf.items.map(function (it, idx) {
-    var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir') n++; if (/se crea al subir/.test(st[0])) { n++; nn++; }
+    var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir' || /completo los datos/.test(st[0])) n++; if (/se crea al subir/.test(st[0])) { n++; nn++; }
     var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : (it.nueva ? '' : '—');
-    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + (it.nueva && !it.hecho && !it.creada ? _htmlNueva(it, idx) : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
+    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + (it.nueva && !it.hecho && !it.creada ? _htmlNueva(it, idx) : '') + (it.completados ? '<div style="color:#166534;font-size:11.5px;margin-top:3px">Se cargó: ' + esc(it.completados.join(' · ')) + '</div>' : '') + (it.avisoVig ? '<div style="color:#B45309;font-size:11.5px;margin-top:3px">⚠ ' + esc(it.avisoVig) + '</div>' : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
   }).join('');
   var lista = document.getElementById('cpdf-lista'); if (!lista) return;
   lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir' + (nn ? ' <span style="color:#1D4ED8">(' + nn + ' póliza' + (nn > 1 ? 's nuevas' : ' nueva') + ': revisá los datos antes de subir)</span>' : '') + '</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
@@ -1938,12 +1939,23 @@ function _renderCargaPdfs() {
 async function subirPdfsMasivo() {
   var reemp = document.getElementById('cpdf-reemp').checked;
   var btn = document.getElementById('cpdf-ok'); btn.disabled = true;
-  var cola = _cpdf.items.filter(function (it) { var e = _estadoItemPdf(it, reemp)[0]; return e === 'Listo para subir' || /se crea al subir/.test(e); });
+  var cola = _cpdf.items.filter(function (it) { var e = _estadoItemPdf(it, reemp)[0]; return e === 'Listo para subir' || /se crea al subir|completo los datos/.test(e); });
   for (var i = 0; i < cola.length; i++) {
     var it = cola[i]; btn.textContent = 'Subiendo ' + (i + 1) + ' de ' + cola.length + '…';
     try {
       if (!it.pol && it.nueva && it.nueva.crear) { btn.textContent = 'Creando póliza ' + (i + 1) + ' de ' + cola.length + '…'; await _crearPolizaNueva(it);
-        if (it.yaExistia && it.pol.pdf_url && !reemp) { it.hecho = true; _renderCargaPdfs(); continue; } }
+      }
+      var soloDatos = it.pol.pdf_url && !reemp && !it.creada;
+      if (!it.creada) {
+        // Póliza que ya estaba: con los datos del PDF se completa lo que le falte (vehículo, coberturas, cuota, domicilio)
+        btn.textContent = 'Leyendo datos ' + (i + 1) + ' de ' + cola.length + '…';
+        try {
+          var dd = extraerDatosPoliza(await _textoPdf(it.file), it.file.name), plan = await _planCompletarPoliza(it.pol.id, dd);
+          if (plan.cambios.length) { await plan.aplicar(); it.completados = plan.cambios; }
+          if (plan.avisos.length) it.avisoVig = plan.avisos[0];
+        } catch (e2) { it.avisoVig = 'No se pudieron leer los datos: ' + (e2.message || e2); }
+      }
+      if (soloDatos) { it.hecho = true; it.soloDatos = true; _renderCargaPdfs(); continue; }
       var path = 'polizas/' + it.pol.id + '/' + Date.now() + '_poliza_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
       var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' });
       if (up.error) throw up.error;
@@ -13173,41 +13185,52 @@ async function _crearPolizaNueva(it) {
 }
 
 // Lee el PDF ya cargado de una póliza y completa SOLO lo que está vacío (vehículo, coberturas, cuota, domicilio del cliente)
-async function completarDesdePdf(polId) {
-  try {
-    var rp = await sb.from('polizas').select('*, clientes(*)').eq('id', polId).single(); if (rp.error) throw rp.error;
-    var p = rp.data, cl = p.clientes || {};
-    var resp = await fetch(await linkArchivo(p.pdf_url, 120)); if (!resp.ok) throw new Error('no se pudo bajar el PDF');
-    var d = extraerDatosPoliza(await _textoPdf(await resp.blob()), String(p.pdf_url).split('/').pop());
-    var dr = Object.assign({}, p.datos_ramo || {}), cambios = [], upP = {}, upC = {};
-    var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', producto: 'plan/cobertura' };
-    Object.keys(ETQ).forEach(function (k) { if (d[k] && !dr[k]) { dr[k] = d[k]; cambios.push(ETQ[k] + ': ' + d[k]); } });
-    if (cambios.length) upP.datos_ramo = dr;
-    if (d.marca_modelo && !p.bien_asegurado) upP.bien_asegurado = d.marca_modelo;
-    if (d.valor_cuota && !p.valor_cuota) { upP.valor_cuota = d.valor_cuota; cambios.push('cuota: $' + d.valor_cuota.toLocaleString('es-AR')); }
-    if (d.premio && !p.prima_anual) { upP.prima_anual = d.premio; cambios.push('premio: $' + d.premio.toLocaleString('es-AR')); }
-    if (d.forma_pago && !p.forma_pago) upP.forma_pago = d.forma_pago;
-    if (d.patente && !p.patente) { upP.patente = d.patente; cambios.push('patente: ' + d.patente); }
-    var rc = await sb.from('coberturas').select('id', { count: 'exact', head: true }).eq('poliza_id', polId);
-    var nCob = (!rc.count && d.coberturas && d.coberturas.length) ? d.coberturas.length : 0;
-    if (nCob) cambios.push(nCob + ' coberturas');
-    if (cl.id) {
-      if (d.direccion && !cl.direccion) { var pd = partirDireccion(tituloDir(d.direccion)); upC.direccion = tituloDir(d.direccion); upC.calle = pd.calle || null; upC.numero_dom = pd.numero || null; cambios.push('domicilio del cliente: ' + upC.direccion); }
-      if (d.localidad && !cl.localidad) { upC.localidad = _capi(d.localidad); cambios.push('localidad: ' + upC.localidad); }
-      if (d.cp && !cl.zona_geografica) upC.zona_geografica = d.cp;
-      if (d.dni && !cl.dni) { upC.dni = d.dni; cambios.push('DNI: ' + d.dni); }
-      if (d.cuit && !cl.cuit) { upC.cuit = d.cuit; cambios.push('CUIT: ' + d.cuit); }
-    }
-    var avisos = [];
-    if (d.fecha_inicio && d.fecha_inicio !== p.fecha_inicio) avisos.push('Ojo: en el PDF la vigencia es ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' y en el CRM ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ' (no la cambio; si está mal, usá ✏ Editar).');
-    if (!cambios.length) { alert('El PDF no tiene datos nuevos para esta póliza: ya está todo cargado o el formato no se pudo leer.' + (avisos.length ? '\n\n' + avisos.join('\n') : '')); return; }
-    if (!confirm('Del PDF voy a completar:\n• ' + cambios.join('\n• ') + (avisos.length ? '\n\n' + avisos.join('\n') : '') + '\n\n¿Lo cargo?')) return;
+// Completa SOLO lo que está vacío en la póliza y su cliente con los datos leídos del PDF (d).
+// Devuelve { cambios, avisos, aplicar() }.
+async function _planCompletarPoliza(polId, d) {
+  var rp = await sb.from('polizas').select('*, clientes(*)').eq('id', polId).single(); if (rp.error) throw rp.error;
+  var p = rp.data, cl = p.clientes || {};
+  var dr = Object.assign({}, p.datos_ramo || {}), cambios = [], upP = {}, upC = {}, cambioDr = false;
+  var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', producto: 'plan/cobertura' };
+  Object.keys(ETQ).forEach(function (k) { if (d[k] && !dr[k]) { dr[k] = d[k]; cambioDr = true; cambios.push(ETQ[k] + ': ' + d[k]); } });
+  if (d.referencia && !dr.referencia && _numSinCeros(d.referencia) !== _numSinCeros(p.numero_poliza)) { dr.referencia = d.referencia; cambioDr = true; }
+  if (cambioDr) upP.datos_ramo = dr;
+  if (d.marca_modelo && !p.bien_asegurado) upP.bien_asegurado = d.marca_modelo;
+  if (d.valor_cuota && !p.valor_cuota) { upP.valor_cuota = d.valor_cuota; cambios.push('cuota: $' + d.valor_cuota.toLocaleString('es-AR')); }
+  if (d.premio && !p.prima_anual) { upP.prima_anual = d.premio; cambios.push('premio: $' + d.premio.toLocaleString('es-AR')); }
+  if (d.forma_pago && !p.forma_pago) upP.forma_pago = d.forma_pago;
+  if (d.patente && !p.patente) { upP.patente = d.patente; cambios.push('patente: ' + d.patente); }
+  var rc = await sb.from('coberturas').select('id', { count: 'exact', head: true }).eq('poliza_id', polId);
+  var nCob = (!rc.count && d.coberturas && d.coberturas.length) ? d.coberturas.length : 0;
+  if (nCob) cambios.push(nCob + ' coberturas');
+  if (cl.id) {
+    if (d.direccion && !cl.direccion) { var pd = partirDireccion(tituloDir(d.direccion)); upC.direccion = tituloDir(d.direccion); upC.calle = pd.calle || null; upC.numero_dom = pd.numero || null; cambios.push('domicilio: ' + upC.direccion); }
+    if (d.localidad && !cl.localidad) { upC.localidad = _capi(d.localidad); cambios.push('localidad: ' + upC.localidad); }
+    if (d.cp && !cl.zona_geografica) upC.zona_geografica = d.cp;
+    if (d.dni && !cl.dni) { upC.dni = d.dni; cambios.push('DNI: ' + d.dni); }
+    if (d.cuit && !cl.cuit) { upC.cuit = d.cuit; cambios.push('CUIT: ' + d.cuit); }
+  }
+  var avisos = [];
+  if (d.fecha_inicio && d.fecha_inicio !== p.fecha_inicio) avisos.push('En el PDF la vigencia es ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' y en el CRM ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ' (no la cambio; si está mal, usá ✏ Editar).');
+  return { p: p, cambios: cambios, avisos: avisos, aplicar: async function () {
     if (Object.keys(upP).length) { var r1 = await sb.from('polizas').update(upP).eq('id', polId); if (r1.error) throw r1.error; }
     if (Object.keys(upC).length) { var r2 = await sb.from('clientes').update(upC).eq('id', cl.id); if (r2.error) throw r2.error; }
     if (nCob) { var r3 = await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: polId, descripcion: c.descripcion, suma_asegurada: c.suma }; })); if (r3.error) throw r3.error; }
+  } };
+}
+// Botón de la póliza: lee el PDF ya cargado y completa lo que falta
+async function completarDesdePdf(polId) {
+  try {
+    var rp = await sb.from('polizas').select('numero_poliza,pdf_url').eq('id', polId).single(); if (rp.error) throw rp.error;
+    var resp = await fetch(await linkArchivo(rp.data.pdf_url, 120)); if (!resp.ok) throw new Error('no se pudo bajar el PDF');
+    var d = extraerDatosPoliza(await _textoPdf(await resp.blob()), String(rp.data.pdf_url).split('/').pop());
+    var plan = await _planCompletarPoliza(polId, d);
+    if (!plan.cambios.length) { alert('El PDF no tiene datos nuevos para esta póliza: ya está todo cargado o el formato no se pudo leer.' + (plan.avisos.length ? '\n\nOjo: ' + plan.avisos.join('\n') : '')); return; }
+    if (!confirm('Del PDF voy a completar:\n• ' + plan.cambios.join('\n• ') + (plan.avisos.length ? '\n\nOjo: ' + plan.avisos.join('\n') : '') + '\n\n¿Lo cargo?')) return;
+    await plan.aplicar();
     cerrarModal('modal-pol-det');
     if (typeof cargarPolizas === 'function') await cargarPolizas();
-    alert('Listo, se completaron los datos de la póliza ' + p.numero_poliza + '.');
+    alert('Listo, se completaron los datos de la póliza ' + rp.data.numero_poliza + '.');
   } catch (e) { alert('No se pudo completar desde el PDF: ' + (e.message || e)); }
 }
 async function completarCliente(clId) {
