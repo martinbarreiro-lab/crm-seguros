@@ -1851,7 +1851,14 @@ function _numSinCeros(n) { return String(n || '').replace(/\D/g, '').replace(/^0
 function _buscarPolizaPorArchivo(nombre) {
   var runs = (nombre.replace(/\.pdf$/i, '').match(/\d{5,}/g) || []).map(_numSinCeros);
   for (var i = 0; i < runs.length; i++) { var p = _cpdf.pols[runs[i]]; if (p) return p; }
-  return null;
+  // Sancor: el archivo trae el N° de referencia, no el de póliza ("pza ref 30905440.pdf")
+  for (var j = 0; j < runs.length; j++) { var q = (_cpdf.porRef || {})[runs[j]]; if (q) return q; }
+  return (_cpdf.porArchivo || {})[String(nombre).toLowerCase()] || null;
+}
+// Después de leer el PDF: si el número de póliza o la referencia ya están en el CRM, es esa póliza (no se crea otra)
+function _polizaExistenteDe(d) {
+  var n = _numSinCeros(d.numero_poliza), rf = _numSinCeros(d.referencia);
+  return (n && _cpdf.pols[n]) || (rf && (_cpdf.porRef || {})[rf]) || (rf && _cpdf.pols[rf]) || null;
 }
 function abrirCargaPdfs() {
   var m = _envModal();
@@ -1882,7 +1889,12 @@ async function _agregarArchivosPdf(files) {
       var r = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)');
       if (r.error) throw r.error;
       _cpdf.pols = {};
-      (r.data || []).forEach(function (p) { var k = _numSinCeros(p.numero_poliza); if (k && !_cpdf.pols[k]) _cpdf.pols[k] = p; });
+      _cpdf.porRef = {}; _cpdf.porArchivo = {};
+      (r.data || []).forEach(function (p) {
+        var k = _numSinCeros(p.numero_poliza); if (k && !_cpdf.pols[k]) _cpdf.pols[k] = p;
+        var dr = p.datos_ramo || {}, rf = _numSinCeros(dr.referencia); if (rf && !_cpdf.porRef[rf]) _cpdf.porRef[rf] = p;
+        var fa = String(dr.fuente || '').match(/\(([^()]+\.pdf)\)/i); if (fa && !_cpdf.porArchivo[fa[1].toLowerCase()]) _cpdf.porArchivo[fa[1].toLowerCase()] = p;
+      });
     }
     for (var i = 0; i < files.length; i++) {
       var f = files[i];
@@ -1930,7 +1942,8 @@ async function subirPdfsMasivo() {
   for (var i = 0; i < cola.length; i++) {
     var it = cola[i]; btn.textContent = 'Subiendo ' + (i + 1) + ' de ' + cola.length + '…';
     try {
-      if (!it.pol && it.nueva && it.nueva.crear) { btn.textContent = 'Creando póliza ' + (i + 1) + ' de ' + cola.length + '…'; await _crearPolizaNueva(it); }
+      if (!it.pol && it.nueva && it.nueva.crear) { btn.textContent = 'Creando póliza ' + (i + 1) + ' de ' + cola.length + '…'; await _crearPolizaNueva(it);
+        if (it.yaExistia && it.pol.pdf_url && !reemp) { it.hecho = true; _renderCargaPdfs(); continue; } }
       var path = 'polizas/' + it.pol.id + '/' + Date.now() + '_poliza_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
       var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' });
       if (up.error) throw up.error;
@@ -13076,6 +13089,8 @@ async function _prepararNuevas() {
     document.getElementById('cpdf-lista').innerHTML = '<div style="color:var(--text2)">Leyendo las pólizas que no están en el CRM… (' + (i + 1) + ' de ' + nuevos.length + ')</div>';
     try {
       var d = extraerDatosPoliza(await _textoPdf(it.file), it.file.name);
+      var ya = _polizaExistenteDe(d);
+      if (ya) { it.pol = ya; continue; }
       var cl = _buscarClienteNuevo(d);
       it.nueva = { d: d, cliente: cl, crear: !!(d.numero_poliza && d.aseguradora && d.fecha_inicio && (cl || d.asegurado)) };
     } catch (e) { it.nueva = { d: { numero_poliza: (it.file.name.match(/\d{5,}/) || [''])[0] }, error: 'No se pudo leer el PDF', crear: false }; }
@@ -13111,6 +13126,10 @@ function _htmlNueva(it, idx) {
 async function _crearPolizaNueva(it) {
   var n = it.nueva, d = n.d;
   if (!d.numero_poliza || !d.aseguradora || !d.fecha_inicio) throw new Error('faltan número, compañía o fecha desde');
+  // Último control contra duplicados: se consulta la base por el número (con y sin ceros adelante)
+  var nsc = String(d.numero_poliza).trim().replace(/^0+(?=\d)/, '');
+  var rx = await sb.from('polizas').select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').in('numero_poliza', [nsc, String(d.numero_poliza).trim()]).limit(1);
+  if (rx.data && rx.data.length) { it.pol = rx.data[0]; it.yaExistia = true; return; }
   var cl = n.cliente;
   if (!cl) {
     var nombre = (d.asegurado || '').trim(); if (!nombre) throw new Error('falta el cliente');
