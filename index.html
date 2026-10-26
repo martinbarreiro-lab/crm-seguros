@@ -2122,7 +2122,7 @@ async function _guardarFactura(it) {
   var path = 'polizas/' + pol.id + '/facturas/' + Date.now() + '_' + it.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
   var up = await sb.storage.from('archivos').upload(path, it.file, { contentType: 'application/pdf' }); if (up.error) throw up.error;
   var url = sb.storage.from('archivos').getPublicUrl(path).data.publicUrl;
-  var nombre = 'Factura ' + fx.numero + ' · ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta);
+  var nombre = fx.desde + ' · Factura ' + fx.numero + ' · ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta) + (fx.total ? ' · $' + fx.total.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '');
   await sb.from('documentos').insert({ productor_id: user.id, cliente_id: pol.cliente_id || null, poliza_id: pol.id, tipo: 'factura', nombre_archivo: nombre, url: url, tamanio: it.file.size });
   // 2) la cuota del mes en cobranzas (si esa factura ya estaba, se actualiza)
   var notas = 'Factura ' + fx.numero + ' · período ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta) + (fx.premio ? ' · premio $' + fx.premio.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '') + (fx.aum_capital ? ' + aum. de capital $' + fx.aum_capital.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '');
@@ -3500,7 +3500,7 @@ async function cargarFacturasDetalle(p) {
   var r = await sb.from('documentos').select('id,nombre_archivo,url,created_at').eq('poliza_id', p.id).eq('tipo', 'factura').order('nombre_archivo', { ascending: false }).limit(12);
   var fs = r.data || []; if (!fs.length) { box.innerHTML = ''; return; }
   box.innerHTML = '<div style="background:#F8FAFC;border:0.5px solid #E2E8F0;border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:12px"><div style="font-weight:600;margin-bottom:4px">🧾 Facturas mensuales</div>'
-    + fs.map(function (f) { return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span>' + esc(f.nombre_archivo) + '</span><a href="#" onclick="window.open(\'' + f.url + '\',\'_blank\');return false" style="color:#1D4ED8">Ver</a></div>'; }).join('') + '</div>';
+    + fs.map(function (f) { return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span>' + esc(String(f.nombre_archivo).replace(/^\d{4}-\d{2}-\d{2} · /, '')) + '</span><a href="#" onclick="window.open(\'' + f.url + '\',\'_blank\');return false" style="color:#1D4ED8">Ver</a></div>'; }).join('') + '</div>';
 }
 async function cargarPaqueteDetalle(p) {
   try { cargarFacturasDetalle(p); } catch (e) {}
