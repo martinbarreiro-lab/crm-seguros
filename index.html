@@ -2744,7 +2744,7 @@ async function cargarDashboard() {
     sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
-    sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
+    sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
     sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
@@ -8235,7 +8235,8 @@ function cobRender() {
 
       var col6 = '', col7 = '';
       if (_cobTab === 'pendiente' && c._auto) {
-        col6 = /vida obligatori/i.test(c._ramo || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Vida obligatorio se paga por ARCA con las cargas sociales">Se paga por ARCA</span>'
+        col6 = /anulad|baja|cancel/i.test(c._pol_estado || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">Póliza anulada</span>'
+          : /vida obligatori/i.test(c._ramo || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Vida obligatorio se paga por ARCA con las cargas sociales">Se paga por ARCA</span>'
           : '<span style="background:#EFF6FF;color:#1D4ED8;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Se cobra con tarjeta o débito: si rebota, la compañía avisa por mail">💳 Automático</span>';
         col7 = '<span style="font-size:11px;color:var(--lt)">No hace falta avisar</span>';
       } else if (_cobTab === 'pendiente') {
@@ -8324,7 +8325,7 @@ async function cargarCobranzas() {
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago').eq('productor_id', user.id).limit(2000)
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado').eq('productor_id', user.id).limit(2000)
   ]);
 
   // Clientes: usar allCl si está disponible, sino cargar
@@ -8358,6 +8359,7 @@ async function cargarCobranzas() {
       _ramo: pol.ramo || '—',
       _dias_mora: diasMora,
       _auto: esPagoAutomatico(pol, c),
+      _pol_estado: pol.estado || '',
     });
   });
 
@@ -11885,6 +11887,8 @@ function parseCSV(text) {
 function esPagoAutomatico(pol, cob) {
   // Vida obligatorio se paga por ARCA junto con las cargas sociales: no se ve ni se reclama
   if (/vida obligatori/i.test((pol || {}).ramo || '')) return true;
+  // Póliza anulada o dada de baja: las cuotas que quedaron sin pagar no se reclaman
+  if (/anulad|baja|cancel/i.test((pol || {}).estado || '')) return true;
   var t = [(pol || {}).medio_pago, (pol || {}).forma_pago, (cob || {}).medio_pago].join(' ');
   return /visa|master|amex|american|cabal|naranja|tarjeta|d[eé]bito|cbu/i.test(t);
 }
@@ -12403,10 +12407,10 @@ async function analizarPostImportacion(uid) {
       .eq('productor_id', uid).eq('estado','activa')
       .lte('fecha_vencimiento', limiteRenov).gte('fecha_vencimiento', hoySt),
     // Cuotas vencidas
-    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,clientes(nombre,apellido,razon_social,tipo_cliente))')
+    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,estado,clientes(nombre,apellido,razon_social,tipo_cliente))')
       .eq('productor_id', uid).eq('estado','pendiente').lt('fecha_vencimiento', hoySt),
     // Cuotas próximas a vencer
-    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,clientes(nombre,apellido,razon_social,tipo_cliente))')
+    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,estado,clientes(nombre,apellido,razon_social,tipo_cliente))')
       .eq('productor_id', uid).eq('estado','pendiente')
       .gte('fecha_vencimiento', hoySt).lte('fecha_vencimiento', limiteCobr),
     // Pólizas sin cliente
