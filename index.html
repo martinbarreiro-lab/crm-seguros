@@ -2050,7 +2050,7 @@ var _SENALES_RAMO = [
   ['Accidentes Personales', /ACCIDENTES PERSONALES|ACCIDENTES A PASAJEROS|FAMILIARES TRANSPORTADOS/],
   ['Vida Colectiva', /VIDA COLECTIV/],
   ['Vida Individual', /VIDA INDIVIDUAL|SEGURO DE VIDA/],
-  ['Responsabilidad Civil', /RESPONSABILIDAD CIVIL/],
+  ['Responsabilidad Civil', /RESPONSABILIDAD CIVIL|RC PROFESIONAL|MALA PRAXIS|SERVICIOS MEDICOS IND/],
   ['Automotor', /AUTOMOTOR|MOTOVEHICULO|VEHICULO|DOMINIO/]
 ];
 function _senalDeRamo(ramo) {
@@ -13234,6 +13234,8 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   var pos = Infinity; _CIAS_PDF.forEach(function (c) { var i = T.search(c[1]); if (i >= 0 && i < pos) { pos = i; d.aseguradora = c[0]; } });
   // Ramo: la señal que aparece primero
   var pr = Infinity; _SENALES_RAMO.forEach(function (x) { var i = T.search(x[1]); if (i >= 0 && i < pr) { pr = i; d.ramo = x[0]; } });
+  // El ramo automotor incluye motos: si la póliza es de una moto, va como "Motos"
+  if (d.ramo === 'Automotor' && (/SECCION:?\s*MOTOS\b|\bMOTOS\s+\d{3,}-\d/.test(T) || /MOTOVEHICULO|MOTOCICLETA|CICLOMOTOR/.test(T.slice(0, 3000)))) d.ramo = 'Motos';
   // Número: del nombre del archivo o del texto después de "PÓLIZA"
   var runs = (String(nombreArchivo || '').replace(/\.pdf$/i, '').match(/\d{5,}/g) || []);
   var mp = T.match(/P[OÓ]LIZA\s*(?:N[°ºO.]*|NRO\.?|NUMERO|N[UÚ]MERO)?\s*:?\s*([0-9][0-9.\-\/]{3,18}[0-9])(?![0-9])/);
