@@ -1490,8 +1490,9 @@
           <option value="media" selected>Media</option><option value="baja">Baja</option>
         </select>
       </div>
-      <div class="frow"><label>Cliente vinculado</label><select id="ft-cl"><option value="">Sin vincular</option></select></div>
+      <div class="frow"><label>Cliente vinculado</label><select id="ft-cl" onchange="llenarPolizasDeCliente(document.getElementById('ft-pol'), this.value, null)"><option value="">Sin vincular</option></select></div>
     </div>
+    <div class="frow"><label>Póliza vinculada</label><select id="ft-pol"><option value="">Elegí primero el cliente</option></select></div>
     <div class="fg2">
       <div class="frow"><label>Fecha límite</label><input type="date" id="ft-fecha"></div>
       <div class="frow"><label>Recordatorio</label><input type="datetime-local" id="ft-notif"></div>
@@ -5531,7 +5532,7 @@ function abrirModalPolizaParaCliente(clienteId) {
 }
 function abrirModalTareaParaCliente(clienteId) {
   actualizarSelectsClientes();
-  setTimeout(function() { var sel=document.getElementById('ft-cl'); if(sel) sel.value=clienteId; document.getElementById('modal-tar').classList.add('open'); }, 80);
+  setTimeout(function() { var sel=document.getElementById('ft-cl'); if(sel) sel.value=clienteId; llenarPolizasDeCliente(document.getElementById('ft-pol'), clienteId, null); document.getElementById('modal-tar').classList.add('open'); }, 80);
 }
 function abrirModalSiniestroParaCliente(clienteId) {
   actualizarSelectsClientes();
@@ -6004,12 +6005,29 @@ function setSinRamo(ramo, el) {
   renderSinDynFields(ramo, '');
 }
 
+// Llena un <select> con las pólizas del cliente: vigentes primero, después las vencidas/anuladas
+async function llenarPolizasDeCliente(sel, clienteId, seleccionada) {
+  if (!sel) return;
+  if (!clienteId) { sel.innerHTML = '<option value="">Elegí primero el cliente</option>'; return; }
+  sel.innerHTML = '<option value="">Cargando pólizas…</option>';
+  var r = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,estado,patente,fecha_vencimiento,bien_asegurado').eq('cliente_id', clienteId).order('fecha_vencimiento', { ascending: false });
+  var pols = (r.data || []).sort(function (a, b) { return (a.estado === 'activa' ? 0 : 1) - (b.estado === 'activa' ? 0 : 1); });
+  var op = function (p) {
+    var det = [p.ramo, p.aseguradora, p.patente].filter(Boolean).join(' · ');
+    return '<option value="' + p.id + '"' + (p.id === seleccionada ? ' selected' : '') + '>N° ' + esc(p.numero_poliza || '') + ' — ' + esc(det) + (p.estado !== 'activa' ? ' (' + esc(p.estado || '') + ')' : '') + '</option>';
+  };
+  var act = pols.filter(function (p) { return p.estado === 'activa'; }), otras = pols.filter(function (p) { return p.estado !== 'activa'; });
+  sel.innerHTML = '<option value="">' + (pols.length ? 'Sin vincular' : 'Este cliente no tiene pólizas') + '</option>'
+    + (act.length ? '<optgroup label="Vigentes">' + act.map(op).join('') + '</optgroup>' : '')
+    + (otras.length ? '<optgroup label="Vencidas / anuladas">' + otras.map(op).join('') + '</optgroup>' : '');
+  if (seleccionada && !pols.some(function (p) { return p.id === seleccionada; })) sel.value = '';
+}
 async function onSinClienteChange() {
   var cid = document.getElementById('fs-cl').value;
   var sel = document.getElementById('fs-poliza');
   if (!sel) return;
   if (!cid) { sel.innerHTML = '<option value="">Seleccionar primero el cliente</option>'; return; }
-  var { data } = await sb.from('polizas').select('id,numero,ramo,aseguradora').eq('cliente_id', cid).eq('estado','activa');
+  var { data } = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora').eq('cliente_id', cid).eq('estado','activa');
   var pols = data || [];
   sel.innerHTML = '<option value="">Sin vincular</option>' + pols.map(function(p){
     return '<option value="'+p.id+'" data-ramo="'+p.ramo+'" data-aseg="'+p.aseguradora+'">'+p.numero_poliza+' · '+p.ramo+'</option>';
@@ -6348,7 +6366,7 @@ document.getElementById('btn-guardar-cob').onclick = async function() {
 document.getElementById('fcob-cl').addEventListener('change', async function() {
   const sel = document.getElementById('fcob-pol');
   if (!this.value) { sel.innerHTML = '<option value="">Primero seleccioná un cliente</option>'; return; }
-  const { data } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
+  const { data } = await sb.from('polizas').select('id,numero_poliza,ramo').eq('cliente_id', this.value);
   sel.innerHTML = '<option value="">Seleccionar póliza...</option>' + (data || []).map(function(p) { return '<option value="' + p.id + '">' + p.numero_poliza + ' — ' + p.ramo + '</option>'; }).join('');
 });
 
@@ -6361,6 +6379,7 @@ document.getElementById('btn-guardar-tar').onclick = async function() {
     tipo: getTipoFinal('ft-tipo','ft-tipo-otro-wrap'),
     prioridad: document.getElementById('ft-prio').value,
     cliente_id: document.getElementById('ft-cl').value || null,
+    poliza_id: (document.getElementById('ft-pol') || {}).value || null,
     fecha_limite: document.getElementById('ft-fecha').value || null,
     notif_fecha: document.getElementById('ft-notif').value || null,
     descripcion: document.getElementById('ft-desc').value.trim(),
@@ -8593,33 +8612,14 @@ async function verDetalleTarea(id) {
   // Populate cliente select
   const clSel = document.getElementById('tar-edit-cliente');
   clSel.innerHTML = '<option value="">Sin vincular</option>' + allCl.map(function(cl) {
-    return '<option value="' + cl.id + '"' + (cl.id === t.cliente_id ? ' selected' : '') + '>' + cl.nombre + ' ' + cl.apellido + '</option>';
+    return '<option value="' + cl.id + '"' + (cl.id === t.cliente_id ? ' selected' : '') + '>' + esc(nombreClienteLista(cl)) + '</option>';
   }).join('');
 
   // Populate poliza select based on cliente
   const polSel = document.getElementById('tar-edit-poliza');
-  polSel.innerHTML = '<option value="">Sin vincular</option>';
-  if (t.cliente_id) {
-    const { data: pols } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', t.cliente_id);
-    (pols || []).forEach(function(p) {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.numero_poliza + ' — ' + p.ramo;
-      polSel.appendChild(opt);
-    });
-  }
-
-  // Update polizas when cliente changes
-  clSel.onchange = async function() {
-    polSel.innerHTML = '<option value="">Sin vincular</option>';
-    if (!this.value) return;
-    const { data: pols } = await sb.from('polizas').select('id,numero,ramo').eq('cliente_id', this.value);
-    (pols || []).forEach(function(p) {
-      const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.numero_poliza + ' — ' + p.ramo;
-      polSel.appendChild(opt);
-    });
-  };
+  await llenarPolizasDeCliente(polSel, t.cliente_id, t.poliza_id);
+  // Al cambiar el cliente se cargan sus pólizas
+  clSel.onchange = function() { llenarPolizasDeCliente(polSel, this.value, null); };
 
   // Info bar: days open + status history
   const diasAbierta = Math.round((new Date() - new Date(t.created_at)) / 864e5);
@@ -8642,6 +8642,7 @@ async function verDetalleTarea(id) {
       notif_fecha: document.getElementById('tar-edit-notif').value || null,
       descripcion: document.getElementById('tar-edit-desc').value.trim(),
       cliente_id: document.getElementById('tar-edit-cliente').value || null,
+      poliza_id: document.getElementById('tar-edit-poliza').value || null,
     };
     if (!updates.titulo) { alert('El título es obligatorio'); return; }
     const { error } = await sb.from('tareas').update(updates).eq('id', id);
@@ -9313,7 +9314,7 @@ document.getElementById('btn-np') && (document.getElementById('btn-np').onclick 
 document.getElementById('btn-ncotz') && (document.getElementById('btn-ncotz').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cotz').classList.add('open'); });
 document.getElementById('btn-nsin') && (document.getElementById('btn-nsin').onclick = function() { actualizarSelectsClientes(); window._editSiniestroId=null; abrirModalSinInit(); document.getElementById('modal-sin').classList.add('open'); });
 document.getElementById('btn-ncob') && (document.getElementById('btn-ncob').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-cob').classList.add('open'); });
-document.getElementById('btn-ntar') && (document.getElementById('btn-ntar').onclick = function() { actualizarSelectsClientes(); document.getElementById('modal-tar').classList.add('open'); });
+document.getElementById('btn-ntar') && (document.getElementById('btn-ntar').onclick = function() { actualizarSelectsClientes(); var fc = document.getElementById('ft-cl'); llenarPolizasDeCliente(document.getElementById('ft-pol'), fc ? fc.value : '', null); document.getElementById('modal-tar').classList.add('open'); });
 
 // ---- UTILS ----
 function cerrarModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
@@ -9403,6 +9404,7 @@ async function fichaAbrirTarea(el) {
   setTimeout(function() {
     const sel = document.getElementById('ft-cl');
     if (sel && cid) sel.value = cid;
+    llenarPolizasDeCliente(document.getElementById('ft-pol'), cid, null);
     document.getElementById('modal-tar').classList.add('open');
   }, 100);
 }
