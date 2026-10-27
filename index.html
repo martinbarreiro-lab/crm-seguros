@@ -9170,7 +9170,7 @@ async function verificarRenovaciones() {
   for (var i=0;i<pols.length;i++) {
     var p = pols[i];
     var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
-    var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).eq('tablero','renovaciones').eq('estado','pendiente');
+    var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).not('estado','in','("cerrada","completada","cancelada")');  // cualquier tarea abierta de esa póliza (también en espera)
     if (existing && existing.length) continue;
     await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+' ('+p.ramo+')', tablero:'renovaciones', tipo:'Cotizar renovación' });
   }
