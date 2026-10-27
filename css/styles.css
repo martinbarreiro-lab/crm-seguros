@@ -641,3 +641,23 @@ tr:hover td{background:var(--bg)}
 .sin-tl{border-left:2px solid #CBD5E1;padding-left:14px;display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.45}
 .sin-tl-f{color:var(--muted)}.sin-tl-it b{font-weight:600}.sin-tl-it a{color:#1D4ED8;text-decoration:none;font-size:12px}
 @media (max-width:700px){.sin-cr-row{grid-template-columns:14px 1fr 1fr}.sin-cr-row>span:nth-child(n+5){display:none}.sin-cr-det{padding-left:16px}}
+
+/* Detalle de tarea */
+.td-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px}
+.td-tag{font-size:11.5px;padding:2px 8px;border-radius:6px;background:#F1F5F9;color:#475569}
+.td-tag.az{background:#DBEAFE;color:#1D4ED8}.td-tag.rj{background:#FEE2E2;color:#991B1B}.td-tag.am{background:#FEF3C7;color:#92400E}.td-tag.vd{background:#DCFCE7;color:#166534}
+.td-ctx{display:flex;gap:10px;align-items:center;background:#F8FAFC;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:13px;line-height:1.45}
+.td-ctx a{color:#1D4ED8;text-decoration:none;font-size:12.5px;white-space:nowrap}.td-ctx b{font-weight:600}
+.td-ic{font-size:18px}.td-mu{color:var(--muted);font-size:12px}
+.td-desc{font-size:12.5px;color:var(--text2);background:#F8FAFC;border-radius:8px;padding:8px 12px;margin-top:8px;line-height:1.5}
+.td-cu{display:flex;gap:6px;align-items:center;font-size:12.5px;margin-top:4px;cursor:pointer}.td-cu input{width:auto;margin:0}
+.td-acc{display:flex;gap:6px;flex-wrap:wrap}
+.td-b{font-size:12.5px;padding:6px 11px;border-radius:7px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;font-family:inherit;color:var(--text)}
+.td-b:hover{background:#F1F5F9}.td-b.ok{border-color:#86EFAC;color:#166534;background:#F0FDF4}
+.td-posp{gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px}
+.td-seg{display:flex;gap:3px;background:#F1F5F9;border-radius:8px;padding:3px;margin-top:12px}
+.td-seg button{flex:1;border:0;background:none;padding:6px;border-radius:6px;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+.td-seg button.on{background:var(--white);color:var(--text);font-weight:600;box-shadow:0 0 0 0.5px var(--border)}
+.td-hist{border-left:2px solid #CBD5E1;padding-left:12px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;font-size:12.5px}
+.td-h-it{line-height:1.45}.td-h-it.sis{color:var(--text2)}.td-h-f{color:var(--muted)}
+.td-edit{border-top:0.5px solid var(--border);padding-top:8px}.td-edit summary{font-size:12.5px;color:var(--muted);cursor:pointer}

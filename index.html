@@ -1530,13 +1530,28 @@
 
 <!-- MODAL DETALLE TAREA -->
 <div class="modal-ov" id="modal-tar-det">
-  <div class="modal-box" style="max-width:720px">
-    <div class="modal-t">
-      <span id="tar-det-titulo">Detalle de tarea</span>
+  <div class="modal-box" style="max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px">
+      <div>
+        <div id="tar-det-badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
+        <div id="tar-det-titulo" style="font-size:16px;font-weight:600;color:var(--text)">Detalle de tarea</div>
+      </div>
       <button type="button" class="modal-x" onclick="cerrarModal('modal-tar-det')">&#10005;</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 260px;gap:16px">
-      <div>
+    <div id="tar-det-ctx"></div>
+    <div class="td-lbl">¿Qué pasó?</div>
+    <div id="tar-det-acc" class="td-acc"></div>
+    <div id="tar-det-posp" style="display:none" class="td-posp"></div>
+    <div id="tar-det-estados" class="td-seg"></div>
+    <div class="td-lbl">Historial</div>
+    <div id="tar-comentarios" class="td-hist"></div>
+    <div style="display:flex;gap:8px;margin:8px 0 14px">
+      <input type="text" id="nuevo-coment" placeholder="Escribí un comentario y Enter" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px;font-family:inherit">
+      <button type="button" class="btn btn-sm" id="btn-add-coment">Agregar</button>
+    </div>
+    <details id="tar-det-edit" class="td-edit">
+      <summary>Editar datos (título, tablero, prioridad, fechas, cliente, póliza, descripción)</summary>
+      <div style="padding-top:10px">
         <div class="frow"><label>Título</label>
           <input type="text" id="tar-edit-titulo" style="font-weight:600">
         </div>
@@ -1596,13 +1611,7 @@
           <button type="button" class="btn btn-sm btn-p" id="btn-tar-guardar">Guardar cambios</button>
         </div>
       </div>
-      <div style="border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comentarios</div>
-        <div id="tar-comentarios" style="flex:1;overflow-y:auto;max-height:320px;margin-bottom:10px"></div>
-        <textarea id="nuevo-coment" placeholder="Agregar comentario..." style="padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;font-family:inherit;resize:none;min-height:60px;margin-bottom:6px"></textarea>
-        <button type="button" class="btn btn-sm btn-p" id="btn-add-coment">Agregar</button>
-      </div>
-    </div>
+    </details>
   </div>
 </div>
 
@@ -8596,8 +8605,9 @@ function irACliente(id) {
 }
 
 async function verDetalleTarea(id) {
-  const { data: t } = await sb.from('tareas').select('*,clientes(nombre,apellido)').eq('id', id).single();
+  const { data: t } = await sb.from('tareas').select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('id', id).single();
   if (!t) return;
+  window._tarDet = t;
 
   // Set title
   document.getElementById('tar-det-titulo').textContent = t.titulo;
@@ -8663,27 +8673,202 @@ async function verDetalleTarea(id) {
   const addBtn = document.getElementById('btn-add-coment');
   if (addBtn) { addBtn.onclick = function() { agregarComent(id); }; }
   // El cuadro de comentario arranca vacío en cada tarea (antes quedaba el texto de la tarea anterior)
-  var nc = document.getElementById('nuevo-coment'); if (nc) nc.value = '';
+  var nc = document.getElementById('nuevo-coment'); if (nc) { nc.value = ''; nc.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); agregarComent(id); } }; }
+  var ed = document.getElementById('tar-det-edit'); if (ed) ed.open = false;
+  renderTareaVista(t);
 
   document.getElementById('modal-tar-det').classList.add('open');
 }
 
+// ══ Detalle de tarea: contexto + "¿Qué pasó?" según el tipo ══
+function _tipoTarea(t) {
+  var tp = String(t.tipo || ''), tit = String(t.titulo || '') + ' ' + String(t.descripcion || '');
+  if (tp === 'Gestionar mora' || t.tablero === 'cobranzas') return 'cobro';
+  if (tp === 'Completar cliente') return 'completar';
+  if (/renov/i.test(tp) || t.tablero === 'renovaciones') return 'renovacion';
+  if (t.tablero === 'siniestros' || /siniestro/i.test(tp + ' ' + t.titulo)) return 'siniestro';
+  if (t.tablero === 'ventas' || /cotiz/i.test(tp)) return 'cotizacion';
+  if (/respuesta|pedid|pedimos|reclam|mail\.google/i.test(tit) && /compa|titanium|broker|art|ruth|cecilia|carolina|provincia|sancor|segunda|zurich|smg|fed/i.test(tit)) return 'pedido';
+  return 'general';
+}
+var _TT_LBL = { cobro: ['Cobro', 'rj'], completar: ['Completar cliente', 'az'], renovacion: ['Renovación', 'az'], siniestro: ['Siniestro', 'am'], cotizacion: ['Cotización', 'vd'], pedido: ['Pedido', 'gr'], general: ['General', 'gr'] };
+function _tdBtn(txt, fn, cls) { return '<button type="button" class="td-b' + (cls ? ' ' + cls : '') + '" onclick="' + fn + '">' + txt + '</button>'; }
+async function renderTareaVista(t) {
+  var tt = _tipoTarea(t), hoy = new Date().toISOString().slice(0, 10);
+  var lbl = _TT_LBL[tt];
+  var prio = { urgente: 'Urgente', alta: 'Alta', media: 'Media', baja: 'Baja' }[t.prioridad] || '';
+  var venc = t.fecha_limite ? (t.fecha_limite < hoy && t.estado !== 'cerrada' ? 'venció ' : 'vence ') + fmtDate(t.fecha_limite) : '';
+  document.getElementById('tar-det-badges').innerHTML = '<span class="td-tag ' + lbl[1] + '">' + lbl[0] + '</span>'
+    + (prio || venc ? '<span class="td-tag ' + (t.fecha_limite && t.fecha_limite < hoy && t.estado !== 'cerrada' ? 'rj' : 'gr') + '">' + [prio, venc].filter(Boolean).join(' · ') + '</span>' : '')
+    + (t.estado === 'cerrada' ? '<span class="td-tag vd">✓ Hecha</span>' : '');
+  // Estado en botones
+  var EST = [['pendiente', 'Pendiente'], ['encurso', 'En curso'], ['esperando', 'Esperando'], ['cerrada', 'Hecha']];
+  document.getElementById('tar-det-estados').innerHTML = EST.map(function (e) { return '<button type="button" class="' + (t.estado === e[0] ? 'on' : '') + '" onclick="tarAccion(\'' + e[0] + '\')">' + e[1] + '</button>'; }).join('');
+  document.getElementById('tar-det-posp').style.display = 'none';
+  var ctx = document.getElementById('tar-det-ctx'), acc = document.getElementById('tar-det-acc');
+  ctx.innerHTML = ''; acc.innerHTML = '<span style="font-size:12px;color:var(--muted)">Cargando…</span>';
+  var pol = null;
+  if (t.poliza_id) { var rp = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,fecha_vencimiento,valor_cuota,patente,estado,bien_asegurado,cliente_id').eq('id', t.poliza_id).single(); pol = rp.data; }
+  if (!window._tarDet || window._tarDet.id !== t.id) return;
+  var cardPol = pol ? '<div class="td-ctx"><span class="td-ic">📄</span><div style="flex:1"><b>' + esc((pol.ramo || '') + ' N° ' + pol.numero_poliza) + '</b> · ' + esc(pol.aseguradora || '')
+    + (pol.patente ? ' · ' + esc(pol.patente) : '') + '<br><span class="td-mu">' + (pol.fecha_vencimiento ? 'Vence ' + fmtDate(pol.fecha_vencimiento) : '') + (pol.valor_cuota ? ' · cuota $' + Math.round(pol.valor_cuota).toLocaleString('es-AR') : '') + (pol.estado && pol.estado !== 'activa' ? ' · ' + esc(pol.estado) : '') + '</span></div>'
+    + '<a href="#" onclick="cerrarModal(\'modal-tar-det\');abrirDetallePol(\'' + pol.id + '\');return false">Ver póliza ›</a></div>' : '';
+  var desc = t.descripcion ? '<div class="td-desc">' + esc(t.descripcion).replace(/\n/g, '<br>') + '</div>' : '';
+  var B = [], posp = _tdBtn('📅 Posponer', 'tarPosponer()');
+  var gmail = (String(t.descripcion || '').match(/https:\/\/mail\.google\.com\S+/) || [])[0];
+  if (tt === 'renovacion') {
+    ctx.innerHTML = cardPol || desc;
+    if (pol) B.push(_tdBtn('✅ Se renovó · cargar póliza', 'tarRenovo()', 'ok'));
+    B.push(_tdBtn('⏳ Esperando a la compañía', "tarAccion('esperando','Esperando a la compañía')"));
+    if (pol) B.push(_tdBtn('✕ No renueva', 'tarNoRenueva()'));
+    B.push(posp);
+  } else if (tt === 'cobro') {
+    var cuotas = [];
+    if (t.cliente_id) {
+      var rc = await sb.from('cobranzas').select('id,numero_cuota,monto,fecha_vencimiento,medio_pago,poliza_id,polizas(numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado)').eq('cliente_id', t.cliente_id).eq('estado', 'pendiente').lt('fecha_vencimiento', hoy).order('fecha_vencimiento');
+      cuotas = (rc.data || []).filter(function (c) { return Number(c.monto) > 0 && !esPagoAutomatico(c.polizas, c); });
+    }
+    window._tarCuotas = cuotas;
+    var tot = cuotas.reduce(function (a, c) { return a + Number(c.monto); }, 0);
+    ctx.innerHTML = cuotas.length ? '<div class="td-ctx" style="align-items:flex-start"><span class="td-ic">💵</span><div style="flex:1">Debe <b>$' + Math.round(tot).toLocaleString('es-AR') + '</b>'
+      + cuotas.map(function (c) { var p = c.polizas || {}; return '<label class="td-cu"><input type="checkbox" class="td-cu-chk" value="' + c.id + '"> ' + esc((p.ramo || '') + ' ' + (p.numero_poliza || '')) + ' · cuota ' + (c.numero_cuota || '?') + ' · vence ' + fmtDate(c.fecha_vencimiento) + ' · <b>$' + Math.round(c.monto).toLocaleString('es-AR') + '</b></label>'; }).join('')
+      + '<div class="td-mu" style="margin-top:4px">Tildá las que pagó y tocá "Ya pagó".</div></div></div>'
+      : '<div class="td-ctx"><span class="td-ic">✓</span><div>No le quedan cuotas de pago manual vencidas.</div></div>';
+    B.push(_tdBtn('💬 Avisar por WhatsApp', 'tarWhatsappCobro()'));
+    B.push(_tdBtn('📧 Mandar mail', "tarMail('cobranzas')"));
+    if (cuotas.length) B.push(_tdBtn('✅ Ya pagó', 'tarYaPago()', 'ok')); else B.push(_tdBtn('✅ Cerrar tarea', "tarAccion('cerrada','Cuotas al día')", 'ok'));
+    B.push(posp);
+  } else if (tt === 'completar') {
+    var cl = null; if (t.cliente_id) { var rcl = await sb.from('clientes').select('*').eq('id', t.cliente_id).single(); cl = rcl.data; }
+    if (cl) {
+      var campos = [['DNI', cl.dni], ['CUIT', cl.cuit], ['domicilio', cl.direccion], ['localidad', cl.localidad], ['teléfono', cl.telefono_principal], ['mail', cl.email_principal], ['fecha de nacimiento', cl.fecha_nacimiento]];
+      var tiene = campos.filter(function (c) { return c[1]; }).map(function (c) { return c[0]; }), falta = campos.filter(function (c) { return !c[1]; }).map(function (c) { return c[0]; });
+      ctx.innerHTML = '<div class="td-ctx"><span class="td-ic">👤</span><div style="flex:1">' + (tiene.length ? 'Tiene: ' + tiene.join(', ') : 'Sin datos cargados') + (falta.length ? '<br><span style="color:#B91C1C">Falta: ' + falta.join(', ') + '</span>' : '<br><span style="color:#166534">Datos completos</span>') + '</div></div>';
+    }
+    B.push(_tdBtn('✏ Completar datos', "cerrarModal('modal-tar-det');completarCliente('" + t.cliente_id + "')", 'ok'));
+    B.push(_tdBtn('📧 Pedirle los datos al cliente', "tarMail('administracion','Pedirle al cliente los datos que faltan')"));
+    B.push(posp);
+  } else if (tt === 'siniestro') {
+    var sn = null;
+    if (t.cliente_id) { var rs = await sb.from('siniestros').select('id,numero_expediente,aseguradora,tipo_siniestro,fecha_hecho,etapa_actual,estado,created_at,cliente_id').eq('cliente_id', t.cliente_id).neq('estado', 'cerrado').order('created_at', { ascending: false }).limit(1); sn = (rs.data || [])[0]; }
+    window._tarSin = sn;
+    ctx.innerHTML = sn ? '<div class="td-ctx"><span class="td-ic">🚗</span><div style="flex:1"><b>Siniestro' + (sn.numero_expediente ? ' N° ' + esc(sn.numero_expediente) : '') + '</b> · ' + esc(sn.aseguradora || '') + '<br><span class="td-mu">' + esc(sn.tipo_siniestro || '') + (sn.fecha_hecho ? ' ' + fmtDate(sn.fecha_hecho) : '') + ' · etapa ' + esc(sn.etapa_actual || '') + ' · ' + Math.round((new Date() - new Date(sn.created_at)) / 864e5) + ' días abierto</span></div>'
+      + '<a href="#" onclick="cerrarModal(\'modal-tar-det\');irAFichaConSin(\'' + sn.cliente_id + '\',\'' + sn.id + '\');return false">Ver ›</a></div>' : (cardPol || desc);
+    if (sn) B.push(_tdBtn('➡ Abrir el siniestro (cambiar etapa, subir documentos)', "cerrarModal('modal-tar-det');irAFichaConSin('" + sn.cliente_id + "','" + sn.id + "')"));
+    B.push(_tdBtn('📧 Pedir por mail', "tarMail('siniestros')"));
+    B.push(_tdBtn('⏳ Esperando', "tarAccion('esperando','Esperando respuesta')"));
+    B.push(_tdBtn('✅ Hecha', "tarAccion('cerrada')", 'ok'));
+    B.push(posp);
+  } else if (tt === 'cotizacion') {
+    ctx.innerHTML = cardPol || desc;
+    B.push(_tdBtn('📤 Enviar al cliente', "tarMail('cotizaciones','Mandarle la cotización al cliente')"));
+    B.push(_tdBtn('✅ Aceptó · cargar póliza', 'tarAcepto()', 'ok'));
+    B.push(_tdBtn('✕ No le interesó', 'tarNoInteresa()'));
+    B.push(posp);
+  } else if (tt === 'pedido') {
+    ctx.innerHTML = '<div class="td-ctx"><span class="td-ic">📨</span><div style="flex:1">' + esc(String(t.descripcion || t.titulo).replace(/https:\/\/mail\.google\.com\S+/, '').slice(0, 220)) + '</div>' + (gmail ? '<a href="' + esc(gmail) + '" target="_blank">Ver mail ›</a>' : '') + '</div>';
+    B.push(_tdBtn('✅ Respondieron', "tarAccion('cerrada','Respondieron')", 'ok'));
+    B.push(_tdBtn('🔁 Reclamar por mail', "tarMail('administracion','Reclamar respuesta: " + esc(String(t.titulo).replace(/'/g, '')) + "')"));
+    B.push(posp);
+  } else {
+    ctx.innerHTML = cardPol + desc;
+    B.push(_tdBtn('✅ Hecha', "tarAccion('cerrada')", 'ok'));
+    B.push(_tdBtn('⏳ Esperando', "tarAccion('esperando','Esperando respuesta')"));
+    B.push(posp);
+  }
+  if ((tt === 'renovacion' || tt === 'cotizacion' || tt === 'siniestro') && cardPol && ctx.innerHTML.indexOf('Ver póliza') < 0) ctx.innerHTML += cardPol;
+  if (tt !== 'general' && tt !== 'pedido' && tt !== 'cobro' && desc && ctx.innerHTML.indexOf('td-desc') < 0) ctx.innerHTML += desc;
+  acc.innerHTML = B.join('');
+}
+// Cambia el estado (y deja el comentario) sin pasar por "Guardar cambios"
+async function tarAccion(estado, comentario, extra) {
+  var t = window._tarDet; if (!t) return;
+  var upd = Object.assign({ estado: estado }, extra || {});
+  if (estado === 'cerrada' && comentario && !upd.resultado) upd.resultado = comentario;
+  var r = await sb.from('tareas').update(upd).eq('id', t.id); if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  var EST = { pendiente: 'Pendiente', encurso: 'En curso', esperando: 'Esperando', cerrada: 'Hecha' };
+  var nota = (estado !== t.estado ? 'Estado: ' + (EST[t.estado] || t.estado) + ' → ' + (EST[estado] || estado) : '') + (comentario ? (estado !== t.estado ? ' · ' : '') + comentario : '');
+  if (nota) await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: nota, tipo: 'sistema' });
+  Object.assign(t, upd); var se = document.getElementById('tar-edit-estado'); if (se) se.value = t.estado;
+  if (upd.fecha_limite) { var sf = document.getElementById('tar-edit-fecha'); if (sf) sf.value = upd.fecha_limite; }
+  renderTareaVista(t); cargarComentariosTarea(t.id);
+  if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
+  if (estado === 'cerrada') mostrarAlerta('Tarea hecha');
+}
+function tarPosponer() {
+  var box = document.getElementById('tar-det-posp');
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  var d = function (n) { var x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  var lunes = function () { var x = new Date(); x.setDate(x.getDate() + ((8 - x.getDay()) % 7 || 7)); return x.toISOString().slice(0, 10); };
+  box.innerHTML = '<span class="td-mu">Posponer hasta:</span> '
+    + [['Mañana', d(1)], ['En 3 días', d(3)], ['Próx. semana', lunes()]].map(function (o) { return '<button type="button" class="td-b" onclick="tarPosponerA(\'' + o[1] + '\')">' + o[0] + '</button>'; }).join('')
+    + '<input type="date" id="tar-posp-f" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px"><button type="button" class="td-b" onclick="var v=document.getElementById(\'tar-posp-f\').value;if(v)tarPosponerA(v)">OK</button>';
+  box.style.display = 'flex';
+}
+function tarPosponerA(f) { tarAccion(window._tarDet.estado === 'cerrada' ? 'pendiente' : window._tarDet.estado, 'Pospuesta para el ' + fmtDate(f), { fecha_limite: f }); }
+async function tarRenovo() {
+  var t = window._tarDet; if (!t || !t.poliza_id) return;
+  await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: 'Se renovó: cargando la póliza nueva', tipo: 'sistema' });
+  cerrarModal('modal-tar-det');
+  await abrirConfirmarRenovacion(t.poliza_id, t.id); if (_rv) renovacionSi(false);
+}
+async function tarNoRenueva() {
+  var t = window._tarDet; if (!t || !t.poliza_id) return;
+  cerrarModal('modal-tar-det');
+  await abrirConfirmarRenovacion(t.poliza_id, t.id); renovacionNo();
+}
+function tarMail(area, que) {
+  var t = window._tarDet; if (!t) return;
+  window._ofRefs = window._ofRefs || {};
+  var ref = { cliente_id: t.cliente_id || null, poliza_id: t.poliza_id || null, tarea_id: t.id, siniestro_id: (window._tarSin || {}).id || null, texto: que || t.titulo };
+  window._ofRefs[t.id] = ref;
+  cerrarModal('modal-tar-det'); abrirGestionarPorMail(area, ref);
+}
+async function tarWhatsappCobro() {
+  var t = window._tarDet; if (!t) return;
+  var cl = t.cliente_id ? (await sb.from('clientes').select('nombre,telefono_principal,telefono_secundario').eq('id', t.cliente_id).single()).data : null;
+  var cs = window._tarCuotas || [], tot = cs.reduce(function (a, c) { return a + Number(c.monto); }, 0);
+  var det = cs.map(function (c) { var p = c.polizas || {}; return '• ' + (p.ramo || '') + ' N° ' + (p.numero_poliza || '') + ': cuota ' + (c.numero_cuota || '') + ' vencida el ' + fmtDate(c.fecha_vencimiento) + ', $' + Math.round(c.monto).toLocaleString('es-AR'); }).join('\n');
+  var msg = 'Hola ' + ((cl && cl.nombre) ? cl.nombre.split(' ')[0].charAt(0) + cl.nombre.split(' ')[0].slice(1).toLowerCase() : '') + ', ¿cómo estás? Te escribo de MB Seguros para recordarte que tenés ' + (cs.length === 1 ? 'una cuota pendiente' : cs.length + ' cuotas pendientes') + ' por un total de $' + Math.round(tot).toLocaleString('es-AR') + ':\n' + det + '\nCualquier consulta estoy a disposición. ¡Gracias!';
+  var tel = cl ? normalizarTelefono(cl.telefono_principal || cl.telefono_secundario || '') : '';
+  window.open('https://wa.me/' + (tel || '') + '?text=' + encodeURIComponent(msg), '_blank');
+  await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: 'Aviso por WhatsApp' + (tel ? '' : ' (sin teléfono cargado: elegí el contacto)'), tipo: 'sistema' });
+  if (t.estado === 'pendiente') tarAccion('esperando'); else cargarComentariosTarea(t.id);
+}
+async function tarYaPago() {
+  var t = window._tarDet; if (!t) return;
+  var ids = Array.prototype.slice.call(document.querySelectorAll('.td-cu-chk:checked')).map(function (x) { return x.value; });
+  if (!ids.length) { alert('Tildá las cuotas que pagó.'); return; }
+  var hoy = new Date().toISOString().slice(0, 10);
+  var r = await sb.from('cobranzas').update({ estado: 'pagada', fecha_pago: hoy }).in('id', ids); if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  var cs = window._tarCuotas || [], pag = cs.filter(function (c) { return ids.indexOf(c.id) >= 0; });
+  var monto = pag.reduce(function (a, c) { return a + Number(c.monto); }, 0);
+  var txt = 'Pagó ' + pag.length + (pag.length === 1 ? ' cuota' : ' cuotas') + ' ($' + Math.round(monto).toLocaleString('es-AR') + ')';
+  if (pag.length >= cs.length) tarAccion('cerrada', txt + ' · al día');
+  else { await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: txt, tipo: 'sistema' }); renderTareaVista(t); cargarComentariosTarea(t.id); }
+}
+async function tarAcepto() {
+  var t = window._tarDet; if (!t) return;
+  await tarAccion('cerrada', 'Aceptó la cotización');
+  cerrarModal('modal-tar-det');
+  if (t.cliente_id && typeof fichaAbrirPoliza === 'function') fichaAbrirPoliza({ getAttribute: function () { return t.cliente_id; } });
+}
+function tarNoInteresa() {
+  var m = prompt('¿Por qué no le interesó? (precio, se queda en su compañía…)'); if (m === null) return;
+  tarAccion('cerrada', 'No le interesó' + (m ? ': ' + m : ''));
+}
 async function cargarComentariosTarea(id) {
   const { data: notas } = await sb.from('notas_tareas').select('*').eq('tarea_id', id).order('created_at');
   const cont = document.getElementById('tar-comentarios');
   if (!cont) return;
-  if (!notas || !notas.length) {
-    cont.innerHTML = '<div style="font-size:12px;color:var(--lt);padding:6px 0">Sin comentarios.</div>';
-    return;
-  }
-  const tipoBg = { sistema: '#F0F2F5', Avance: '#E8F8F0', Contacto: '#EBF4FC', Alerta: '#FDEDEC', General: '#fff' };
-  cont.innerHTML = notas.map(function(n) {
-    const bg = tipoBg[n.tipo] || '#fff';
-    return '<div style="padding:7px 8px;border-radius:6px;margin-bottom:6px;background:' + bg + ';border:1px solid var(--border)">'
-      + '<div style="font-size:12px;color:var(--text)">' + n.texto + '</div>'
-      + '<div style="font-size:10px;color:var(--lt);margin-top:3px">' + new Date(n.created_at).toLocaleString('es-AR') + ' · ' + (n.tipo || 'General') + '</div>'
-      + '</div>';
-  }).join('');
+  var t0 = window._tarDet && window._tarDet.id === id ? window._tarDet : null;
+  var fh = function (d) { var x = new Date(d); return x.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + x.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); };
+  var items = [];
+  if (t0) items.push('<div class="td-h-it"><span class="td-h-f">' + fh(t0.created_at) + '</span> · ' + (t0.auto_generada ? 'Tarea creada sola por el CRM' : 'Tarea creada') + '</div>');
+  (notas || []).forEach(function (n) {
+    items.push('<div class="td-h-it' + (n.tipo === 'sistema' ? ' sis' : '') + '"><span class="td-h-f">' + fh(n.created_at) + '</span> · ' + esc(n.texto) + '</div>');
+  });
+  cont.innerHTML = items.length ? items.join('') : '<div style="font-size:12px;color:var(--lt);padding:6px 0">Sin comentarios.</div>';
   cont.scrollTop = cont.scrollHeight;
 }
 async function agregarComent(tareaId) {
