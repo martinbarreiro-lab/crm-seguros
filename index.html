@@ -13524,6 +13524,19 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     }
   }
   if (vig) { d.fecha_inicio = vig[0]; d.fecha_vencimiento = vig[1]; d.periodo_meses = vig[2]; }
+  // Sancor: "Desde 14/10/2026 · Hasta 14/12/2026 (*)" y abajo "(*) Prórroga automática de vigencia hasta las 12 hs. 14/03/2027":
+  // el "hasta" con asterisco es solo el tramo facturado; la vigencia real termina en la fecha de la prórroga
+  var mpr = T.match(/PRORROGA AUTOMATICA DE VIGENCIA HASTA (?:LAS )?(?:12 ?HS\.?)?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mpr) {
+    var fpr = _isoFecha(+mpr[1], +mpr[2], mpr[3]);
+    var mde = T.match(/DESDE (?:LAS )?12 ?HS\.?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    var fde = mde ? _isoFecha(+mde[1], +mde[2], mde[3]) : d.fecha_inicio;
+    if (fpr && fde && fpr > fde) {
+      d.fecha_inicio = fde; d.fecha_vencimiento = fpr; d.mensual = true;
+      var a1 = new Date(fde + 'T12:00:00'), b1 = new Date(fpr + 'T12:00:00');
+      d.periodo_meses = Math.max(1, Math.round((b1 - a1) / (30.44 * 864e5)));
+    }
+  }
   // ¿Refactura mensual? (además de la vigencia anual hay un tramo de 1 mes que arranca el mismo día)
   if (d.fecha_inicio && d.periodo_meses !== 1) {
     var mes1 = _sumarMeses(d.fecha_inicio, 1);
