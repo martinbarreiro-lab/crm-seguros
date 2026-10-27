@@ -11869,6 +11869,18 @@ function parseCSV(text) {
 // comparación en memoria, upsert masivo al final
 // ══════════════════════════════════════════════════════════
 
+// Supabase devuelve como máximo 1000 filas por consulta: esto trae todas, de a 1000
+async function _todo(armar) {
+  var out = [], desde = 0;
+  while (true) {
+    var r = await armar().range(desde, desde + 999);
+    if (r.error) return { data: out.length ? out : null, error: r.error };
+    out = out.concat(r.data || []);
+    if (!r.data || r.data.length < 1000) break;
+    desde += 1000;
+  }
+  return { data: out, error: null };
+}
 async function normalizarYSincronizar(parsed, filename) {
   document.getElementById('comp-result-card').style.display = 'block';
   compLog('info', 'Archivo leído: ' + parsed.clientes.length + ' clientes, ' + parsed.polizas.length + ' pólizas');
@@ -11888,9 +11900,9 @@ async function normalizarYSincronizar(parsed, filename) {
   try {
     // ── Traer TODO de Supabase en 3 consultas ──────────────
     var [{ data: clBD }, { data: polBD }, { data: cobBD }] = await Promise.all([
-      sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,email_principal,telefono_principal').eq('productor_id', uid),
-      sb.from('polizas').select('id,numero_poliza,ramo,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at,clientes(nombre,apellido,razon_social)').eq('productor_id', uid).order('created_at'),
-      sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid),
+      _todo(function(){ return sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,email_principal,telefono_principal').eq('productor_id', uid); }),
+      _todo(function(){ return sb.from('polizas').select('id,numero_poliza,ramo,fecha_vencimiento,prima_anual,estado,cliente_id,cobertura,cod_aseg_fedpat,datos_ramo,created_at,clientes(nombre,apellido,razon_social)').eq('productor_id', uid).order('created_at'); }),
+      _todo(function(){ return sb.from('cobranzas').select('id,poliza_id,numero_cuota').eq('productor_id', uid); }),
     ]);
 
     // Índices en memoria para búsqueda O(1)
@@ -11986,7 +11998,7 @@ async function normalizarYSincronizar(parsed, filename) {
     }
 
     // Refrescar índice de clientes con los recién insertados
-    var { data: clBD2 } = await sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,cod_comp_fedpat').eq('productor_id', uid);
+    var { data: clBD2 } = await _todo(function(){ return sb.from('clientes').select('id,nombre,apellido,dni,cuit,razon_social,cod_comp_fedpat').eq('productor_id', uid); });
     var clPorNombre2 = {}, clPorDni2 = {}, clPorCodComp = {}, clPorCuit2 = {};
     (clBD2||[]).forEach(function(c){
       var cd2 = String(c.cuit||'').replace(/\D/g,''); if (cd2) clPorCuit2[cd2] = c;
@@ -12095,12 +12107,12 @@ async function normalizarYSincronizar(parsed, filename) {
     // ── Cobranzas (solo Fed Patronal por ahora) ────────────
     var cobranzasArr = parsed.cobranzas || [];
     if (cobranzasArr.length) {
-      var { data: polBD2 } = await sb.from('polizas').select('id,numero_poliza,cliente_id,created_at').eq('productor_id', uid).order('created_at');
+      var { data: polBD2 } = await _todo(function(){ return sb.from('polizas').select('id,numero_poliza,cliente_id,created_at').eq('productor_id', uid).order('created_at'); });
       var polIdx2 = {}, polCli2 = {};
       (polBD2||[]).forEach(function(p){ var kn = String(p.numero_poliza); if (!polIdx2[kn]) { polIdx2[kn] = p.id; polCli2[p.id] = p.cliente_id; } });
 
       // Cuotas ya cargadas: por número de recibo; las viejas (sin número) se reconocen por póliza + vencimiento + importe
-      var { data: cobAll } = await sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,estado,numero_recibo').eq('productor_id', uid);
+      var { data: cobAll } = await _todo(function(){ return sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,estado,numero_recibo').eq('productor_id', uid); });
       var cobPorRecibo = {}, cobViejas = {};
       (cobAll||[]).forEach(function(c){
         if (c.numero_recibo) cobPorRecibo[c.poliza_id + '_' + c.numero_recibo] = c;
@@ -12233,14 +12245,14 @@ async function normalizarYSincronizar(parsed, filename) {
     var coberturasArr = parsed.coberturas || [];
     if (coberturasArr.length) {
       // Traer coberturas existentes para no duplicar
-      var { data: cobExist } = await sb.from('coberturas').select('poliza_id,descripcion').eq('productor_id', uid);
+      var { data: cobExist } = await _todo(function(){ return sb.from('coberturas').select('poliza_id,descripcion').eq('productor_id', uid); });
       var cobExistIdx = {};
       (cobExist||[]).forEach(function(c){ cobExistIdx[c.poliza_id+'_'+c.descripcion] = true; });
 
       // Refrescar índice pólizas si no fue creado antes
       var polBD3 = polBD2 || [];
       if (!polBD3.length) {
-        var { data: _p } = await sb.from('polizas').select('id,numero_poliza').eq('productor_id', uid);
+        var { data: _p } = await _todo(function(){ return sb.from('polizas').select('id,numero_poliza').eq('productor_id', uid); });
         polBD3 = _p || [];
       }
       var polIdx3 = {};
@@ -12250,7 +12262,7 @@ async function normalizarYSincronizar(parsed, filename) {
     var renovaciones = parsed.polizas.filter(function(p){ return p._renueva_a; });
     if (renovaciones.length) {
       var nrosAnt = renovaciones.map(function(p){ return p._renueva_a; });
-      var { data: polsAnt } = await sb.from('polizas').select('id,numero_poliza,estado,cliente_id,ramo').eq('productor_id', uid).in('numero_poliza', nrosAnt);
+      var { data: polsAnt } = await _todo(function(){ return sb.from('polizas').select('id,numero_poliza,estado,cliente_id,ramo').eq('productor_id', uid).in('numero_poliza', nrosAnt); });
       if (polsAnt && polsAnt.length) {
         var renovarIds = polsAnt.filter(function(p){ return p.estado !== 'renovada'; }).map(function(p){ return p.id; });
         if (renovarIds.length) {
