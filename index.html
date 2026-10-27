@@ -13298,6 +13298,9 @@ async function _leerPdfRenovacion(f) {
         .sort(function (a, b) { return Math.abs(new Date(a + 'T12:00:00') - obj) - Math.abs(new Date(b + 'T12:00:00') - obj); })[0];
       if (sig) { document.getElementById('rv-vto').value = sig; msg.push('vigencia ' + fmtDate(ini) + ' → ' + fmtDate(sig)); }
     }
+    // Sancor: si tiene prórroga automática, la vigencia es "desde" → fecha de la prórroga
+    var dx = extraerDatosPoliza(T, f.name);
+    if (dx.prorroga) { document.getElementById('rv-ini').value = dx.fecha_inicio; document.getElementById('rv-vto').value = dx.fecha_vencimiento; msg = msg.filter(function (x) { return x.indexOf('vigencia') < 0; }); msg.push('vigencia ' + fmtDate(dx.fecha_inicio) + ' → ' + fmtDate(dx.fecha_vencimiento) + ' (prórroga automática)'); }
     info.textContent = msg.length ? '✓ Leí del PDF: ' + msg.join(' · ') + '. Revisá y guardá.' : 'No pude sacar los datos del PDF: completalos a mano.';
   } catch (e) { info.textContent = 'No pude leer el PDF (' + (e.message || e) + '): completá los datos a mano.'; }
 }
@@ -13532,7 +13535,7 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     var mde = T.match(/DESDE (?:LAS )?12 ?HS\.?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     var fde = mde ? _isoFecha(+mde[1], +mde[2], mde[3]) : d.fecha_inicio;
     if (fpr && fde && fpr > fde) {
-      d.fecha_inicio = fde; d.fecha_vencimiento = fpr; d.mensual = true;
+      d.fecha_inicio = fde; d.fecha_vencimiento = fpr; d.mensual = true; d.prorroga = true;
       var a1 = new Date(fde + 'T12:00:00'), b1 = new Date(fpr + 'T12:00:00');
       d.periodo_meses = Math.max(1, Math.round((b1 - a1) / (30.44 * 864e5)));
     }
@@ -13715,7 +13718,12 @@ async function _planCompletarPoliza(polId, d) {
     if (d.cuit && !cl.cuit) { upC.cuit = d.cuit; cambios.push('CUIT: ' + d.cuit); }
   }
   var avisos = [];
-  if (d.fecha_inicio && d.fecha_inicio !== p.fecha_inicio) avisos.push('En el PDF la vigencia es ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' y en el CRM ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ' (no la cambio; si está mal, usá ✏ Editar).');
+  // Sancor con prórroga automática: la vigencia del PDF es la correcta (el CRM pudo haber tomado solo el tramo facturado)
+  if (d.prorroga && d.fecha_inicio && d.fecha_vencimiento && (d.fecha_inicio !== p.fecha_inicio || d.fecha_vencimiento !== p.fecha_vencimiento)) {
+    upP.fecha_inicio = d.fecha_inicio; upP.fecha_vencimiento = d.fecha_vencimiento; upP.periodo_meses = d.periodo_meses;
+    upP.datos_ramo = Object.assign(upP.datos_ramo || dr, { refacturacion: 'mensual', prorroga_hasta: d.fecha_vencimiento });
+    cambios.push('vigencia: ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' (antes ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ')');
+  } else if (d.fecha_inicio && d.fecha_inicio !== p.fecha_inicio) avisos.push('En el PDF la vigencia es ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' y en el CRM ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ' (no la cambio; si está mal, usá ✏ Editar).');
   return { p: p, cambios: cambios, avisos: avisos, aplicar: async function () {
     if (Object.keys(upP).length) { var r1 = await sb.from('polizas').update(upP).eq('id', polId); if (r1.error) throw r1.error; }
     if (Object.keys(upC).length) { var r2 = await sb.from('clientes').update(upC).eq('id', cl.id); if (r2.error) throw r2.error; }
