@@ -8717,9 +8717,9 @@ async function renderTareaVista(t) {
   var B = [], posp = _tdBtn('📅 Posponer', 'tarPosponer()');
   var gmail = (String(t.descripcion || '').match(/https:\/\/mail\.google\.com\S+/) || [])[0];
   if (tt === 'renovacion') {
-    ctx.innerHTML = cardPol || desc;
+    ctx.innerHTML = (cardPol || desc) + (t.tipo === 'Confirmar renovación' && t.estado !== 'cerrada' && t.fecha_limite ? '<div class="td-desc">📌 Ese día: cargar la póliza nueva y mandársela al cliente. Tocá "Se renovó · cargar póliza" y al guardar te ofrece enviarla por WhatsApp o mail.</div>' : '');
     if (pol) B.push(_tdBtn('✅ Se renovó · cargar póliza', 'tarRenovo()', 'ok'));
-    B.push(_tdBtn('⏳ Esperando a la compañía', "tarAccion('esperando','Esperando a la compañía')"));
+    B.push(_tdBtn('⏳ Cotizada · esperando a la compañía', 'tarEsperandoCia()'));
     if (pol) B.push(_tdBtn('✕ No renueva', 'tarNoRenueva()'));
     B.push(posp);
   } else if (tt === 'cobro') {
@@ -8791,6 +8791,7 @@ async function tarAccion(estado, comentario, extra) {
   if (nota) await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: nota, tipo: 'sistema' });
   Object.assign(t, upd); var se = document.getElementById('tar-edit-estado'); if (se) se.value = t.estado;
   if (upd.fecha_limite) { var sf = document.getElementById('tar-edit-fecha'); if (sf) sf.value = upd.fecha_limite; }
+  if (upd.titulo) { document.getElementById('tar-det-titulo').textContent = upd.titulo; var st = document.getElementById('tar-edit-titulo'); if (st) st.value = upd.titulo; }
   renderTareaVista(t); cargarComentariosTarea(t.id);
   if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
   if (estado === 'cerrada') mostrarAlerta('Tarea hecha');
@@ -8806,6 +8807,21 @@ function tarPosponer() {
   box.style.display = 'flex';
 }
 function tarPosponerA(f) { tarAccion(window._tarDet.estado === 'cerrada' ? 'pendiente' : window._tarDet.estado, 'Pospuesta para el ' + fmtDate(f), { fecha_limite: f }); }
+// Renovación cotizada que espera la aprobación de la compañía: la tarea pasa a "¿Se renovó?" para el día
+// que va a estar la póliza; ese día aparece en "Hoy" para cargarla y mandársela al cliente.
+async function tarEsperandoCia() {
+  var t = window._tarDet; if (!t) return;
+  var def = '';
+  if (t.poliza_id) { var r = await sb.from('polizas').select('fecha_vencimiento').eq('id', t.poliza_id).single(); def = (r.data || {}).fecha_vencimiento || ''; }
+  var f = prompt('¿Qué día va a estar la póliza nueva? (DD/MM/AAAA)', def ? fmtDate(def).replace(/\/(\d{2})$/, '/20$1') : '');
+  if (f === null) return;
+  var m = String(f).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/), iso = def;
+  if (m) iso = (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  if (!iso) { alert('Poné la fecha como DD/MM/AAAA'); return; }
+  var nom = String(t.titulo || '').split(' — ').slice(1).join(' — ') || (t.clientes ? nombreClienteLista(t.clientes) : '');
+  tarAccion('esperando', 'Cotizada, esperando la aprobación de la compañía. La póliza estaría el ' + fmtDate(iso) + ': ese día hay que cargarla y mandársela al cliente.',
+    { tipo: 'Confirmar renovación', fecha_limite: iso, titulo: '¿Se renovó? — ' + nom });
+}
 async function tarRenovo() {
   var t = window._tarDet; if (!t || !t.poliza_id) return;
   await sb.from('notas_tareas').insert({ tarea_id: t.id, texto: 'Se renovó: cargando la póliza nueva', tipo: 'sistema' });
