@@ -1850,6 +1850,11 @@ function _cargarJSZip() {
 }
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function _numSinCeros(n) { return String(n || '').replace(/\D/g, '').replace(/^0+/, ''); }
+function _irAImportarFedPat(file) {
+  if (typeof irASeccion === 'function') irASeccion('companias');
+  var b = document.querySelector('.comp-btn[data-comp="fed_patronal"]'); if (b) selComp(b);
+  setTimeout(function () { handleCompFile(file); }, 200);
+}
 function _buscarPolizaPorArchivo(nombre) {
   var runs = (nombre.replace(/\.pdf$/i, '').match(/\d{5,}/g) || []).map(_numSinCeros);
   for (var i = 0; i < runs.length; i++) { var p = _cpdf.pols[runs[i]]; if (p) return p; }
@@ -1902,6 +1907,11 @@ async function _agregarArchivosPdf(files) {
       var f = files[i];
       if (/\.zip$/i.test(f.name)) {
         var JSZip = await _cargarJSZip(); var z = await JSZip.loadAsync(f);
+        var nombres = Object.keys(z.files);
+        if (nombres.some(function (n) { return /(^|\/)(act|xml)\d+\.(zip|dat)$|CART_CLIENTES\.xml$|CART_CERTIFICADOS\.xml$/i.test(n); })) {
+          // Es la actualización de cartera de Fed Pat (XMLs), no PDFs: va al importador de compañías
+          cerrarModal('modal-envio'); _irAImportarFedPat(f); return;
+        }
         var ents = Object.values(z.files).filter(function (e) { return !e.dir && /\.pdf$/i.test(e.name); });
         for (var j = 0; j < ents.length; j++) {
           var nom = ents[j].name.split('/').pop();
@@ -12756,7 +12766,12 @@ handleCompFile = async function(file) {
           }
         }
         // Luego abrir ZIPs anidados en secuencia
-        var zipsAnidados = archivos.filter(function(n){ return n.match(/\.zip$/i); });
+        // Fed Pat manda xmlNNNN.zip (carga inicial, vieja) y actNNNN.zip (actualización): primero la más nueva
+        var zipsAnidados = archivos.filter(function(n){ return n.match(/\.zip$/i); }).sort(function(a, b){
+          var fa = zipObj.files[a].date || 0, fb = zipObj.files[b].date || 0;
+          var pa = /^act/i.test(a.split('/').pop()) ? 1 : 0, pb = /^act/i.test(b.split('/').pop()) ? 1 : 0;
+          return (pb - pa) || (fb - fa);
+        });
         for (var zi = 0; zi < zipsAnidados.length; zi++) {
           try {
             var zBuf = await zipObj.file(zipsAnidados[zi]).async('arraybuffer');
