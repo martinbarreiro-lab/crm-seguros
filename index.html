@@ -2743,13 +2743,13 @@ async function cargarDashboard() {
     sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
-    sb.from('cobranzas').select('id',{count:'exact',head:true}).eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy),
+    sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
     sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
   var todasPol = R[0].data||[], sins = R[1].data||[], cots = R[2].data||[], tars = R[3].data||[];
-  var cuotasVenc = R[4].count||0, cuotasHoy = R[5].data||[], acts = R[6].data||[], venc = R[7].data||[];
+  var cuotasVenc = (R[4].data||[]).filter(function(c){ return !esPagoAutomatico(c.polizas, c); }).length, cuotasHoy = R[5].data||[], acts = R[6].data||[], venc = R[7].data||[];
   var pols = todasPol.filter(function(p){ return !p.fecha_vencimiento || p.fecha_vencimiento >= hoy; });
   var dr = function(p){ var d = p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = {}; } } return d||{}; };
   var nomCl = function(c){ return c ? nombreClienteLista(c) : ''; };
@@ -8215,7 +8215,10 @@ function cobRender() {
       var monto = '$' + Math.round(parseFloat(c.monto)||0).toLocaleString('es-AR');
 
       var col6 = '', col7 = '';
-      if (_cobTab === 'pendiente') {
+      if (_cobTab === 'pendiente' && c._auto) {
+        col6 = '<span style="background:#EFF6FF;color:#1D4ED8;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Se cobra con tarjeta o débito: si rebota, la compañía avisa por mail">💳 Automático</span>';
+        col7 = '<span style="font-size:11px;color:var(--lt)">No hace falta avisar</span>';
+      } else if (_cobTab === 'pendiente') {
         var dias = c._dias_mora || 0;
         var moraBg = dias > 60 ? '#FCEBEB' : dias > 30 ? '#FAEEDA' : '#FEF9C3';
         var moraColor = dias > 60 ? '#A32D2D' : dias > 30 ? '#854F0B' : '#713F12';
@@ -8301,7 +8304,7 @@ async function cargarCobranzas() {
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id').eq('productor_id', user.id).limit(2000)
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago').eq('productor_id', user.id).limit(2000)
   ]);
 
   // Clientes: usar allCl si está disponible, sino cargar
@@ -8314,7 +8317,8 @@ async function cargarCobranzas() {
 
   // Combinar y enriquecer
   var todasCobs = (resMes.data||[]).concat(
-    (resPend.data||[]).filter(function(p){ return !(resMes.data||[]).find(function(m){ return m.id===p.id; }); })
+    // De meses anteriores solo se arrastran las de pago manual: tarjeta y débito los avisa la compañía si rebotan
+    (resPend.data||[]).filter(function(p){ return !(resMes.data||[]).find(function(m){ return m.id===p.id; }) && !esPagoAutomatico(polIdx[p.poliza_id], p); })
   );
 
   _cobData = todasCobs.map(function(c) {
@@ -8333,6 +8337,7 @@ async function cargarCobranzas() {
       _aseguradora: pol.aseguradora || '—',
       _ramo: pol.ramo || '—',
       _dias_mora: diasMora,
+      _auto: esPagoAutomatico(pol, c),
     });
   });
 
@@ -11870,6 +11875,12 @@ function parseCSV(text) {
 // ══════════════════════════════════════════════════════════
 
 // Supabase devuelve como máximo 1000 filas por consulta: esto trae todas, de a 1000
+// Cuotas que se cobran solas (tarjeta, débito, CBU): la compañía avisa por mail si rebotan, así que no se reclaman.
+// Solo las de pago manual (contado, cupón, efectivo) generan avisos y tareas de cobro.
+function esPagoAutomatico(pol, cob) {
+  var t = [(pol || {}).medio_pago, (pol || {}).forma_pago, (cob || {}).medio_pago].join(' ');
+  return /visa|master|amex|american|cabal|naranja|tarjeta|d[eé]bito|cbu/i.test(t);
+}
 async function _todo(armar) {
   var out = [], desde = 0;
   while (true) {
@@ -12385,10 +12396,10 @@ async function analizarPostImportacion(uid) {
       .eq('productor_id', uid).eq('estado','activa')
       .lte('fecha_vencimiento', limiteRenov).gte('fecha_vencimiento', hoySt),
     // Cuotas vencidas
-    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,polizas(numero_poliza,ramo,aseguradora,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente))')
+    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,clientes(nombre,apellido,razon_social,tipo_cliente))')
       .eq('productor_id', uid).eq('estado','pendiente').lt('fecha_vencimiento', hoySt),
     // Cuotas próximas a vencer
-    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,polizas(numero_poliza,ramo,aseguradora,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente))')
+    sb.from('cobranzas').select('id,poliza_id,cliente_id,numero_cuota,monto,fecha_vencimiento,medio_pago,polizas(numero_poliza,ramo,aseguradora,cliente_id,forma_pago,medio_pago,clientes(nombre,apellido,razon_social,tipo_cliente))')
       .eq('productor_id', uid).eq('estado','pendiente')
       .gte('fecha_vencimiento', hoySt).lte('fecha_vencimiento', limiteCobr),
     // Pólizas sin cliente
@@ -12404,7 +12415,7 @@ async function analizarPostImportacion(uid) {
 
   // Cerrar solas las tareas que ya no corresponden (cuotas al día, pólizas renovadas o dadas de baja)
   try {
-    var clConDeuda = {}; (cobVencidas||[]).forEach(function(c){ var k = c.cliente_id || (c.polizas||{}).cliente_id; if (k) clConDeuda[k] = 1; });
+    var clConDeuda = {}; (cobVencidas||[]).filter(function(c){ return !esPagoAutomatico(c.polizas, c); }).forEach(function(c){ var k = c.cliente_id || (c.polizas||{}).cliente_id; if (k) clConDeuda[k] = 1; });
     var { data: abiertasAuto } = await sb.from('tareas').select('id,tipo,cliente_id,poliza_id,polizas(estado,fecha_vencimiento)').eq('productor_id', uid).eq('auto_generada', true).in('estado',['pendiente','encurso','esperando']).in('tipo',['Gestionar mora','Cotizar renovación']);
     var lim45 = new Date(hoy.getTime() + 45*86400000).toISOString().slice(0,10);
     var aCerrar = [];
@@ -12428,8 +12439,10 @@ async function analizarPostImportacion(uid) {
   });
 
   // Filtrar cobranzas con tarea ya existente
-  var cobVenc = cobVencidas||[];
-  var cobProx = (cobProximas||[]).filter(function(c){
+  // Tarjeta / débito / CBU no se reclaman (la compañía avisa por mail si rebotan): solo las de pago manual
+  var manual = function(c){ return !esPagoAutomatico(c.polizas, c); };
+  var cobVenc = (cobVencidas||[]).filter(manual);
+  var cobProx = (cobProximas||[]).filter(manual).filter(function(c){
     return !tareasIdx[c.poliza_id+'_cobranzas'];
   });
 
@@ -12469,7 +12482,7 @@ async function analizarPostImportacion(uid) {
   if (cobVenc.length) {
     modalHtml += '<div style="padding:10px 12px;background:var(--rl);border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--red)">Cuotas vencidas</div>'
-      +'<div style="font-size:11px;color:var(--muted)">'+cobVenc.length+' cuotas sin cobrar con fecha pasada, de '+new Set(cobVenc.map(function(c){return c.cliente_id||c.poliza_id;})).size+' clientes (una tarea por cliente)</div></div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+cobVenc.length+' cuotas de pago manual (contado o cupón) sin cobrar, de '+new Set(cobVenc.map(function(c){return c.cliente_id||c.poliza_id;})).size+' clientes (una tarea por cliente)</div></div>'
       +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-cob-venc" checked> Crear tareas</label>'
       +'</div>';
   }
