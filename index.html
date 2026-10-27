@@ -8660,6 +8660,8 @@ async function verDetalleTarea(id) {
 
   const addBtn = document.getElementById('btn-add-coment');
   if (addBtn) { addBtn.onclick = function() { agregarComent(id); }; }
+  // El cuadro de comentario arranca vacío en cada tarea (antes quedaba el texto de la tarea anterior)
+  var nc = document.getElementById('nuevo-coment'); if (nc) nc.value = '';
 
   document.getElementById('modal-tar-det').classList.add('open');
 }
@@ -12562,7 +12564,7 @@ async function ejecutarTareasImport() {
   if (document.getElementById('chk-cob-venc')&&document.getElementById('chk-cob-venc').checked) {
     // Una tarea por CLIENTE con todas sus pólizas y cuotas vencidas; si ya tiene una abierta, se actualiza
     var porCl = {};
-    cobVenc.forEach(function(c){ var pol = c.polizas || {}; var k = c.cliente_id || pol.cliente_id || ('pol_'+c.poliza_id); (porCl[k] = porCl[k] || { cl: pol.clientes, cid: c.cliente_id || pol.cliente_id || null, pols: {} }); var pp = porCl[k].pols[c.poliza_id] = porCl[k].pols[c.poliza_id] || { pol: pol, n: 0, deuda: 0, id: c.poliza_id }; pp.n++; pp.deuda += Number(c.monto)||0; });
+    cobVenc.forEach(function(c){ var pol = c.polizas || {}; var k = c.cliente_id || pol.cliente_id || ('pol_'+c.poliza_id); (porCl[k] = porCl[k] || { cl: pol.clientes, cid: c.cliente_id || pol.cliente_id || null, pols: {} }); var pp = porCl[k].pols[c.poliza_id] = porCl[k].pols[c.poliza_id] || { pol: pol, n: 0, deuda: 0, id: c.poliza_id, cuotas: [] }; pp.n++; pp.deuda += Number(c.monto)||0; pp.cuotas.push(c); });
     var { data: moraAbiertas } = await sb.from('tareas').select('id,cliente_id').eq('productor_id', uid).eq('tipo','Gestionar mora').in('estado',['pendiente','encurso','esperando']);
     var moraPorCl = {}; (moraAbiertas||[]).forEach(function(t){ if (t.cliente_id) moraPorCl[t.cliente_id] = t.id; });
     var nAct = 0;
@@ -12571,7 +12573,11 @@ async function ejecutarTareasImport() {
       var nCuotas = ps.reduce(function(a,x){ return a + x.n; }, 0), deuda = ps.reduce(function(a,x){ return a + x.deuda; }, 0);
       var datos = {
         titulo: 'Cobrar ' + (nCuotas === 1 ? 'cuota vencida' : nCuotas + ' cuotas vencidas') + ' — ' + nomDe(g.cl),
-        descripcion: 'Debe ' + $f(deuda) + ' en ' + ps.length + (ps.length === 1 ? ' póliza: ' : ' pólizas: ') + ps.map(function(x){ return (x.pol.ramo||'') + ' N° ' + (x.pol.numero_poliza||'') + ' (' + x.n + (x.n === 1 ? ' cuota' : ' cuotas') + ', ' + $f(x.deuda) + ')'; }).join(' · '),
+        descripcion: 'Debe ' + $f(deuda) + ' (pago manual: contado o cupón).\n' + ps.map(function(x){
+          var cs = x.cuotas.slice().sort(function(a,b){ return a.fecha_vencimiento < b.fecha_vencimiento ? -1 : 1; });
+          return '• ' + (x.pol.ramo||'') + ' N° ' + (x.pol.numero_poliza||'') + (x.pol.aseguradora ? ' (' + x.pol.aseguradora + ')' : '') + ': ' + $f(x.deuda) + '\n'
+            + cs.map(function(c){ return '   - Cuota ' + (c.numero_cuota||'?') + ' · vence ' + fmtDate(c.fecha_vencimiento) + ' · ' + $f(c.monto); }).join('\n');
+        }).join('\n'),
         prioridad: deuda > 50000 ? 'alta' : 'media', fecha_limite: hoyISO
       };
       if (g.cid && moraPorCl[g.cid]) { await sb.from('tareas').update(datos).eq('id', moraPorCl[g.cid]); nAct++; continue; }
