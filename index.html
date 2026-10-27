@@ -12188,31 +12188,31 @@ async function normalizarYSincronizar(parsed, filename) {
       // Corregimos: valor_cuota = cuota vigente real, prima_anual = cuota × 12
       compLog('info', 'Calculando cuotas vigentes...');
       try {
-        var { data: todasCobs } = await sb.from('cobranzas')
+        var { data: todasCobs } = await _todo(function(){ return sb.from('cobranzas')
           .select('poliza_id, monto, fecha_vencimiento, estado, numero_cuota')
-          .eq('productor_id', uid);
+          .eq('productor_id', uid); });
 
-        // Agrupar por poliza_id + deduplicar por fecha_vencimiento
-        var cobsPorPol2 = {};
+        // Cuota vigente = el último recibo positivo (prefiriendo los pendientes) MENOS los recibos negativos
+        // del mismo vencimiento: cuando se da de baja una persona en AP o vida, la compañía emite un
+        // recibo negativo con el mismo vencimiento y lo que se paga es el neto. Las devoluciones solas no son cuota.
+        var cobsPorPol2 = {}, negPorFecha = {};
         (todasCobs||[]).forEach(function(c) {
-          if (!cobsPorPol2[c.poliza_id]) cobsPorPol2[c.poliza_id] = {};
-          var k = c.fecha_vencimiento || (c.numero_cuota + '_' + c.monto);
-          if (!cobsPorPol2[c.poliza_id][k]) cobsPorPol2[c.poliza_id][k] = c;
+          var m = parseFloat(c.monto) || 0;
+          if (m < 0) { var kn = c.poliza_id + '_' + (c.fecha_vencimiento || ''); negPorFecha[kn] = (negPorFecha[kn] || 0) + m; return; }
+          if (c.estado === 'nota_credito' || !m) return;
+          (cobsPorPol2[c.poliza_id] = cobsPorPol2[c.poliza_id] || []).push(c);
         });
 
         var polVCUpdates = [];
         Object.keys(cobsPorPol2).forEach(function(polId) {
-          // Ordenar cronológicamente ASC
-          var cs = Object.values(cobsPorPol2[polId]).sort(function(a,b){
+          var cs = cobsPorPol2[polId].sort(function(a,b){
             return (a.fecha_vencimiento||'') < (b.fecha_vencimiento||'') ? -1 : 1;
           });
           if (!cs.length) return;
-
-          // Cuota vigente: última pendiente, o la más reciente si todas canceladas
           var latestPend = cs.slice().reverse().find(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
           var latest = latestPend || cs[cs.length-1];
-          if (!latest || !latest.monto) return;
-          var monto = parseFloat(latest.monto);
+          var monto = Math.round(((parseFloat(latest.monto) || 0) + (negPorFecha[polId + '_' + (latest.fecha_vencimiento || '')] || 0)) * 100) / 100;
+          if (!(monto > 0)) return;
 
           // Detectar refacturación mensual: montos distintos entre cuotas
           var montos = cs.map(function(c){ return Math.round(parseFloat(c.monto)||0); });
