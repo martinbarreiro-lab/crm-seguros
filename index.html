@@ -2084,6 +2084,17 @@ async function _textoPdf(archivo) {
     var pg = await doc.getPage(i), tc = await pg.getTextContent();
     t.push(tc.items.map(function (x) { return x.str; }).join(' '));
   }
+  // La nómina de asegurados (AP, vida colectiva) suele estar al final: se suman solo esas páginas
+  for (var k = 5; k <= Math.min(doc.numPages, 60); k++) {
+    var pk = await doc.getPage(k), it = (await pk.getTextContent()).items, tk = it.map(function (x) { return x.str; }).join(' ');
+    if (!/N[OÓ]MINA (ACTIVA|DE ASEGURADOS)/i.test(tk)) continue;
+    // Se arma renglón por renglón (por posición), porque la tabla viene por columnas
+    var filas = {};
+    it.forEach(function (x) { if (!String(x.str).trim()) return; var y = Math.round(x.transform[5] / 3); (filas[y] = filas[y] || []).push(x); });
+    t.push(Object.keys(filas).sort(function (a, b) { return b - a; }).map(function (y) {
+      return filas[y].sort(function (a, b) { return a.transform[4] - b.transform[4]; }).map(function (x) { return x.str; }).join(' ');
+    }).join(' ¶ '));
+  }
   return t.join(' \n ');
 }
 function _normTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' '); }
@@ -11265,6 +11276,9 @@ function renderDetallePol() {
   if (boxEl) { boxEl.style.maxWidth = '720px'; boxEl.style.width = ''; }
   var vtoColor = e.key==='vencida'?'#A32D2D':e.key==='urgente'?'#854F0B':'#111827';
   var tabs = [{id:'cobertura',label:'Cobertura'},{id:'pagos',label:'Datos de pago'},{id:'documentos',label:'Documentos'},{id:'historial',label:'Historial'}];
+  var _drP = (typeof p.datos_ramo === 'string' ? (function(){ try { return JSON.parse(p.datos_ramo); } catch(e) { return {}; } })() : p.datos_ramo) || {};
+  if ((_drP.personas && _drP.personas.length) || /accidentes personales|vida colectiv|accidentes a pasajeros/i.test(p.ramo || '') || (_drP.certificados && _drP.certificados.length))
+    tabs.splice(1, 0, {id:'personas', label:'Personas' + (_drP.personas && _drP.personas.length ? ' (' + _drP.personas.length + ')' : '')});
 
   box.innerHTML =
     '<div style="padding:20px 22px 0">'+
@@ -11342,14 +11356,57 @@ function mpdMetric(label,val,sub,color) {
 
 function renderMpdTabContent(p,tab) {
   if (tab==='cobertura') {
-    renderMpdCobertura(p).then(function(html){ var el = document.getElementById('mpd-tab-cont'); if(el) el.innerHTML = html; });
+    renderMpdCobertura(p).then(function(html){ var el = document.getElementById('mpd-tab-cont'); if(el && _mpdTab === 'cobertura') el.innerHTML = html; });
     return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando...</div>';
   }
+  if (tab==='personas') return renderMpdPersonas(p);
   if (tab==='pagos') return renderMpdPagos(p);
   if (tab==='documentos') return renderMpdDocumentos(p);
   return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px">Cargando historial...</div>';
 }
 
+function renderMpdPersonas(p) {
+  var dr = (typeof p.datos_ramo === 'string' ? (function(){ try { return JSON.parse(p.datos_ramo); } catch(e) { return {}; } })() : p.datos_ramo) || {};
+  var per = dr.personas || [];
+  var tit = function (x) { return String(x || '').toLowerCase().replace(/(^|[\s'-])([a-zñáéíóú])/g, function (m, a, b) { return a + b.toUpperCase(); }); };
+  if (!per.length && p.pdf_url && !p._nominaLeida) {
+    // Si ya tiene el PDF cargado, se lee la nómina de ahí (una sola vez) y se guarda
+    p._nominaLeida = true;
+    (async function () {
+      try {
+        var resp = await fetch(await linkArchivo(p.pdf_url, 120)); if (!resp.ok) throw 0;
+        var d = extraerDatosPoliza(await _textoPdf(await resp.blob()), String(p.pdf_url).split('/').pop());
+        if (d.personas && d.personas.length) {
+          dr.personas = d.personas; p.datos_ramo = dr;
+          await sb.from('polizas').update({ datos_ramo: dr }).eq('id', p.id);
+        }
+      } catch (e) {}
+      if (_mpdPolData === p) { renderDetallePol(); mpdSetTab('personas'); }
+    })();
+    return '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px"><span class="spin"></span> Leyendo la nómina del PDF…</div>';
+  }
+  if (!per.length) {
+    var certs = dr.certificados || [], vig = certs.filter(function (c) { return c.estado === 'vigente'; }).length;
+    return '<div style="padding:18px 4px;font-size:13px;color:#6B7280;line-height:1.6">'
+      + (certs.length ? 'La compañía informa <b>' + vig + (vig === 1 ? ' asegurado vigente' : ' asegurados vigentes') + '</b>' + (certs.length > vig ? ' (' + (certs.length - vig) + ' dados de baja)' : '') + ', pero sin nombres ni DNI.<br>' : 'Todavía no hay nómina de personas cargada.<br>')
+      + 'Para verlas, subí el PDF de la póliza (con la nómina) desde <b>Subir PDFs</b>: se completan solas.</div>';
+  }
+  var hoy = new Date();
+  var edad = function (f) { if (!f) return ''; var n = new Date(f + 'T12:00:00'), e = hoy.getFullYear() - n.getFullYear(); if (hoy < new Date(hoy.getFullYear(), n.getMonth(), n.getDate())) e--; return e; };
+  var benefs = per.map(function (x) { return x.beneficiario || ''; });
+  var mismoBenef = benefs.every(function (b) { return b === benefs[0]; }) && benefs[0];
+  var th = 'text-align:left;font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid #E5E7EB';
+  var td = 'padding:8px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#111827;vertical-align:top';
+  return '<div style="font-size:12px;color:#6B7280;margin-bottom:8px">' + per.length + (per.length === 1 ? ' persona asegurada' : ' personas aseguradas') + ' según el PDF de la póliza</div>'
+    + '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="' + th + '">Cert.</th><th style="' + th + '">Apellido y nombre</th><th style="' + th + '">' + (per[0].doc || 'DNI') + '</th><th style="' + th + '">Nacimiento</th>' + (mismoBenef ? '' : '<th style="' + th + '">Beneficiario</th>') + '</tr></thead><tbody>'
+    + per.map(function (x) {
+      return '<tr><td style="' + td + ';color:#6B7280">' + esc(x.cert || '') + '</td><td style="' + td + ';font-weight:500">' + esc(tit(x.nombre)) + '</td><td style="' + td + '">' + esc(x.dni || '') + '</td>'
+        + '<td style="' + td + '">' + (x.nacimiento ? fmtDate(x.nacimiento) + ' <span style="color:#9CA3AF">(' + edad(x.nacimiento) + ' años)</span>' : '—') + '</td>'
+        + (mismoBenef ? '' : '<td style="' + td + ';font-size:12px;color:#6B7280">' + esc(x.beneficiario || '—') + '</td>') + '</tr>';
+    }).join('') + '</tbody></table>'
+    + (mismoBenef ? '<div style="font-size:12px;color:#6B7280;margin-top:10px">Beneficiario de todos: ' + esc(mismoBenef) + '</div>' : '')
+    + '<div style="font-size:12px;color:#9CA3AF;margin-top:6px">Las sumas aseguradas por persona están en la pestaña Cobertura.</div>';
+}
 async function mpdSetTab(tab) {
   _mpdTab = tab;
   var p = _mpdPolData;
@@ -13856,6 +13913,17 @@ function _extraerAutoPdf(T, d) {
     if (cobs2.length) d.coberturas = cobs2;
   }
 }
+// Nómina de asegurados (AP / vida colectiva): "1 DNI 24945371 BUSTAMANTE MARIO ALBERTO 11-01-1976 BENEFICIARIO…" (renglones separados por ¶)
+function _extraerNomina(T, d) {
+  var i = T.search(/N[OÓ]MINA ACTIVA|N[OÓ]MINA DE ASEGURADOS/); if (i < 0) return;
+  var per = [], vistos = {};
+  T.slice(i).split('¶').forEach(function (r) {
+    var m = r.trim().match(/^(\d{1,5})\s+(DNI|LE|LC|CI|PAS|CUIL|CUIT|DU)\s+(\d{6,11})\s+(.+?)\s+(\d{2})[-\/](\d{2})[-\/](\d{4})(?:\s+(.*))?$/);
+    if (!m || vistos[m[3]]) return; vistos[m[3]] = 1;
+    per.push({ cert: m[1], doc: m[2], dni: m[3], nombre: m[4].trim(), nacimiento: m[7] + '-' + m[6] + '-' + m[5], beneficiario: m[8] ? _capi(m[8].trim()) : null });
+  });
+  if (per.length) d.personas = per;
+}
 // Federación Patronal (frente de póliza nuevo): vigencia "DESDE 12:00 HS. DEL 28-10-2026 HASTA 12:00 HS. DEL 01-11-2026",
 // producto, premio del endoso y riesgos cubiertos de AP/vida ("010 020 … 50,000,000.00 … MUERTE ACCIDENTAL INVALIDEZ …")
 function _extraerFedPatPdf(T, d) {
@@ -14004,6 +14072,7 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   if (mliq) { var imps = mliq[1].match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) || []; if (imps.length) d.premio = parseFloat(imps[imps.length - 1].replace(/\./g, '').replace(',', '.')); }
   _extraerAutoPdf(T, d);
   _extraerFedPatPdf(T, d);
+  _extraerNomina(T, d);
   // SMG: "-------* DESCRIPCION DE LA COBERTURA NRO. 1/1 *------ INCENDIO EDIFICIO SUMA ASEGURADA: $5,000,000,000.00"
   if (!d.coberturas && /DESCRIPCION DE LA COBERTURA NRO/.test(T)) {
     var rs = /DESCRIPCION DE LA COBERTURA NRO\.?\s*\d+\/\d+\s*\*\s*-*\s*(.{3,90}?)\s+(?:SUMA ASEGURADA|LIMITE DE INDEMNIZACION):\s*\$\s*([\d,]+\.\d{2})/g, cs, lst = [];
@@ -14109,6 +14178,7 @@ async function _crearPolizaNueva(it) {
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
   ['marca', 'modelo', 'marca_modelo', 'anio', 'motor', 'chasis', 'uso', 'suma_asegurada', 'franquicia_desc'].forEach(function (k) { if (d[k]) dr[k] = d[k]; });
   if (d.corto_plazo) dr.corto_plazo = true;
+  if (d.personas) dr.personas = d.personas;
   if (d.producto) dr.producto = d.producto; if (d.ubicacion) dr.direccion_riesgo = tituloDir(d.ubicacion); if (d.mensual) dr.refacturacion = 'mensual';
   var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim().replace(/^0+(?=\d)/, ''), aseguradora: d.aseguradora,
     ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
@@ -14142,6 +14212,7 @@ async function _planCompletarPoliza(polId, d) {
   var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', producto: 'plan/cobertura' };
   Object.keys(ETQ).forEach(function (k) { if (d[k] && !dr[k]) { dr[k] = d[k]; cambioDr = true; cambios.push(ETQ[k] + ': ' + d[k]); } });
   if (d.referencia && !dr.referencia && _numSinCeros(d.referencia) !== _numSinCeros(p.numero_poliza)) { dr.referencia = d.referencia; cambioDr = true; }
+  if (d.personas && d.personas.length && JSON.stringify(d.personas) !== JSON.stringify(dr.personas || [])) { dr.personas = d.personas; cambioDr = true; cambios.push('nómina: ' + d.personas.length + (d.personas.length === 1 ? ' persona' : ' personas')); }
   if (cambioDr) upP.datos_ramo = dr;
   if (d.marca_modelo && !p.bien_asegurado) upP.bien_asegurado = d.marca_modelo;
   if (d.valor_cuota && !p.valor_cuota) { upP.valor_cuota = d.valor_cuota; cambios.push('cuota: $' + d.valor_cuota.toLocaleString('es-AR')); }
