@@ -9594,7 +9594,12 @@ function poblarAnios() {
 }
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') document.querySelectorAll('.modal-ov.open').forEach(function(m) { m.classList.remove('open'); });
+  if (e.key === 'Escape') {
+    var abiertos = document.querySelectorAll('.modal-ov.open');
+    // Primero se cierra la ventana que esté arriba; si no hay ninguna, se cierra la Oficina
+    if (abiertos.length) abiertos.forEach(function(m) { m.classList.remove('open'); });
+    else if (typeof _of !== 'undefined' && _of.abierto) toggleOficina(false);
+  }
 });
 
 
