@@ -2913,12 +2913,12 @@ async function cargarDashboard() {
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
     sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
-    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
+    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
   var todasPol = R[0].data||[], sins = R[1].data||[], cots = R[2].data||[], tars = R[3].data||[];
-  var cuotasVenc = (R[4].data||[]).filter(function(c){ return !esPagoAutomatico(c.polizas, c); }).length, cuotasHoy = R[5].data||[], acts = R[6].data||[], venc = R[7].data||[];
+  var cuotasVenc = (R[4].data||[]).filter(function(c){ return !esPagoAutomatico(c.polizas, c); }).length, cuotasHoy = (R[5].data||[]).filter(function(c){ return !esPagoAutomatico(c.polizas, c); }), acts = R[6].data||[], venc = R[7].data||[];
   var pols = todasPol.filter(function(p){ return !p.fecha_vencimiento || p.fecha_vencimiento >= hoy; });
   var dr = function(p){ var d = p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = {}; } } return d||{}; };
   var nomCl = function(c){ return c ? nombreClienteLista(c) : ''; };
