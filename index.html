@@ -10990,7 +10990,6 @@ function mpdAcciones(p) {
     + '<details class="mpd-mas"><summary class="mpd-b">⋯ Más</summary><div class="mpd-menu">'
     + '<button type="button" onclick="' + cerrarY("abrirModalEndoso('" + p.id + "')") + '">✍ Cargar endoso</button>'
     + (p.endoso_pdf_url ? '<button type="button" onclick="window.open(\'' + p.endoso_pdf_url + '\',\'_blank\')">📎 Ver PDF del endoso</button><button type="button" onclick="abrirEnviarPoliza(\'' + p.id + '\',\'endoso\')">📤 Enviar endoso</button>' : '')
-    + (p.pdf_url ? '<button type="button" onclick="completarDesdePdf(\'' + p.id + '\')">📥 Completar datos desde el PDF</button>' : '')
     + '<button type="button" onclick="' + ref + '">📧 Gestionar por mail (chat del proyecto)</button>'
     + '<div class="mpd-sep"></div>'
     + '<button type="button" class="rj" onclick="' + cerrarY("anularPoliza('" + p.id + "')") + '">🚫 Anular / dar de baja</button>'
