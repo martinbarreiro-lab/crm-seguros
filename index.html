@@ -13437,7 +13437,7 @@ function _extraerAutoPdf(T, d) {
   if (d.aseguradora === 'Sancor Seguros' && /VEHICULO ASEGURADO/.test(T)) {
     // "ASEGURADO: CABRAL ALAN JAVIER ANTONIO NARINO 1941 PISO PB 2 2000 ROSARIO (SANTA FE)": el nombre y la calle vienen pegados.
     // Se toma apellido + 2 nombres (el formulario permite corregirlo) y el resto es la calle.
-    if ((m = T.match(/ASEGURADO:\s+([A-ZÑ' ]{5,80}?)\s+(\d{1,5})\b(.{0,40}?)\s(\d{4})\s+([A-ZÑ ]{3,30}?)\s*\((?:SANTA FE|BUENOS AIRES|CORDOBA|ENTRE RIOS|CABA|CAPITAL FEDERAL)\)/))) {
+    if ((m = T.match(/ASEGURADO:\s+([A-ZÑ' ]{5,80}?)\s+(\d{1,5}|S\/N)\b(.{0,40}?)\s(\d{4})\s+([A-ZÑ ]{3,30}?)\s*\((?:SANTA FE|BUENOS AIRES|CORDOBA|ENTRE RIOS|CABA|CAPITAL FEDERAL)\)/))) {
       var pals = m[1].trim().split(/\s+/), CALLE = /^(AV|AVDA|AVENIDA|CALLE|BV|BOULEVARD|PJE|PASAJE|RUTA|SAN|SANTA|GRAL|GENERAL|DR|PTE|PRESIDENTE|LOTE|BARRIO)$/;
       var n = Math.min(3, pals.length - 1); if (n === 3 && CALLE.test(pals[2])) n = 2;
       if (n >= 2) { d.asegurado = pals.slice(0, n).join(' '); var piso = m[3].replace(/\s+/g, ' ').trim(); d.direccion = pals.slice(n).join(' ') + ' ' + m[2] + (piso ? ' ' + piso : ''); }
