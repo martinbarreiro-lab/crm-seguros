@@ -8672,9 +8672,9 @@ function cobRender() {
 
 async function cargarCobranzas() {
   // Forzar recarga de clientes con campos de contacto
-  var res = await sb.from('clientes').select('id,nombre,apellido,telefono,celular').eq('productor_id', user.id).order('apellido');
-  allCl = res.data || [];
-  CL_ALL = allCl;
+  // Clientes con teléfono (columnas reales); si falla, se usan los que ya estaban cargados
+  var res = await sb.from('clientes').select('id,nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario').eq('productor_id', user.id).order('apellido');
+  var clCob = res.data || [];
   var sel = document.getElementById('cob-mes-sel');
   var hoy = new Date();
 
@@ -8712,12 +8712,12 @@ async function cargarCobranzas() {
   ]);
 
   // Clientes: usar allCl si está disponible, sino cargar
-  if (!allCl.length) await cargarClientesSilente();
+  if (!clCob.length) { await cargarClientesSilente(); clCob = allCl; }
   var polIdx = {};
   (polsRes.data||[]).forEach(function(p){ polIdx[p.id] = p; });
   var clIdx = {};
-  allCl.forEach(function(c){ clIdx[c.id] = c; });
-  console.log('[COB] pols:', (polsRes.data||[]).length, 'cls:', allCl.length, 'cobs mes:', (resMes.data||[]).length, 'cobs pend:', (resPend.data||[]).length);
+  clCob.forEach(function(c){ clIdx[c.id] = c; });
+  console.log('[COB] pols:', (polsRes.data||[]).length, 'cls:', clCob.length, 'cobs mes:', (resMes.data||[]).length, 'cobs pend:', (resPend.data||[]).length);
 
   // Combinar y enriquecer
   var todasCobs = (resMes.data||[]).concat(
@@ -8732,7 +8732,7 @@ async function cargarCobranzas() {
     if ((c.estado==='pendiente'||c.estado==='vencida') && c.fecha_vencimiento) {
       diasMora = Math.max(0, Math.round((hoy - new Date(c.fecha_vencimiento)) / 864e5));
     }
-    var nombre = cl.apellido ? nombreClienteLista(cl) : (cl.nombre||'—');
+    var nombre = cl.id ? nombreClienteLista(cl) : '—';
     return Object.assign({}, c, {
       _cliente: nombre,
       _nombre: cl.nombre || '',
