@@ -13675,8 +13675,11 @@ async function _prepararNuevas() {
 }
 function _nvCampo(idx, campo, valor) {
   var it = _cpdf.items[idx]; if (!it || !it.nueva) return;
-  if (campo === 'crear') it.nueva.crear = valor; else it.nueva.d[campo] = valor;
+  if (campo === 'crear') { it.nueva.crear = valor; it.nueva.desmarcada = !valor; } else it.nueva.d[campo] = valor;
   delete it.error; // al corregir un dato, se puede volver a intentar
+  // Si completaste lo que faltaba (y no la destildaste vos), queda tildada para crearla
+  var dd = it.nueva.d;
+  if (campo !== 'crear' && !it.nueva.desmarcada && dd.numero_poliza && dd.aseguradora && dd.fecha_inicio && (it.nueva.cliente || dd.asegurado || campo === 'cliente_id')) it.nueva.crear = true;
   if (campo === 'cliente_id') it.nueva.cliente = valor ? (_cpdf.clientes || []).find(function (c) { return c.id === valor; }) : null;
   _renderCargaPdfs();
 }
