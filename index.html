@@ -1881,7 +1881,7 @@ function abrirCargaPdfs() {
   var m = _envModal();
   document.getElementById('env-titulo').textContent = 'Subir PDFs de pólizas';
   _cpdf.items = []; _cpdf.pols = null; _cpdf.clientes = null; // siempre trae las pólizas actualizadas
-  var bxc = m.querySelector('.modal-box'); if (bxc) bxc.style.maxWidth = '720px';
+  var bxc = m.querySelector('.modal-box'); if (bxc) bxc.style.maxWidth = '880px';
   document.getElementById('env-cuerpo').innerHTML =
     '<p style="font-size:13px;color:var(--text2);margin:0 0 10px">Elegí o arrastrá los PDFs (o un ZIP con PDFs). Cada uno se engancha solo a su póliza por el número que trae en el nombre, ej. <b>Póliza-35135834.pdf</b> o <b>4-35135834-0-9.pdf</b>. Si la póliza no está en el CRM, se lee el PDF y te propone crearla (con el cliente). Las <b>facturas mensuales</b> también se reconocen: se guardan en su póliza y actualizan la cuota.</p>'
     + '<label id="cpdf-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📂 Elegir archivos o soltarlos acá<input type="file" id="cpdf-in" multiple accept="application/pdf,.pdf,.zip,application/zip" style="display:none"></label>'
@@ -1949,7 +1949,8 @@ function _estadoItemPdf(it, reemp) {
     var fx = it.factura, per = 'Factura ' + fmtDate(fx.desde) + ' al ' + fmtDate(fx.hasta) + (fx.total ? ' · $' + fx.total.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '');
     if (it.hecho) return ['✓ ' + per + (it.cuotaActualizada ? ' · cuota actualizada' : ' · guardada'), '#166534'];
     if (it.error) return ['Error: ' + it.error, '#B91C1C'];
-    if (!it.pol) return [per + ' · la póliza ' + fx.poliza + ' no está en el CRM', '#B45309'];
+    if (!it.pol && _polNuevaDelLote(fx)) return [per + ' · se guarda con la póliza nueva y actualiza la cuota', '#1D4ED8'];
+    if (!it.pol) return [per + ' · la póliza ' + _numSinCeros(fx.poliza) + ' no está en el CRM (subí también su PDF)', '#B45309'];
     return [per + ' · se guarda y actualiza la cuota', '#1D4ED8'];
   }
   if (it.hecho && it.soloDatos) return [it.completados ? '✓ Datos completados' : '✓ Ya tenía todos los datos', '#166534'];
@@ -1966,20 +1967,35 @@ function _renderCargaPdfs() {
   var filas = _cpdf.items.map(function (it, idx) {
     var st = _estadoItemPdf(it, reemp); if (st[0] === 'Listo para subir' || /completo los datos|actualiza la cuota/.test(st[0])) n++; if (/se crea al subir/.test(st[0])) { n++; nn++; }
     var pol = it.pol ? ('N° ' + it.pol.numero_poliza + ' · ' + (it.pol.clientes ? nombreClienteLista(it.pol.clientes) : '') + (it.pol.ramo ? ' · ' + it.pol.ramo : '')) : (it.nueva ? '' : '—');
-    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + (it.nueva && !it.hecho && !it.creada ? _htmlNueva(it, idx) : '') + (it.completados ? '<div style="color:#166534;font-size:11.5px;margin-top:3px">Se cargó: ' + esc(it.completados.join(' · ')) + '</div>' : '') + (it.avisoVig ? '<div style="color:#B45309;font-size:11.5px;margin-top:3px">⚠ ' + esc(it.avisoVig) + '</div>' : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';white-space:nowrap">' + esc(st[0]) + '</td></tr>';
+    return '<tr><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;width:24%;word-break:break-word;vertical-align:top">' + esc(it.file.name) + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;vertical-align:top">' + esc(pol) + (it.verif && !it.verif.ok ? htmlResultadoVerif(it.verif, it.pol) : '') + (it.nueva && !it.hecho && !it.creada ? _htmlNueva(it, idx) : '') + (it.completados ? '<div style="color:#166534;font-size:11.5px;margin-top:3px">Se cargó: ' + esc(it.completados.join(' · ')) + '</div>' : '') + (it.avisoVig ? '<div style="color:#B45309;font-size:11.5px;margin-top:3px">⚠ ' + esc(it.avisoVig) + '</div>' : '') + '</td><td style="padding:5px 6px;border-bottom:1px solid #F1F5F9;color:' + st[1] + ';width:26%;vertical-align:top">' + esc(st[0]) + '</td></tr>';
   }).join('');
   var lista = document.getElementById('cpdf-lista'); if (!lista) return;
-  lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir' + (nn ? ' <span style="color:#1D4ED8">(' + nn + ' póliza' + (nn > 1 ? 's nuevas' : ' nueva') + ': revisá los datos antes de subir)</span>' : '') + '</div><table style="width:100%;border-collapse:collapse">' + filas + '</table>' : '';
+  lista.innerHTML = _cpdf.items.length ? '<div style="margin-bottom:6px;font-weight:600">' + _cpdf.items.length + ' archivo(s) · ' + n + ' para subir' + (nn ? ' <span style="color:#1D4ED8">(' + nn + ' póliza' + (nn > 1 ? 's nuevas' : ' nueva') + ': revisá los datos antes de subir)</span>' : '') + '</div><table style="width:100%;border-collapse:collapse;table-layout:fixed">' + filas + '</table>' : '';
   var btn = document.getElementById('cpdf-ok'); if (btn) { btn.disabled = !n; btn.textContent = n ? 'Subir ' + n + ' PDF' + (n > 1 ? 's' : '') : 'Subir'; }
+}
+// Factura cuya póliza viene en el mismo lote (se crea al subir): se engancha después de crearla
+function _polNuevaDelLote(fx) {
+  var n = _numSinCeros(fx.poliza), rf = _numSinCeros(fx.referencia);
+  return (_cpdf.items || []).find(function (x) {
+    if (!x.nueva || !x.nueva.crear || x.factura) return false;
+    var d = x.nueva.d;
+    return (n && _numSinCeros(d.numero_poliza) === n) || (rf && (_numSinCeros(d.referencia) === rf || (x.file.name.match(/\d{5,}/g) || []).map(_numSinCeros).indexOf(rf) >= 0));
+  }) || null;
 }
 async function subirPdfsMasivo() {
   var reemp = document.getElementById('cpdf-reemp').checked;
   var btn = document.getElementById('cpdf-ok'); btn.disabled = true;
   var cola = _cpdf.items.filter(function (it) { var e = _estadoItemPdf(it, reemp)[0]; return e === 'Listo para subir' || /se crea al subir|completo los datos|actualiza la cuota/.test(e); });
+  // Primero las pólizas, después las facturas (así una factura puede engancharse a una póliza nueva del mismo lote)
+  cola.sort(function (a, b) { return (a.factura ? 1 : 0) - (b.factura ? 1 : 0); });
   for (var i = 0; i < cola.length; i++) {
     var it = cola[i]; btn.textContent = 'Subiendo ' + (i + 1) + ' de ' + cola.length + '…';
     try {
-      if (it.factura) { await _guardarFactura(it); it.hecho = true; _renderCargaPdfs(); continue; }
+      if (it.factura) {
+        if (!it.pol) { var nv = _polNuevaDelLote(it.factura); if (nv && nv.pol) it.pol = nv.pol; else it.pol = _cpdf.pols[_numSinCeros(it.factura.poliza)] || null; }
+        if (!it.pol) throw new Error('no se pudo crear la póliza de esta factura');
+        await _guardarFactura(it); it.hecho = true; _renderCargaPdfs(); continue;
+      }
       if (!it.pol && it.nueva && it.nueva.crear) { btn.textContent = 'Creando póliza ' + (i + 1) + ' de ' + cola.length + '…'; await _crearPolizaNueva(it);
       }
       var soloDatos = it.pol.pdf_url && !reemp && !it.creada;
@@ -13674,7 +13690,7 @@ async function _crearPolizaNueva(it) {
     estado: vto < new Date().toISOString().slice(0, 10) ? 'vencida' : 'activa', patente: d.patente || null, datos_ramo: dr,
     valor_cuota: d.valor_cuota || (d.premio && d.mensual ? d.premio : null), prima_anual: d.premio && (d.valor_cuota || !d.mensual) ? d.premio : null, forma_pago: d.forma_pago || (d.mensual ? 'Mensual' : null),
     bien_asegurado: d.marca_modelo || (d.ubicacion ? tituloDir(d.ubicacion) : null) })
-    .select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
+    .select('id,numero_poliza,pdf_url,ramo,aseguradora,patente,fecha_inicio,fecha_vencimiento,datos_ramo,cliente_id,valor_cuota,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
   if (rp.error) throw rp.error;
   it.pol = rp.data; it.creada = true;
   if (d.coberturas && d.coberturas.length) await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: rp.data.id, descripcion: c.descripcion, suma_asegurada: c.suma }; }));
