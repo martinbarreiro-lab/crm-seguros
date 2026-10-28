@@ -668,3 +668,13 @@ tr:hover td{background:var(--bg)}
 .of-lateral b{background:#DC2626;color:#fff;border-radius:9px;font-size:10.5px;padding:1px 6px}
 .of-hechos{display:block;margin:10px auto;border:0;background:none;color:#1D4ED8;font-size:12.5px;cursor:pointer;font-family:inherit}
 .of-x{white-space:nowrap}
+
+/* Acciones de la póliza */
+.mpd-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.mpd-b{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12.5px;font-weight:500;cursor:pointer;font-family:inherit;list-style:none}
+.mpd-b:hover{background:#F8FAFC}.mpd-b.pri{background:#185FA5;border-color:#185FA5;color:#fff}.mpd-b.pri:hover{background:#0C447C}
+.mpd-mas{position:relative}.mpd-mas>summary::-webkit-details-marker{display:none}.mpd-mas>summary{list-style:none}
+.mpd-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:4px;min-width:260px;display:flex;flex-direction:column}
+.mpd-menu button{text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;color:#374151;font-family:inherit}
+.mpd-menu button:hover{background:#F1F5F9}.mpd-menu button.rj{color:#991B1B}.mpd-menu button.gr{color:#9CA3AF}
+.mpd-sep{height:0.5px;background:var(--border);margin:4px 2px}

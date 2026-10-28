@@ -10973,6 +10973,31 @@ var _mpdTab = 'cobertura';
 var _mpdPolData = null;
 var _mpdClData = null;
 
+document.addEventListener('click', function (e) { document.querySelectorAll('details.mpd-mas[open]').forEach(function (d) { if (!d.contains(e.target) || e.target.closest('.mpd-menu button')) d.open = false; }); });
+// Botones de la póliza: las 4 acciones de todos los días a la vista, el resto en "Más"
+function mpdAcciones(p) {
+  var cerrarY = function (fn) { return "cerrarModal('modal-pol-det');setTimeout(function(){" + fn + "},150)"; };
+  var ref = "window._ofRefs=window._ofRefs||{};window._ofRefs['" + p.id + "']={cliente_id:" + (p.cliente_id ? "'" + p.cliente_id + "'" : 'null') + ",poliza_id:'" + p.id + "',texto:'" + String((p.ramo || '') + ' N° ' + (p.numero_poliza || '') + ' · ' + (p.aseguradora || '')).replace(/'/g, '') + "'};cerrarModal('modal-pol-det');abrirGestionarPorMail('administracion',window._ofRefs['" + p.id + "'])";
+  var h = '<div class="mpd-acc">';
+  if (p.pdf_url) {
+    h += '<button type="button" class="mpd-b pri" onclick="abrirEnviarPoliza(\'' + p.id + '\')">📤 Enviar póliza</button>'
+      + '<button type="button" class="mpd-b" onclick="window.open(\'' + p.pdf_url + '\',\'_blank\')">📄 Ver PDF</button>';
+  } else {
+    h += '<button type="button" class="mpd-b pri" onclick="' + cerrarY("abrirEditarPoliza('" + p.id + "')") + '">📄 Subir el PDF</button>';
+  }
+  h += '<button type="button" class="mpd-b" onclick="' + cerrarY("renovarRapido('" + p.id + "')") + '">🔄 Renovar</button>'
+    + '<button type="button" class="mpd-b" onclick="' + cerrarY("abrirEditarPoliza('" + p.id + "')") + '">✏ Editar</button>'
+    + '<details class="mpd-mas"><summary class="mpd-b">⋯ Más</summary><div class="mpd-menu">'
+    + '<button type="button" onclick="' + cerrarY("abrirModalEndoso('" + p.id + "')") + '">✍ Cargar endoso</button>'
+    + (p.endoso_pdf_url ? '<button type="button" onclick="window.open(\'' + p.endoso_pdf_url + '\',\'_blank\')">📎 Ver PDF del endoso</button><button type="button" onclick="abrirEnviarPoliza(\'' + p.id + '\',\'endoso\')">📤 Enviar endoso</button>' : '')
+    + (p.pdf_url ? '<button type="button" onclick="completarDesdePdf(\'' + p.id + '\')">📥 Completar datos desde el PDF</button>' : '')
+    + '<button type="button" onclick="' + ref + '">📧 Gestionar por mail (chat del proyecto)</button>'
+    + '<div class="mpd-sep"></div>'
+    + '<button type="button" class="rj" onclick="' + cerrarY("anularPoliza('" + p.id + "')") + '">🚫 Anular / dar de baja</button>'
+    + '<button type="button" class="gr" onclick="eliminarPolizaFicha(\'' + p.id + '\')">🗑 Eliminar del sistema</button>'
+    + '</div></details></div>';
+  return h;
+}
 async function abrirDetallePol(polId) {
   var modal = document.getElementById('modal-pol-det');
   var box = document.getElementById('mpd-box');
@@ -11050,16 +11075,7 @@ function renderDetallePol() {
         mpdMetric('Inicio',fmtDate(p.fecha_inicio)||'—','Vigencia','#111827')+
         mpdMetric('Vencimiento',fmtDate(p.fecha_vencimiento)||'—',e.dias!==null?(e.dias<0?'hace '+Math.abs(e.dias)+'d':'en '+e.dias+'d'):'',vtoColor)+
       '</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
-        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirEditarPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BFDBFE;background:#EFF6FF;color:#1E40AF;font-size:12px;font-weight:500;cursor:pointer">✏ Editar</button>'+
-        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){renovarRapido(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">🔄 Renovar</button>'+
-        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){abrirModalEndoso(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">✍ Endoso</button>'+
-        (p.pdf_url?'<button type="button" onclick="window.open(\''+p.pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📄 Póliza PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar póliza</button>'+'<button type="button" onclick="completarDesdePdf(\''+p.id+'\')" title="Lee el PDF y completa lo que falta: vehículo, coberturas, cuota y domicilio" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📥 Completar desde el PDF</button>':'')+
-        (p.endoso_pdf_url?'<button type="button" onclick="window.open(\''+p.endoso_pdf_url+'\',\'_blank\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer">📎 Endoso PDF</button>'+'<button type="button" onclick="abrirEnviarPoliza(\''+p.id+'\',\'endoso\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #BBF7D0;background:#F0FDF4;color:#166534;font-size:12px;font-weight:500;cursor:pointer">📤 Enviar endoso</button>':'')+
-        '<button type="button" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+p.id+'\']={cliente_id:'+(p.cliente_id?'\''+p.cliente_id+'\'':'null')+',poliza_id:\''+p.id+'\',texto:\''+String((p.ramo||'')+' N° '+(p.numero_poliza||'')+' · '+(p.aseguradora||'')).replace(/'/g,'')+'\'};cerrarModal(\'modal-pol-det\');abrirGestionarPorMail(\'administracion\',window._ofRefs[\''+p.id+'\'])" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #DDD6FE;background:#F5F3FF;color:#5B21B6;font-size:12px;font-weight:500;cursor:pointer">📧 Gestionar por mail</button>'+
-        '<button type="button" onclick="cerrarModal(\'modal-pol-det\');setTimeout(function(){anularPoliza(\''+p.id+'\')},150)" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;border:0.5px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:500;cursor:pointer;margin-left:auto">🚫 Anular</button>'+
-        '<button type="button" onclick="eliminarPolizaFicha(\''+p.id+'\')" title="Eliminar del sistema sin dejar registro" style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:12px;cursor:pointer">🗑</button>'+
-      '</div>'+
+      mpdAcciones(p)+
       '<div style="display:flex;border-bottom:0.5px solid #E5E7EB">'+
         tabs.map(function(t){
           var isA=t.id===_mpdTab;
