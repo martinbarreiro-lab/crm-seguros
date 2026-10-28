@@ -958,6 +958,18 @@
       <div id="sec-config" class="sec">
         <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:16px">Configuración</div>
 
+        <!-- Envío de mails por Gmail -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-t" style="margin-bottom:8px">📧 Envío de mails por Gmail</div>
+          <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">Para que "Enviar póliza" mande el mail en el momento desde tu Gmail, con el PDF adjunto. El permiso es solo para <b>enviar</b>: el CRM no lee tu correo.</div>
+          <div class="frow"><label>ID de cliente de Google (termina en .apps.googleusercontent.com)</label>
+            <input type="text" id="cfg-gmail-cid" placeholder="123456789-abc….apps.googleusercontent.com"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-p" onclick="guardarGmailClientId()">Guardar</button>
+            <button type="button" class="btn btn-sm" onclick="probarGmail()">Probar envío (te manda un mail a vos)</button>
+          </div>
+        </div>
+
         <!-- Alertas y vencimientos -->
         <div class="card" style="margin-bottom:14px">
           <div class="card-t" style="margin-bottom:12px">⏰ Alertas y vencimientos</div>
@@ -2323,8 +2335,8 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="compartirPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📤 Compartir por WhatsApp <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-ofi" onclick="mandarPorOficina()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
-        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Lo manda el chat del proyecto desde tu Gmail, con la póliza adjunta (sin link). Sale cuando abrís el chat y le decís "Oficina". <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo ya en Gmail y adjuntarlo a mano</button></div>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarMailDirecto()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Sale en el momento desde tu Gmail, con la póliza adjunta. <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo en Gmail y adjuntarlo a mano</button></div>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
       if (tel) h.push('<div style="font-size:11px;color:var(--muted);margin-top:8px">Alternativa para WhatsApp: <button type="button" class="lnk" onclick="enviarPorCanal(\'wa\')">abrir el chat directo</button> (descarga el PDF para adjuntarlo a mano)</div>');
@@ -2334,8 +2346,8 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-ofi" onclick="mandarPorOficina()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
-        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Lo manda el chat del proyecto desde tu Gmail, con la póliza adjunta (sin link). Sale cuando abrís el chat y le decís "Oficina". <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo ya en Gmail y adjuntarlo a mano</button></div>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarMailDirecto()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Sale en el momento desde tu Gmail, con la póliza adjunta. <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo en Gmail y adjuntarlo a mano</button></div>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
     }
@@ -2416,6 +2428,81 @@ async function mandarPorOficina() {
     mostrarAlerta('Listo: el mail quedó aprobado en la Oficina. Abrí el chat del proyecto y decile "Oficina" para que lo mande con el PDF adjunto.');
     if (typeof cargarOficina === 'function') try { cargarOficina(); } catch (e) {}
   } catch (e) { if (b) { b.disabled = false; b.textContent = '📧 Mandar por mail con el PDF adjunto'; } alert('No se pudo dejar en la Oficina: ' + (e.message || e)); }
+}
+// ══ Envío directo por Gmail (API de Gmail, permiso solo para ENVIAR) ══
+// Una vez: credencial OAuth de Google ("ID de cliente") cargada en Configuración → Envío de mails.
+var _gm = { token: null, vence: 0, cliente: null };
+function _gmClientId() { return (_cfg && _cfg.gmail_client_id) || ''; }
+async function _gmToken() {
+  if (_gm.token && Date.now() < _gm.vence - 60000) return _gm.token;
+  var cid = _gmClientId(); if (!cid) throw new Error('SIN_CLIENTE');
+  if (!(window.google && google.accounts && google.accounts.oauth2)) await cargarLib('https://accounts.google.com/gsi/client');
+  return await new Promise(function (ok, mal) {
+    var tc = google.accounts.oauth2.initTokenClient({
+      client_id: cid, scope: 'https://www.googleapis.com/auth/gmail.send', hint: user && user.email,
+      callback: function (r) { if (r && r.access_token) { _gm.token = r.access_token; _gm.vence = Date.now() + (r.expires_in || 3500) * 1000; ok(r.access_token); } else mal(new Error((r && r.error_description) || (r && r.error) || 'Google no dio permiso')); },
+      error_callback: function (e) { mal(new Error(e && e.type === 'popup_closed' ? 'Cerraste la ventana de Google' : (e && (e.message || e.type)) || 'No se pudo conectar con Google')); }
+    });
+    tc.requestAccessToken({ prompt: _gm.token ? '' : 'consent' });
+  });
+}
+function _b64Utf8(t) { return btoa(unescape(encodeURIComponent(t))); }
+function _encHeader(t) { return /^[\x20-\x7E]*$/.test(t) ? t : '=?UTF-8?B?' + _b64Utf8(t) + '?='; }
+function _partir76(b64) { return b64.replace(/(.{76})/g, '$1\r\n'); }
+async function _fileB64(file) {
+  return await new Promise(function (ok, mal) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(',')[1] || ''); }; r.onerror = function () { mal(r.error); }; r.readAsDataURL(file); });
+}
+// Arma el mail (texto + adjuntos) en formato MIME
+async function armarMimeMail(para, asunto, cuerpo, adjuntos) {
+  var bnd = 'mbseg_' + Math.random().toString(36).slice(2);
+  var partes = ['To: ' + para, 'Subject: ' + _encHeader(asunto), 'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="' + bnd + '"', '',
+    '--' + bnd, 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', _partir76(_b64Utf8(cuerpo))];
+  for (var i = 0; i < (adjuntos || []).length; i++) {
+    var f = adjuntos[i], nom = _encHeader(f.name);
+    partes.push('--' + bnd, 'Content-Type: ' + (f.type || 'application/octet-stream') + '; name="' + nom + '"', 'Content-Disposition: attachment; filename="' + nom + '"', 'Content-Transfer-Encoding: base64', '', _partir76(await _fileB64(f)));
+  }
+  partes.push('--' + bnd + '--', '');
+  return partes.join('\r\n');
+}
+async function enviarMailGmail(para, asunto, cuerpo, adjuntos) {
+  var mime = await armarMimeMail(para, asunto, cuerpo, adjuntos);
+  var tok = await _gmToken();
+  var r = await fetch('https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'message/rfc822' }, body: mime });
+  if (r.status === 401) { _gm.token = null; tok = await _gmToken(); r = await fetch('https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'message/rfc822' }, body: mime }); }
+  var j = await r.json().catch(function () { return {}; });
+  if (!r.ok) throw new Error((j.error && j.error.message) || ('Gmail respondió ' + r.status));
+  return { id: j.id, threadId: j.threadId, url: 'https://mail.google.com/mail/?authuser=' + encodeURIComponent((user && user.email) || '') + '#all/' + j.id };
+}
+async function enviarMailDirecto() {
+  var b = document.getElementById('env-btn-mail');
+  if (!_gmClientId()) { alert('Para mandar mails directo desde el CRM falta configurar el acceso a Gmail (una sola vez): Configuración → Envío de mails por Gmail.\n\nMientras tanto podés usar "abrirlo en Gmail y adjuntarlo a mano".'); return; }
+  var pol = _envio.pol, texto = (document.getElementById('env-texto') || {}).value || '';
+  var asunto = (_envio.doc === 'endoso' ? 'Endoso de tu póliza ' : 'Tu póliza ') + (pol.ramo ? 'de ' + pol.ramo + ' ' : '') + 'N° ' + (pol.numero_poliza || '') + ' — MB Seguros';
+  if (!confirm('¿Mandar ahora este mail a ' + _envio.mail + ' con ' + _envio.file.name + ' adjunto?')) return;
+  if (b) { b.disabled = true; b.textContent = 'Enviando por Gmail…'; }
+  try {
+    var r = await enviarMailGmail(_envio.mail, asunto, texto, [_envio.file]);
+    await _marcarEnviado('mail');
+    try { await sb.from('interacciones').update({ gmail_url: r.url }).eq('poliza_id', pol.id).eq('categoria', 'envio_poliza').order('created_at', { ascending: false }).limit(1); } catch (e) {}
+  } catch (e) {
+    if (b) { b.disabled = false; b.innerHTML = '📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + esc(_envio.mail) + '</span>'; }
+    alert('No se pudo mandar por Gmail: ' + (e.message || e) + '\n\nPodés usar "abrirlo en Gmail y adjuntarlo a mano".');
+  }
+}
+async function guardarGmailClientId() {
+  var v = (document.getElementById('cfg-gmail-cid') || {}).value || '';
+  v = v.trim();
+  if (v && !/\.apps\.googleusercontent\.com$/.test(v)) { alert('Ese no parece un ID de cliente de Google: termina en ".apps.googleusercontent.com".'); return; }
+  _cfg.gmail_client_id = v; _gm.token = null;
+  await sb.from('configuracion').upsert({ productor_id: user.id, config: JSON.stringify(_cfg) }, { onConflict: 'productor_id' });
+  mostrarAlerta(v ? 'Guardado. Probalo con "Probar envío".' : 'Quitado.');
+}
+async function probarGmail() {
+  try {
+    var r = await enviarMailGmail(user.email, 'Prueba de envío desde el CRM — MB Seguros', 'Si te llegó este mail con el PDF adjunto, el envío directo desde el CRM funciona.\n\nMB Seguros',
+      [new File([new Blob(['%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF'], { type: 'application/pdf' })], 'prueba.pdf', { type: 'application/pdf' })]);
+    alert('✓ Mail de prueba enviado a ' + user.email + '. Fijate en tu bandeja (y en Enviados).');
+  } catch (e) { alert('No se pudo: ' + (e.message || e)); }
 }
 async function enviarPorCanal(canal) {
   if (!_envio) return;
@@ -9142,11 +9229,12 @@ async function cargarConfig() {
   if(el('cfg-auto-cotiz')) el('cfg-auto-cotiz').checked = _cfg.auto_cotiz;
   if(el('cfg-auto-sin'))   el('cfg-auto-sin').checked   = _cfg.auto_sin;
   if(el('cfg-auto-renov')) el('cfg-auto-renov').checked = _cfg.auto_renov;
+  if(el('cfg-gmail-cid')) el('cfg-gmail-cid').value = _cfg.gmail_client_id || '';
 }
 
 async function guardarConfig() {
   var el = function(id){ return document.getElementById(id); };
-  _cfg = {
+  _cfg = Object.assign(_cfg, { // se conservan los demás ajustes (objetivos, Gmail…)
     dias_renov: parseInt((el('cfg-dias-renov')||{}).value)||15,
     dias_sin:   parseInt((el('cfg-dias-sin')||{}).value)||30,
     dias_cobr:  parseInt((el('cfg-dias-cobr')||{}).value)||5,
@@ -9155,7 +9243,7 @@ async function guardarConfig() {
     auto_cotiz: !!(el('cfg-auto-cotiz')&&el('cfg-auto-cotiz').checked),
     auto_sin:   !!(el('cfg-auto-sin')&&el('cfg-auto-sin').checked),
     auto_renov: !!(el('cfg-auto-renov')&&el('cfg-auto-renov').checked),
-  };
+  });
   await sb.from('configuracion').upsert({productor_id:user.id, config:JSON.stringify(_cfg)}, {onConflict:'productor_id'});
   mostrarAlerta('✅ Configuración guardada');
 }
