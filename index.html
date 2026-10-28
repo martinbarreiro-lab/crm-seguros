@@ -2506,8 +2506,8 @@ async function guardarGmailClientId() {
 }
 async function probarGmail() {
   try {
-    var r = await enviarMailGmail(user.email, 'Prueba de envío desde el CRM — MB Seguros', 'Si te llegó este mail con el PDF adjunto, el envío directo desde el CRM funciona.\n\nMB Seguros',
-      [new File([new Blob(['%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF'], { type: 'application/pdf' })], 'prueba.pdf', { type: 'application/pdf' })]);
+    var r = await enviarMailGmail(user.email, 'Prueba de envío desde el CRM — MB Seguros', 'Si te llegó este mail con el archivo prueba.txt adjunto, el envío directo desde el CRM funciona.\n\nMB Seguros',
+      [new File(['Archivo de prueba del CRM de MB Seguros. Si lo ves adjunto, el envío con archivos funciona.'], 'prueba.txt', { type: 'text/plain' })]);
     alert('✓ Mail de prueba enviado a ' + user.email + '. Fijate en tu bandeja (y en Enviados).');
   } catch (e) { alert('No se pudo: ' + (e.message || e)); }
 }
