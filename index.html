@@ -11277,7 +11277,9 @@ function renderDetallePol() {
   var vtoColor = e.key==='vencida'?'#A32D2D':e.key==='urgente'?'#854F0B':'#111827';
   var tabs = [{id:'cobertura',label:'Cobertura'},{id:'pagos',label:'Datos de pago'},{id:'documentos',label:'Documentos'},{id:'historial',label:'Historial'}];
   var _drP = (typeof p.datos_ramo === 'string' ? (function(){ try { return JSON.parse(p.datos_ramo); } catch(e) { return {}; } })() : p.datos_ramo) || {};
-  if ((_drP.personas && _drP.personas.length) || /accidentes personales|vida colectiv|accidentes a pasajeros/i.test(p.ramo || '') || (_drP.certificados && _drP.certificados.length))
+  // Solo AP / vida colectiva sueltas: las AP que acompañan al auto (paquete, pasajeros/transportados) no interesan
+  var _apDeAuto = !!p.paquete_de || /pasajeros|transportados/i.test((p.ramo || '') + ' ' + (_drP.producto || '') + ' ' + (_drP.ramo_compania || ''));
+  if (!_apDeAuto && ((_drP.personas && _drP.personas.length) || /accidentes personales|vida colectiv/i.test(p.ramo || '')))
     tabs.splice(1, 0, {id:'personas', label:'Personas' + (_drP.personas && _drP.personas.length ? ' (' + _drP.personas.length + ')' : '')});
 
   box.innerHTML =
