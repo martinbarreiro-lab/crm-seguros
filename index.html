@@ -7318,6 +7318,7 @@ async function generarTareasAutoVencimiento() {
       if (p.estado !== 'activa' || !p.fecha_vencimiento) return;
       if (p.paquete_de) return; // va en paquete: la tarea es de la póliza principal
       if (/ART/i.test(p.ramo || '') || /ART$/i.test(p.aseguradora || '')) return; // las ART renuevan solas
+      if (esCortoPlazo(p)) return; // seguro por unos días: no se renueva
       var e = calcEstadoVto(p.fecha_vencimiento);
       if (e.key !== 'urgente' && e.key !== 'vencida') return;
       cands[p.id] = { p: p, e: e };
@@ -9191,6 +9192,7 @@ async function verificarRenovaciones() {
   if (!pols || !pols.length) return;
   for (var i=0;i<pols.length;i++) {
     var p = pols[i];
+    if (esCortoPlazo(p)) continue;
     var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
     var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).not('estado','in','("cerrada","completada","cancelada")');  // cualquier tarea abierta de esa póliza (también en espera)
     if (existing && existing.length) continue;
@@ -12107,6 +12109,13 @@ function parseCSV(text) {
 // Supabase devuelve como máximo 1000 filas por consulta: esto trae todas, de a 1000
 // Cuotas que se cobran solas (tarjeta, débito, CBU): la compañía avisa por mail si rebotan, así que no se reclaman.
 // Solo las de pago manual (contado, cupón, efectivo) generan avisos y tareas de cobro.
+// Pólizas de corto plazo (menos de 28 días, ej. AP para un trabajo puntual): no generan tareas de renovación
+function esCortoPlazo(p) {
+  if (!p) return false;
+  if (p.datos_ramo && (p.datos_ramo.corto_plazo === true || p.datos_ramo.corto_plazo === 'true')) return true;
+  if (!p.fecha_inicio || !p.fecha_vencimiento) return false;
+  return (new Date(p.fecha_vencimiento + 'T12:00:00') - new Date(p.fecha_inicio + 'T12:00:00')) / 864e5 < 28;
+}
 function esPagoAutomatico(pol, cob) {
   // Vida obligatorio se paga por ARCA junto con las cargas sociales: no se ve ni se reclama
   if (/vida obligatori/i.test((pol || {}).ramo || '')) return true;
@@ -12626,7 +12635,7 @@ async function analizarPostImportacion(uid) {
     { data: tareasExist }
   ] = await Promise.all([
     // Pólizas por vencer
-    sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,fecha_vencimiento,cliente_id,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente)')
+    sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,fecha_inicio,fecha_vencimiento,datos_ramo,cliente_id,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente)')
       .eq('productor_id', uid).eq('estado','activa')
       .lte('fecha_vencimiento', limiteRenov).gte('fecha_vencimiento', hoySt),
     // Cuotas vencidas
@@ -12669,7 +12678,7 @@ async function analizarPostImportacion(uid) {
 
   // Filtrar pólizas por vencer sin tarea ya existente
   var polRenov = (polVencer||[]).filter(function(p){
-    return !tareasIdx[p.id+'_renovaciones'] && !/ART/i.test(p.ramo||'') && !p.paquete_de;
+    return !tareasIdx[p.id+'_renovaciones'] && !/ART/i.test(p.ramo||'') && !p.paquete_de && !esCortoPlazo(p);
   });
 
   // Filtrar cobranzas con tarea ya existente
@@ -13253,7 +13262,7 @@ async function generarTareasConfirmarRenovacion() {
   var hoy = new Date().toISOString().slice(0, 10), hace45 = new Date(); hace45.setDate(hace45.getDate() - 45);
   var cands = (_allPolizas || []).filter(function (p) {
     return p.estado === 'activa' && p.fecha_vencimiento && p.fecha_vencimiento <= hoy && p.fecha_vencimiento >= hace45.toISOString().slice(0, 10)
-      && !p.paquete_de && !/ART/i.test(p.ramo || '') && !/ART$/i.test(p.aseguradora || '');
+      && !p.paquete_de && !/ART/i.test(p.ramo || '') && !/ART$/i.test(p.aseguradora || '') && !esCortoPlazo(p);
   });
   if (!cands.length) return;
   var ids = cands.map(function (p) { return p.id; });
@@ -13478,7 +13487,7 @@ function _extraerFedPatPdf(T, d) {
     d.fecha_inicio = _isoFecha(+m[1], +m[2], m[3]); d.fecha_vencimiento = _isoFecha(+m[4], +m[5], m[6]);
     var dias = Math.round((new Date(d.fecha_vencimiento + 'T12:00:00') - new Date(d.fecha_inicio + 'T12:00:00')) / 864e5);
     d.periodo_meses = Math.max(1, Math.round(dias / 30.44));
-    if (dias < 40) d.mensual = true;
+    if (dias < 28) d.corto_plazo = true; // seguro por unos días (un trabajo puntual): no se renueva
   }
   if (!d.producto && (m = T.match(/PRODUCTO\s+([A-Z][A-Z0-9 .\/-]{2,40}?)\s+(?:POLIZA|PRODUCTOR|SECCION)/))) {
     var pr = m[1].replace(/^(AUTOMOTORES|ACCIDENTES PERSONALES|INTEGRAL DE COMERCIO|COMBINADO FAMILIAR|RESPONSABILIDAD CIVIL|ROBO|VIDA \w+)\s+/, '').trim();
@@ -13718,6 +13727,7 @@ async function _crearPolizaNueva(it) {
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
   ['marca', 'modelo', 'marca_modelo', 'anio', 'motor', 'chasis', 'uso', 'suma_asegurada', 'franquicia_desc'].forEach(function (k) { if (d[k]) dr[k] = d[k]; });
+  if (d.corto_plazo) dr.corto_plazo = true;
   if (d.producto) dr.producto = d.producto; if (d.ubicacion) dr.direccion_riesgo = tituloDir(d.ubicacion); if (d.mensual) dr.refacturacion = 'mensual';
   var rp = await sb.from('polizas').insert({ productor_id: user.id, cliente_id: cl.id, numero_poliza: String(d.numero_poliza).trim().replace(/^0+(?=\d)/, ''), aseguradora: d.aseguradora,
     ramo: d.ramo || 'Otros', fecha_inicio: d.fecha_inicio, fecha_vencimiento: vto, periodo_meses: d.periodo_meses || 12,
