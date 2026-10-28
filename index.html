@@ -1956,7 +1956,13 @@ function _estadoItemPdf(it, reemp) {
   if (it.hecho && it.soloDatos) return [it.completados ? '✓ Datos completados' : '✓ Ya tenía todos los datos', '#166534'];
   if (it.hecho) return it.verif && !it.verif.ok ? ['✓ ' + (it.creada ? 'Creada' : 'Subido') + ' · ⚠ revisar', '#B45309'] : ['✓ ' + (it.creada ? 'Póliza creada' : 'Subido') + (it.verif ? ' · verificada' : ''), '#166534'];
   if (it.error) return ['Error: ' + it.error, '#B91C1C'];
-  if (!it.pol && it.nueva) return it.nueva.crear ? ['Póliza nueva · se crea al subir', '#1D4ED8'] : ['No está en el CRM · no se crea', '#B45309'];
+  if (!it.pol && it.nueva) {
+    if (!it.nueva.crear) return ['No está en el CRM · no se crea', '#B45309'];
+    var dn = it.nueva.d, fal = [];
+    if (!dn.numero_poliza) fal.push('N° de póliza'); if (!dn.aseguradora) fal.push('compañía'); if (!dn.fecha_inicio) fal.push('fecha desde');
+    if (!it.nueva.cliente && !dn.asegurado) fal.push('cliente');
+    return fal.length ? ['Póliza nueva · falta completar: ' + fal.join(', '), '#B45309'] : ['Póliza nueva · se crea al subir', '#1D4ED8'];
+  }
   if (!it.pol) return ['Sin póliza con ese número', '#B45309'];
   if (it.pol.pdf_url && !reemp) return ['Ya tiene PDF · completo los datos que falten', '#1D4ED8'];
   return ['Listo para subir', '#1D4ED8'];
@@ -13637,6 +13643,7 @@ async function _prepararNuevas() {
 function _nvCampo(idx, campo, valor) {
   var it = _cpdf.items[idx]; if (!it || !it.nueva) return;
   if (campo === 'crear') it.nueva.crear = valor; else it.nueva.d[campo] = valor;
+  delete it.error; // al corregir un dato, se puede volver a intentar
   if (campo === 'cliente_id') it.nueva.cliente = valor ? (_cpdf.clientes || []).find(function (c) { return c.id === valor; }) : null;
   _renderCargaPdfs();
 }
