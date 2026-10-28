@@ -578,6 +578,7 @@
             <option value="31">31-60 días</option>
             <option value="61">+60 días</option>
           </select>
+          <label id="cob-ver-auto-lbl" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="cob-ver-auto" onchange="cobRender()"> <span id="cob-ver-auto-txt">Ver también las que se cobran solas</span></label>
           <div style="flex:1"></div>
           <div id="cob-total-label" style="font-size:12px;color:var(--muted)"></div>
         </div>
@@ -8577,10 +8578,16 @@ function cobRender() {
   var filMora = (document.getElementById('cob-fil-mora')||{}).value||'';
   var tbody = document.getElementById('tbody-cob');
   if (!tbody) return;
+  var verAuto = !!(document.getElementById('cob-ver-auto')||{}).checked;
+  var nAuto = _cobData.filter(function(c){ return (c.estado==='pendiente'||c.estado==='vencida') && c._auto; }).length;
+  var lblA = document.getElementById('cob-ver-auto-lbl'); if (lblA) lblA.style.display = _cobTab === 'pendiente' && nAuto ? 'flex' : 'none';
+  var txA = document.getElementById('cob-ver-auto-txt'); if (txA) txA.textContent = 'Ver también las ' + nAuto + ' que se cobran solas (tarjeta, débito, ARCA, anuladas)';
 
   var rows = _cobData.filter(function(c) {
     if (_cobTab === 'pendiente') {
       if (c.estado !== 'pendiente' && c.estado !== 'vencida') return false;
+      // Tarjeta / débito / CBU, vida obligatorio (ARCA) y pólizas anuladas: no son para reclamar, se ocultan salvo que se pidan
+      if (c._auto && !verAuto) return false;
     } else {
       if (c.estado !== 'pagada' && c.estado !== 'cancelado') return false;
     }
@@ -8748,7 +8755,8 @@ async function cargarCobranzas() {
 
   // Métricas
   var cobradas = _cobData.filter(function(c){ return c.estado==='pagada'||c.estado==='cancelado'; });
-  var pendientes = _cobData.filter(function(c){ return c.estado==='pendiente'||c.estado==='vencida'; });
+  // Pendiente = lo que hay que reclamar (contado / cupón); lo automático no cuenta
+  var pendientes = _cobData.filter(function(c){ return (c.estado==='pendiente'||c.estado==='vencida') && !c._auto; });
   var totalCob = cobradas.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
   var totalPend = pendientes.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
   var totalEmitido = totalCob + totalPend;
