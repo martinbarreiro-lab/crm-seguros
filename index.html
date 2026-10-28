@@ -13506,6 +13506,9 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   var ciaRe = (_CIAS_PDF.find(function (c) { return c[0] === d.aseguradora; }) || [])[1];
   while ((ma = rra.exec(T)) && !d.asegurado) {
     var cand = ma[1].replace(DIREC, '').replace(/[.,]+$/, '').replace(/\s+/g, ' ').trim();
+    // "VEHICULO ASEGURADO CITROEN C4…", "BIEN ASEGURADO", "SUMA ASEGURADA": no es el nombre de la persona
+    var previo = T.slice(Math.max(0, ma.index - 12), ma.index);
+    if (/VEHICULO\s*$|BIEN\s*$|SUMA\s*$|RIESGO\s*$|OBJETO\s*$/.test(previo)) continue;
     if (!NO_NOMBRE.test(cand) && cand.indexOf(' ') > 0 && !RUIDO.test(cand) && !(ciaRe && ciaRe.test(cand))) d.asegurado = cand;
   }
   // Domicilio, localidad y CP del asegurado
