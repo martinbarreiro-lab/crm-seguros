@@ -699,3 +699,6 @@ tr:hover td{background:var(--bg)}
 .hz-l{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
 @media(max-width:700px){.hz-kps{grid-template-columns:repeat(2,minmax(0,1fr))}.hz-row{flex-wrap:wrap}.hz-bt{width:100%;justify-content:flex-start}}
 .hz-in{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit}
+.nav-n{margin-left:auto;font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;border-radius:999px;padding:1px 7px;min-width:18px;text-align:center}
+.nav-n.rj{background:#FEE2E2;color:#B91C1C}
+#sec-hoy .dz-card{max-width:1100px}

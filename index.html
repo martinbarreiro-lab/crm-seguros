@@ -52,7 +52,11 @@
     </div>
     <nav class="sb-nav">
       <div class="nav-sec">Principal</div>
-      <button type="button" class="nav-btn active" data-sec="dashboard">
+      <button type="button" class="nav-btn active" data-sec="hoy">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 15 11 17 15 13"/></svg>
+        Hoy <span class="nav-n" id="nav-hoy-n" style="display:none"></span>
+      </button>
+      <button type="button" class="nav-btn" data-sec="dashboard">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         Dashboard
       </button>
@@ -116,7 +120,7 @@
 
   <div class="main">
     <div class="topbar">
-      <div class="topbar-t" id="topbar-title">Dashboard</div>
+      <div class="topbar-t" id="topbar-title">Hoy</div>
       <div style="display:flex;align-items:center;gap:8px">
         <!-- Oficina: lo que hacen los chats del proyecto -->
         <button type="button" id="of-btn" onclick="toggleOficina()" title="Oficina: avisos y mails para aprobar de los chats del proyecto" style="position:relative;padding:6px 10px;border-radius:var(--rsm);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text)">🗂 <span class="of-btn-lbl">Oficina</span>
@@ -147,7 +151,16 @@
       <div class="alerta alerta-ok" id="alerta-g"></div>
 
       <!-- DASHBOARD -->
-      <div id="sec-dashboard" class="sec active">
+      <!-- HOY -->
+      <div id="sec-hoy" class="sec active">
+        <section class="dz-card">
+          <div class="dz-tit"><h2 id="hz-tit">Hoy</h2><button type="button" class="dz-link" onclick="cargarHoy()">Actualizar ↻</button></div>
+          <div class="dz-sub" id="hz-sub">Lo atrasado, lo de hoy y las renovaciones del mes</div>
+          <div id="hoy-lista"><div class="loading"><span class="spin"></span></div></div>
+        </section>
+      </div>
+
+      <div id="sec-dashboard" class="sec">
         <!-- 1. Saludo + avisos -->
         <section class="dz-card dz-head">
           <div class="dz-hola">
@@ -161,11 +174,29 @@
           </div>
         </section>
 
-        <!-- 2. Hoy + Vencimientos -->
+        <!-- 2. Cartera vigente + indicadores -->
         <section class="dz-row">
-          <div class="dz-card" style="grid-column:1/-1">
-            <div class="dz-tit"><h2>Hoy</h2><button type="button" class="dz-link" onclick="dzToggleAgenda()" id="dz-btn-agenda">Ver agenda →</button></div>
-            <div class="dz-sub" id="hz-sub">Lo atrasado, lo de hoy y las renovaciones del mes</div>
+          <div class="dz-hero">
+            <div class="dz-hero-tag">● CARTERA VIGENTE</div>
+            <div>
+              <div class="dz-hero-lbl">INGRESO MENSUAL DE CARTERA</div>
+              <div class="dz-hero-val"><span id="dz-ingreso">—</span><small> /mes</small></div>
+            </div>
+            <div class="dz-hero-split" id="dz-split"></div>
+          </div>
+          <div class="dz-kpis">
+            <div class="dz-kpi"><div class="dz-kpi-l">PÓLIZAS VIGENTES</div><div class="dz-kpi-v" id="m-pol" style="color:var(--green)">—</div><div class="dz-kpi-s" id="m-pol-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">SINIESTROS ABIERTOS</div><div class="dz-kpi-v" id="m-sin" style="color:var(--red)">—</div><div class="dz-kpi-s" id="m-sin-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">COTIZACIONES EN CURSO</div><div class="dz-kpi-v" id="m-cotz" style="color:var(--amber)">—</div><div class="dz-kpi-s" id="m-cotz-sub"></div></div>
+            <div class="dz-kpi"><div class="dz-kpi-l">TAREAS PENDIENTES</div><div class="dz-kpi-v" id="m-tar" style="color:var(--med)">—</div><div class="dz-kpi-s" id="m-tar-sub"></div></div>
+          </div>
+        </section>
+
+        <!-- 3. Tu día + Vencimientos -->
+        <section class="dz-row">
+          <div class="dz-card">
+            <div class="dz-tit"><h2>Tu día</h2><button type="button" class="dz-link" onclick="dzToggleAgenda()" id="dz-btn-agenda">Ver agenda →</button></div>
+            <div class="dz-sub">Hoy y mañana</div>
             <div id="dz-tudia"><div class="loading"><span class="spin"></span></div></div>
             <!-- Agenda (calendario) -->
             <div id="dz-agenda" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
@@ -193,25 +224,6 @@
             <div class="dz-tit"><h2>Vencimientos próximos</h2><button type="button" class="dz-link" onclick="irASeccion('polizas')">Ver todas →</button></div>
             <div class="dz-sub">Próximos 60 días · con estado de renovación</div>
             <div id="dash-venc"><div class="loading"><span class="spin"></span></div></div>
-          </div>
-        </section>
-
-
-        <!-- 2. Cartera vigente + indicadores -->
-        <section class="dz-row">
-          <div class="dz-hero">
-            <div class="dz-hero-tag">● CARTERA VIGENTE</div>
-            <div>
-              <div class="dz-hero-lbl">INGRESO MENSUAL DE CARTERA</div>
-              <div class="dz-hero-val"><span id="dz-ingreso">—</span><small> /mes</small></div>
-            </div>
-            <div class="dz-hero-split" id="dz-split"></div>
-          </div>
-          <div class="dz-kpis">
-            <div class="dz-kpi"><div class="dz-kpi-l">PÓLIZAS VIGENTES</div><div class="dz-kpi-v" id="m-pol" style="color:var(--green)">—</div><div class="dz-kpi-s" id="m-pol-sub"></div></div>
-            <div class="dz-kpi"><div class="dz-kpi-l">SINIESTROS ABIERTOS</div><div class="dz-kpi-v" id="m-sin" style="color:var(--red)">—</div><div class="dz-kpi-s" id="m-sin-sub"></div></div>
-            <div class="dz-kpi"><div class="dz-kpi-l">COTIZACIONES EN CURSO</div><div class="dz-kpi-v" id="m-cotz" style="color:var(--amber)">—</div><div class="dz-kpi-s" id="m-cotz-sub"></div></div>
-            <div class="dz-kpi"><div class="dz-kpi-l">TAREAS PENDIENTES</div><div class="dz-kpi-v" id="m-tar" style="color:var(--med)">—</div><div class="dz-kpi-s" id="m-tar-sub"></div></div>
           </div>
         </section>
 
@@ -2785,6 +2797,7 @@ async function mostrarApp() {
   document.getElementById('sb-email') && (document.getElementById('sb-email').textContent = user.email);
   poblarAnios();
   setupCtxHandlers();
+  cargarHoy();
   await cargarDashboard();
   await cargarClientes();
   // Cargar config y verificar renovaciones al iniciar
@@ -2806,7 +2819,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('sec-' + sec).classList.add('active');
     this.classList.add('active');
-    const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
+    if (sec === 'hoy') cargarHoy();
+    const titles = { hoy: 'Hoy', dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
       fichaId = null;
@@ -2951,8 +2965,31 @@ async function cargarDashboard() {
   if (el('m-tar')) el('m-tar').textContent = tars.length;
   if (el('m-tar-sub')) el('m-tar-sub').textContent = 'Hoy y mañana: ' + tarHoy + (tarVenc ? ' · ' + tarVenc + ' vencidas' : '');
 
-  // ── Hoy (lista con acciones) ──
-  cargarHoy();
+  // ── Tu día ──
+  var items = [];
+  var fmtD = function(f){ return f === hoy ? 'HOY' : f === manana ? 'MAÑANA' : f < hoy ? 'VENCIDA' : fmtDate(f); };
+  tars.filter(function(t){ return t.fecha_limite && t.fecha_limite <= manana; })
+    .sort(function(a,b){ return a.fecha_limite < b.fecha_limite ? -1 : 1; })
+    .forEach(function(t){
+      var cls = t.fecha_limite < hoy ? 'rj' : /^Enviar/i.test(t.tipo||'') ? 'az' : t.fecha_limite === hoy ? 'am' : '';
+      var esRenov = t.tipo === 'Confirmar renovación' && t.poliza_id;
+      if (t.tipo === 'Completar cliente' && t.cliente_id) { items.push({ o: t.fecha_limite, h: '<div class="dz-item am" onclick="completarCliente(\''+t.cliente_id+'\')"><span class="w">'+fmtD(t.fecha_limite)+'</span><div class="t"><b>✏️ Completar cliente</b> · '+esc_(t.titulo||'').replace(/^Completar datos del cliente — /,'')+'</div><span class="r">Completar →</span></div>' }); return; }
+      if (esRenov) cls = 'rj';
+      items.push({ o: esRenov ? '0000' : t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="'+(esRenov ? 'abrirConfirmarRenovacion(\''+t.poliza_id+'\',\''+t.id+'\')' : 'irASeccion(\'tareas\')')+'"><span class="w">'+(esRenov ? 'VENCIÓ' : fmtD(t.fecha_limite))+'</span><div class="t"><b>'+(esRenov ? '🔄 ¿Se renovó?' : esc_(t.tipo || 'Tarea'))+'</b> · '+esc_(t.titulo||'').replace(/^¿Se renovó\? — /,'')+(t.clientes && !esRenov ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">'+(esRenov ? 'Responder →' : 'Tareas →')+'</span></div>' });
+    });
+  pols.filter(function(p){ return p.fecha_vencimiento === hoy || p.fecha_vencimiento === manana; }).forEach(function(p){
+    var cl = (venc.find(function(v){ return v.id === p.id; })||{}).clientes;
+    items.push({ o: p.fecha_vencimiento, h: '<div class="dz-item am" onclick="irAFichaCliente(\''+p.cliente_id+'\')"><span class="w">'+fmtD(p.fecha_vencimiento)+'</span><div class="t"><b>Vence</b> '+esc_(p.ramo||'')+' '+esc_(p.numero_poliza||'')+(cl ? ' · '+esc_(nomCl(cl)) : '')+'</div><span class="r">Ver cliente →</span></div>' });
+  });
+  cuotasHoy.forEach(function(c){
+    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irASeccion(\'cobranzas\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota</b> '+$(c.monto)+(c.clientes ? ' · '+esc_(nomCl(c.clientes)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
+  });
+  items.sort(function(a,b){ return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; });
+  var tdHtml = items.slice(0, 7).map(function(x){ return x.h; }).join('');
+  if (items.length > 7) tdHtml += '<div class="dz-sub" style="margin:4px 0 0">y '+(items.length-7)+' más en Tareas</div>';
+  if (sinPdfAuto) tdHtml = '<div class="dz-item rj" onclick="irASeccion(\'polizas\')"><span class="w">PENDIENTE</span><div class="t"><b>'+sinPdfAuto+(sinPdfAuto === 1 ? ' póliza de auto' : ' pólizas de auto')+' sin PDF</b> · es obligatorio tenerlas para mandarlas</div><span class="r">Pólizas →</span></div>' + tdHtml;
+  if (cuotasVenc) tdHtml += '<div class="dz-item rj" onclick="irASeccion(\'cobranzas\')"><span class="w">PENDIENTE</span><div class="t"><b>Cuotas vencidas</b> · '+cuotasVenc+' para reclamar</div><span class="r">Cobranzas →</span></div>';
+  if (el('dz-tudia')) el('dz-tudia').innerHTML = tdHtml || '<div style="font-size:13px;color:var(--lt);padding:8px 0">Nada para hoy ni mañana</div>';
 
   // ── Vencimientos con estado de renovación ──
   var tarRenov = {}; tars.forEach(function(t){ if (t.poliza_id && /renov/i.test((t.tipo||'')+' '+(t.titulo||''))) tarRenov[t.poliza_id] = 1; });
@@ -3029,7 +3066,7 @@ function _hzRow(tag, tcls, titulo, sub, botones) {
 }
 function _hzB(txt, fn, pri) { return '<button type="button" class="hz-b' + (pri ? ' pri' : '') + '" onclick="' + fn + '">' + txt + '</button>'; }
 async function cargarHoy() {
-  var box = document.getElementById('dz-tudia'); if (!box || !user) return;
+  var box = document.getElementById('hoy-lista'); if (!box || !user) return;
   var hoyD = new Date(), hoy = _hzIso(hoyD);
   var en30 = new Date(hoyD); en30.setDate(en30.getDate() + 30);
   var uid = user.id;
@@ -3118,6 +3155,7 @@ async function cargarHoy() {
       + secc('🔴', 'Atrasado', atras, 6)
       + secc('🟡', 'Para hoy', deHoy, 8, atras.length ? '' : 'Nada pendiente para hoy 👌')
       + secc('🔄', 'Renovaciones próximas (30 días)', renov, 6, 'No vence ninguna póliza en los próximos 30 días');
+    var nh = document.getElementById('nav-hoy-n'); if (nh) { var tot = atras.length + deHoy.length; nh.textContent = tot; nh.style.display = tot ? '' : 'none'; nh.className = 'nav-n' + (atras.length ? ' rj' : ''); }
     var sub = document.getElementById('hz-sub');
     if (sub) sub.textContent = (atras.length + deHoy.length) ? (atras.length + deHoy.length) + (atras.length + deHoy.length === 1 ? ' cosa para hacer' : ' cosas para hacer') + (renov.length ? ' · ' + renov.length + (renov.length === 1 ? ' renovación' : ' renovaciones') + ' en el mes' : '') : 'Al día' + (renov.length ? ' · ' + renov.length + (renov.length === 1 ? ' renovación' : ' renovaciones') + ' en el mes' : '');
   } catch (e) {
@@ -9387,6 +9425,7 @@ function irASeccion(sec) {
   var b = document.querySelector('.nav-btn[data-sec="'+sec+'"]');
   if (s) s.classList.add('active');
   if (b) b.classList.add('active');
+  if (sec==='hoy') cargarHoy();
   if (sec==='tareas') cargarTareas();
   if (sec==='polizas') cargarPolizas();
   if (sec==='companias') cargarHistorialComp();
