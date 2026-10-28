@@ -663,3 +663,8 @@ tr:hover td{background:var(--bg)}
 .td-hist{border-left:2px solid #CBD5E1;padding-left:12px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;font-size:12.5px}
 .td-h-it{line-height:1.45}.td-h-it.sis{color:var(--text2)}.td-h-f{color:var(--muted)}
 .td-edit{border-top:0.5px solid var(--border);padding-top:8px}.td-edit summary{font-size:12.5px;color:var(--muted);cursor:pointer}
+
+.of-lateral{position:fixed;right:0;top:45%;z-index:900;display:flex;align-items:center;gap:4px;padding:10px 8px;border:0.5px solid var(--border);border-right:0;border-radius:10px 0 0 10px;background:var(--white);box-shadow:-2px 2px 8px rgba(0,0,0,.08);cursor:pointer;font-size:13px;font-family:inherit}
+.of-lateral b{background:#DC2626;color:#fff;border-radius:9px;font-size:10.5px;padding:1px 6px}
+.of-hechos{display:block;margin:10px auto;border:0;background:none;color:#1D4ED8;font-size:12.5px;cursor:pointer;font-family:inherit}
+.of-x{white-space:nowrap}

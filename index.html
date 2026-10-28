@@ -3462,7 +3462,10 @@ document.getElementById('btn-volver-cl').onclick = function() {
 async function renderFicha() {
   const { data: c } = await sb.from('clientes').select('*').eq('id', fichaId).single();
   if (!c) return;
-  document.getElementById('ficha-titulo').textContent = c.nombre + ' ' + c.apellido;
+  document.getElementById('ficha-titulo').textContent = nombreClienteLista(c);
+  // El encabezado grande siempre con el cliente que se está viendo (antes quedaba el anterior al entrar desde Siniestros)
+  var _st = document.querySelector('.cl-section-title'), _ss = document.querySelector('.cl-section-sub');
+  if (_st) _st.textContent = nombreClienteLista(c); if (_ss) _ss.textContent = 'Ficha 360\u00b0 del cliente';
   const eb = { prospecto: 'background:#E6F1FB;color:#0C447C', activo: 'background:#EAF3DE;color:#27500A', renovacion: 'background:#FAEEDA;color:#633806', siniestrado: 'background:#FCEBEB;color:#791F1F', inactivo: 'background:#F1EFE8;color:#444441' };
   document.getElementById('ficha-badge').innerHTML = '<span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;' + (eb[c.estado] || '') + '">' + (c.estado || '') + '</span>';
 
@@ -13119,7 +13122,16 @@ var OF_ESTADOS = {
   aprobado: ['Aprobado · se envía cuando abras el chat', '#1D4ED8', '#DBEAFE'], enviado: ['✓ Enviado', '#166534', '#DCFCE7'],
   hecho: ['✓ Hecho', '#166534', '#DCFCE7'], rechazado: ['No se envía', '#64748B', '#F1F5F9'], error: ['Error', '#B91C1C', '#FEE2E2'], aviso: ['Aviso', '#475569', '#F1F5F9']
 };
-var _of = { items: [], filtro: '', abierto: false, timer: null };
+var _of = { items: [], filtro: '', abierto: false, timer: null, verHechos: false };
+// Lo que ya terminó (enviado, hecho, rechazado, avisos leídos) no se muestra salvo que pidas verlo
+function _ofTerminado(b) { return (b.estado === 'enviado' || b.estado === 'hecho' || b.estado === 'rechazado' || b.estado === 'aviso') && b.visto; }
+function _ofLateral() {
+  var t = document.getElementById('of-lateral');
+  if (!t) { t = document.createElement('button'); t.type = 'button'; t.id = 'of-lateral'; t.className = 'of-lateral'; t.title = 'Abrir la Oficina'; t.onclick = function () { toggleOficina(true); }; document.body.appendChild(t); }
+  var n = _of.items.filter(_ofPendiente).length + _of.items.filter(function (b) { return b.estado === 'aprobado' || b.estado === 'pedido'; }).length;
+  t.innerHTML = '‹ 🗂' + (n ? '<b>' + n + '</b>' : '');
+  t.style.display = _of.abierto || !n ? 'none' : 'flex';
+}
 
 function _ofHace(iso) {
   var d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
@@ -13132,7 +13144,7 @@ function _ofPendiente(b) { return b.estado === 'para_aprobar' || ((b.estado === 
 function _ofPanel() {
   var p = document.getElementById('of-panel'); if (p) return p;
   p = document.createElement('div'); p.id = 'of-panel'; p.className = 'of-panel';
-  p.innerHTML = '<div class="of-head"><div><div class="of-t">🗂 Oficina</div><div class="of-sub">Lo que hacen los chats del proyecto MB Seguros</div></div><button type="button" class="of-x" onclick="toggleOficina(false)">✕</button></div>'
+  p.innerHTML = '<div class="of-head"><div><div class="of-t">🗂 Oficina</div><div class="of-sub">Lo que hacen los chats del proyecto MB Seguros</div></div><button type="button" class="of-x" title="Cerrar la Oficina" onclick="toggleOficina(false)">› Cerrar</button></div>'
     + '<div class="of-tabs" id="of-tabs"></div><div class="of-list" id="of-list"></div>';
   document.body.appendChild(p);
   return p;
@@ -13148,12 +13160,14 @@ async function cargarOficina() {
   var n = _of.items.filter(_ofPendiente).length;
   var b = document.getElementById('of-badge');
   if (b) { b.textContent = n; b.style.display = n ? 'flex' : 'none'; }
+  _ofLateral();
   if (_of.abierto) renderOficina();
 }
 function toggleOficina(abrir) {
   var p = _ofPanel();
   _of.abierto = abrir === undefined ? !_of.abierto : abrir;
   p.classList.toggle('open', _of.abierto);
+  _ofLateral();
   if (_of.abierto) { renderOficina(); cargarOficina(); }
 }
 function filtrarOficina(a) { _of.filtro = a; renderOficina(); }
@@ -13165,10 +13179,12 @@ function renderOficina() {
     var n = a ? cnt[a] : _of.items.filter(_ofPendiente).length;
     return '<button type="button" class="of-tab' + (_of.filtro === a ? ' on' : '') + '" onclick="filtrarOficina(\'' + a + '\')">' + lbl + (n ? ' <b>' + n + '</b>' : '') + '</button>';
   }).join('');
-  var lista = _of.items.filter(function (b) { return !_of.filtro || b.area === _of.filtro; });
+  var deArea = _of.items.filter(function (b) { return !_of.filtro || b.area === _of.filtro; });
+  var hechos = deArea.filter(_ofTerminado), lista = _of.verHechos ? deArea : deArea.filter(function (b) { return !_ofTerminado(b); });
   var el = document.getElementById('of-list');
-  if (!lista.length) { el.innerHTML = '<div class="of-vacio">Nada por acá todavía.<br><span>Cuando un chat del proyecto arme un mail o te avise algo, aparece en esta lista. Lo que pidas con "📧 Gestionar por mail" también.</span></div>'; return; }
-  el.innerHTML = lista.map(_ofItemHtml).join('');
+  var pie = hechos.length ? '<button type="button" class="of-hechos" onclick="_of.verHechos=!_of.verHechos;renderOficina()">' + (_of.verHechos ? 'Ocultar lo ya hecho' : 'Ver lo ya hecho (' + hechos.length + ')') + '</button>' : '';
+  if (!lista.length) { el.innerHTML = '<div class="of-vacio">' + (hechos.length ? '✓ Todo al día.<br><span>No hay nada pendiente.</span>' : 'Nada por acá todavía.<br><span>Cuando un chat del proyecto arme un mail o te avise algo, aparece en esta lista. Lo que pidas con "📧 Gestionar por mail" también.</span>') + '</div>' + pie; return; }
+  el.innerHTML = lista.map(_ofItemHtml).join('') + pie;
   // marcar como vistos los avisos y resultados que se muestran
   var ver = lista.filter(function (b) { return !b.visto && b.estado !== 'para_aprobar' && b.estado !== 'pedido' && b.estado !== 'aprobado'; }).map(function (b) { return b.id; });
   if (ver.length) setTimeout(async function () {
