@@ -2319,11 +2319,12 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     var quien = tel && mail ? 'WhatsApp o tu correo' : tel ? 'WhatsApp' : 'tu correo';
     if (puedeCompartir) {
       // Opción principal: compartir con el PDF adjunto. La constancia se guarda al terminar de compartir.
-      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">' + (tel ? '<strong>WhatsApp:</strong> elegí WhatsApp en el menú de compartir, buscá al cliente y enviá (el PDF va adjunto). ' : '') + (mail ? '<strong>Mail:</strong> se abre Gmail con todo cargado y se descarga el PDF: adjuntalo y enviá. ' : '') + 'La constancia se guarda sola.</div>');
+      h.push('<div style="font-size:11px;color:var(--muted);margin:6px 0 10px">' + (tel ? '<strong>WhatsApp:</strong> elegí WhatsApp en el menú de compartir, buscá al cliente y enviá (el PDF va adjunto). ' : '') + 'La constancia se guarda sola.</div>');
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="compartirPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📤 Compartir por WhatsApp <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir en Gmail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-ofi" onclick="mandarPorOficina()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Lo manda el chat del proyecto desde tu Gmail, con la póliza adjunta (sin link). Sale cuando abrís el chat y le decís "Oficina". <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo ya en Gmail y adjuntarlo a mano</button></div>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
       if (tel) h.push('<div style="font-size:11px;color:var(--muted);margin-top:8px">Alternativa para WhatsApp: <button type="button" class="lnk" onclick="enviarPorCanal(\'wa\')">abrir el chat directo</button> (descarga el PDF para adjuntarlo a mano)</div>');
@@ -2333,7 +2334,8 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
       h.push('<div style="display:flex;flex-direction:column;gap:8px">');
       if (tel) h.push('<button type="button" class="btn btn-p" id="env-btn-wa" onclick="enviarPorCanal(\'wa\')" style="justify-content:space-between;display:flex">📲 Abrir WhatsApp del cliente <span style="opacity:.8;font-weight:400">' + cl.telefono_principal + '</span></button>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">WhatsApp — sin teléfono cargado</div>');
-      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-mail" onclick="enviarPorCanal(\'mail\')" style="justify-content:space-between;display:flex">✉ Abrir en Gmail <span style="opacity:.8;font-weight:400">' + mail + '</span></button>');
+      if (mail) h.push('<button type="button" class="btn btn-p" id="env-btn-ofi" onclick="mandarPorOficina()" style="justify-content:space-between;display:flex">📧 Mandar por mail con el PDF adjunto <span style="opacity:.8;font-weight:400">' + mail + '</span></button>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:-4px">Lo manda el chat del proyecto desde tu Gmail, con la póliza adjunta (sin link). Sale cuando abrís el chat y le decís "Oficina". <button type="button" class="lnk" onclick="enviarPorCanal(\'mail\')">O abrirlo ya en Gmail y adjuntarlo a mano</button></div>');
       else h.push('<div style="font-size:12px;color:#9CA3AF">Mail — sin mail cargado</div>');
       h.push('</div>');
     }
@@ -2393,6 +2395,28 @@ async function _marcarEnviado(canal) {
 }
 
 // Botón directo: descarga el PDF, abre el chat / mail del cliente con el mensaje y guarda la constancia
+// Mail con el PDF adjunto: queda aprobado en la Oficina y lo manda el chat del proyecto desde Gmail
+async function mandarPorOficina() {
+  var pol = _envio.pol, cl = _envio.cl, b = document.getElementById('env-btn-ofi');
+  var url = _envio.doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url;
+  var texto = (document.getElementById('env-texto') || {}).value || '';
+  if (b) { b.disabled = true; b.textContent = 'Dejándolo en la Oficina…'; }
+  try {
+    var link = null; try { link = await linkArchivo(url, 30 * 86400); } catch (e) {}
+    var que = (_envio.doc === 'endoso' ? 'Endoso de tu póliza ' : 'Tu póliza ') + (pol.ramo ? 'de ' + pol.ramo + ' ' : '') + 'N° ' + (pol.numero_poliza || '');
+    var r = await sb.from('bandeja').insert({ productor_id: user.id, area: /renov/i.test(document.getElementById('env-titulo').textContent) ? 'renovaciones' : 'administracion', origen: 'crm', estado: 'aprobado', visto: true, canal: 'mail',
+      titulo: 'Mandar ' + (_envio.doc === 'endoso' ? 'el endoso de la póliza ' : 'la póliza ') + (pol.ramo || '') + ' N° ' + (pol.numero_poliza || '') + ' a ' + nombreClienteLista(cl),
+      detalle: 'Mandar con el PDF adjunto (no como link). El texto ya está aprobado por Martín.',
+      destinatario: _envio.mail, asunto: que + ' — MB Seguros', cuerpo: texto,
+      adjuntos: [{ nombre: _envio.file.name, url: url, link: link }], cliente_id: pol.cliente_id || null, poliza_id: pol.id, tarea_id: _envio.tareaId || null });
+    if (r.error) throw r.error;
+    await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: pol.cliente_id, categoria: 'envio_poliza', tipo: 'email', poliza_id: pol.id, poliza_numero: pol.numero_poliza || null, poliza_ramo: pol.ramo || null,
+      resumen: '📧 ' + que + ' para mandar por mail a ' + _envio.mail + ' (con el PDF adjunto, vía la Oficina)', usuario_nombre: user.email, es_automatico: false });
+    if (b) { b.className = 'btn btn-ok'; b.innerHTML = '✓ En la Oficina, aprobado para mandar'; }
+    mostrarAlerta('Listo: el mail quedó aprobado en la Oficina. Abrí el chat del proyecto y decile "Oficina" para que lo mande con el PDF adjunto.');
+    if (typeof cargarOficina === 'function') try { cargarOficina(); } catch (e) {}
+  } catch (e) { if (b) { b.disabled = false; b.textContent = '📧 Mandar por mail con el PDF adjunto'; } alert('No se pudo dejar en la Oficina: ' + (e.message || e)); }
+}
 async function enviarPorCanal(canal) {
   if (!_envio) return;
   descargarPdfEnvio();
