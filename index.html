@@ -11396,18 +11396,23 @@ function renderMpdPersonas(p) {
   var hoy = new Date();
   var edad = function (f) { if (!f) return ''; var n = new Date(f + 'T12:00:00'), e = hoy.getFullYear() - n.getFullYear(); if (hoy < new Date(hoy.getFullYear(), n.getMonth(), n.getDate())) e--; return e; };
   var benefs = per.map(function (x) { return x.beneficiario || ''; });
+  var conSuma = per.some(function (x) { return x.suma; }), conSueldo = per.some(function (x) { return x.sueldo; }), conIng = per.some(function (x) { return x.ingreso; });
+  var totSuma = per.reduce(function (a, x) { return a + (Number(x.suma) || 0); }, 0);
   var mismoBenef = benefs.every(function (b) { return b === benefs[0]; }) && benefs[0];
   var th = 'text-align:left;font-size:10px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid #E5E7EB';
   var td = 'padding:8px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#111827;vertical-align:top';
   return '<div style="font-size:12px;color:#6B7280;margin-bottom:8px">' + per.length + (per.length === 1 ? ' persona asegurada' : ' personas aseguradas') + ' según el PDF de la póliza</div>'
-    + '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="' + th + '">Cert.</th><th style="' + th + '">Apellido y nombre</th><th style="' + th + '">' + (per[0].doc || 'DNI') + '</th><th style="' + th + '">Nacimiento</th>' + (mismoBenef ? '' : '<th style="' + th + '">Beneficiario</th>') + '</tr></thead><tbody>'
+    + '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="' + th + '">Cert.</th><th style="' + th + '">Apellido y nombre</th><th style="' + th + '">' + (per[0].doc || 'DNI') + '</th><th style="' + th + '">Nacimiento</th>' + (conSuma ? '<th style="' + th + ';text-align:right">Suma aseg.</th>' : '') + (conSueldo ? '<th style="' + th + ';text-align:right">Sueldo</th>' : '') + (conIng ? '<th style="' + th + '">Ingreso</th>' : '') + (mismoBenef ? '' : '<th style="' + th + '">Beneficiario</th>') + '</tr></thead><tbody>'
     + per.map(function (x) {
       return '<tr><td style="' + td + ';color:#6B7280">' + esc(x.cert || '') + '</td><td style="' + td + ';font-weight:500">' + esc(tit(x.nombre)) + '</td><td style="' + td + '">' + esc(x.dni || '') + '</td>'
         + '<td style="' + td + '">' + (x.nacimiento ? fmtDate(x.nacimiento) + ' <span style="color:#9CA3AF">(' + edad(x.nacimiento) + ' años)</span>' : '—') + '</td>'
+        + (conSuma ? '<td style="' + td + ';text-align:right">' + (x.suma ? '$' + Math.round(x.suma).toLocaleString('es-AR') : '—') + '</td>' : '')
+        + (conSueldo ? '<td style="' + td + ';text-align:right;color:#6B7280">' + (x.sueldo ? '$' + Math.round(x.sueldo).toLocaleString('es-AR') : '—') + '</td>' : '')
+        + (conIng ? '<td style="' + td + ';color:#6B7280">' + (x.ingreso ? fmtDate(x.ingreso) : '—') + '</td>' : '')
         + (mismoBenef ? '' : '<td style="' + td + ';font-size:12px;color:#6B7280">' + esc(x.beneficiario || '—') + '</td>') + '</tr>';
     }).join('') + '</tbody></table>'
     + (mismoBenef ? '<div style="font-size:12px;color:#6B7280;margin-top:10px">Beneficiario de todos: ' + esc(mismoBenef) + '</div>' : '')
-    + '<div style="font-size:12px;color:#9CA3AF;margin-top:6px">Las sumas aseguradas por persona están en la pestaña Cobertura.</div>';
+    + (conSuma ? '<div style="font-size:12px;color:#6B7280;margin-top:6px">Capital total asegurado: <b>$' + Math.round(totSuma).toLocaleString('es-AR') + '</b></div>' : '<div style="font-size:12px;color:#9CA3AF;margin-top:6px">Las sumas aseguradas por persona están en la pestaña Cobertura.</div>');
 }
 async function mpdSetTab(tab) {
   _mpdTab = tab;
@@ -13922,7 +13927,13 @@ function _extraerNomina(T, d) {
   T.slice(i).split('¶').forEach(function (r) {
     var m = r.trim().match(/^(\d{1,5})\s+(DNI|LE|LC|CI|PAS|CUIL|CUIT|DU)\s+(\d{6,11})\s+(.+?)\s+(\d{2})[-\/](\d{2})[-\/](\d{4})(?:\s+(.*))?$/);
     if (!m || vistos[m[3]]) return; vistos[m[3]] = 1;
-    per.push({ cert: m[1], doc: m[2], dni: m[3], nombre: m[4].trim(), nacimiento: m[7] + '-' + m[6] + '-' + m[5], beneficiario: m[8] ? _capi(m[8].trim()) : null });
+    var x = { cert: m[1], doc: m[2], dni: m[3], nombre: m[4].trim().replace(/\.\s+/, ', ').replace(/\.$/, ''), nacimiento: m[7] + '-' + m[6] + '-' + m[5] }, resto = (m[8] || '').trim(), q;
+    // Vida colectiva: SUMA ASEG. [SUELDO] [FE INGRESO] antes del beneficiario
+    if ((q = resto.match(/^([\d,]+\.\d{2})\s+(?:([\d,]+\.\d{2})\s+)?(?:(\d{2})[-\/](\d{2})[-\/](\d{4})\s+)?(.*)$/))) {
+      x.suma = _impUS(q[1]); if (q[2]) x.sueldo = _impUS(q[2]); if (q[3]) x.ingreso = q[5] + '-' + q[4] + '-' + q[3]; resto = q[6];
+    }
+    x.beneficiario = resto ? _capi(resto) : null;
+    per.push(x);
   });
   if (per.length) d.personas = per;
 }
