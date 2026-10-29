@@ -2,8 +2,16 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MB Seguros — CRM</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1E2A3B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MB Seguros">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <link rel="stylesheet" href="./css/styles.css">
 </head>
@@ -115,6 +123,15 @@
   </div>
 
   <div class="main">
+    <!-- Celular: fondo del menú lateral y menú de abajo -->
+    <div id="mob-back" onclick="mobMenu(false)"></div>
+    <nav id="mob-nav" aria-label="Menú principal">
+      <button type="button" data-m="hoy" onclick="mobIr('hoy')"><span class="mi">📅</span>Hoy<i id="mob-n-hoy"></i></button>
+      <button type="button" data-m="clientes" onclick="mobIr('clientes')"><span class="mi">👥</span>Clientes</button>
+      <button type="button" data-m="polizas" onclick="mobIr('polizas')"><span class="mi">📄</span>Pólizas</button>
+      <button type="button" data-m="cobranzas" onclick="mobIr('cobranzas')"><span class="mi">💵</span>Cobros</button>
+      <button type="button" data-m="mas" onclick="mobMenu(true)"><span class="mi">☰</span>Más</button>
+    </nav>
     <div class="topbar">
       <div class="topbar-t" id="topbar-title">Dashboard</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -347,6 +364,7 @@
             <div style="font-size:16px;font-weight:600;color:var(--blue)" id="ficha-titulo"></div>
             <span id="ficha-badge"></span>
           </div>
+          <div id="ficha-contacto"></div>
           <div class="ficha-tabs" id="ficha-tabs"></div>
           <div id="ficha-content"></div>
         </div>
@@ -2803,6 +2821,7 @@ async function mostrarApp() {
   setupCtxHandlers();
   await cargarDashboard();
   cargarHoy();
+  if (esMovil()) mobIr('hoy');
   await cargarClientes();
   // Cargar config y verificar renovaciones al iniciar
   try { await cargarConfig(); } catch(e){}
@@ -3099,7 +3118,7 @@ async function cargarHoy() {
       var tit = (cs.length === 1 ? 'Cuota ' + (c0.numero_cuota ? c0.numero_cuota + (c0.total_cuotas ? '/' + c0.total_cuotas : '') + ' ' : '') + 'contado' : cs.length + ' cuotas contado') + ' · ' + _hz$(tot);
       var sub = esc(nomCl(c0.clientes) || 'Sin cliente') + ' · ' + esc(cs.length === 1 ? textoPolizaTarea(pol) : cs.map(function (c) { return (c.polizas || {}).ramo || ''; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).join(', '));
       var fila = { o: c0.fecha_vencimiento, h: _hzRow(d === 0 ? 'hoy' : d === -1 ? 'venció ayer' : 'hace ' + (-d) + ' días', d === 0 ? 'am' : 'rj', tit, sub,
-        [_hzB('WhatsApp', "hoyWhatsapp('" + k + "')"), _hzB('Ya pagó', "hoyYaPago('" + k + "')")]) };
+        ['<button type="button" class="hz-b wa" onclick="hoyWhatsapp(\'' + k + '\')">WhatsApp</button>', _hzB('Ya pagó', "hoyYaPago('" + k + "')")]) };
       (d === 0 ? deHoy : atras).push(fila);
     });
 
@@ -3158,6 +3177,7 @@ async function cargarHoy() {
       + secc('🔴', 'Atrasado', atras, 6)
       + secc('🟡', 'Para hoy', deHoy, 8, atras.length ? '' : 'Nada pendiente para hoy 👌')
       + secc('🔄', 'Renovaciones próximas (30 días)', renov, 6, 'No vence ninguna póliza en los próximos 30 días');
+    var mh = document.getElementById('mob-n-hoy'); if (mh) { mh.textContent = (atras.length + deHoy.length) || ''; mh.className = atras.length ? 'rj' : ''; }
     var nh = document.getElementById('nav-tar-n'); if (nh) { var tot = atras.length + deHoy.length; nh.textContent = tot; nh.style.display = tot ? '' : 'none'; nh.className = 'nav-n' + (atras.length ? ' rj' : ''); }
     var sub = document.getElementById('hz-sub');
     if (sub) sub.textContent = (atras.length + deHoy.length) ? (atras.length + deHoy.length) + (atras.length + deHoy.length === 1 ? ' cosa para hacer' : ' cosas para hacer') + (renov.length ? ' · ' + renov.length + (renov.length === 1 ? ' renovación' : ' renovaciones') + ' en el mes' : '') : 'Al día' + (renov.length ? ' · ' + renov.length + (renov.length === 1 ? ' renovación' : ' renovaciones') + ' en el mes' : '');
@@ -3792,6 +3812,14 @@ async function renderFicha() {
   var _st = document.querySelector('.cl-section-title'), _ss = document.querySelector('.cl-section-sub');
   if (_st) _st.textContent = nombreClienteLista(c); if (_ss) _ss.textContent = 'Ficha 360\u00b0 del cliente';
   const eb = { prospecto: 'background:#E6F1FB;color:#0C447C', activo: 'background:#EAF3DE;color:#27500A', renovacion: 'background:#FAEEDA;color:#633806', siniestrado: 'background:#FCEBEB;color:#791F1F', inactivo: 'background:#F1EFE8;color:#444441' };
+  // Contacto a un toque (en el celular se ve arriba de las pestañas)
+  var _fc = document.getElementById('ficha-contacto');
+  if (_fc) {
+    var _tel = c.telefono_principal || c.telefono_secundario || '', _wa = _tel ? normalizarTelefono(_tel) : '';
+    _fc.innerHTML = (_tel ? '<a href="tel:' + esc(String(_tel).replace(/[^\d+]/g, '')) + '"><span>📞</span>Llamar</a>' : '<a class="off"><span>📞</span>Sin teléfono</a>')
+      + (_wa ? '<a href="https://wa.me/' + _wa + '" target="_blank"><span>💬</span>WhatsApp</a>' : '<a class="off"><span>💬</span>WhatsApp</a>')
+      + (c.email_principal ? '<a href="mailto:' + esc(c.email_principal) + '"><span>✉️</span>Mail</a>' : '<a class="off"><span>✉️</span>Sin mail</a>');
+  }
   document.getElementById('ficha-badge').innerHTML = '<span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;' + (eb[c.estado] || '') + '">' + (c.estado || '') + '</span>';
 
   const tabs = [
@@ -3807,6 +3835,7 @@ async function renderFicha() {
   }).join('');
 
   await renderFichaTab(c);
+  mobSync();
 }
 
 function setFichaTab(tab) {
@@ -7067,7 +7096,7 @@ function filtrarPolizasPanel() {
     var border = i < filtered.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
     var pa = pqAttr(p, filtered), hs = hijosDe(p, filtered);
     var totPq = hs.length ? getMensualNum(p) + hs.reduce(function(a,h){ return a + getMensualNum(h); }, 0) : 0;
-    return '<div class="'+pa.cls.trim()+'"'+pa.attr+' style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+(p.paquete_de && pa.attr ? 'background:#FAFAFF;' : '')+border+'" onclick="abrirDetallePol(\''+p.id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+    return '<div class="pol-row '+pa.cls.trim()+'"'+pa.attr+' style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+(p.paquete_de && pa.attr ? 'background:#FAFAFF;' : '')+border+'" onclick="abrirDetallePol(\''+p.id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+flechaPaquete(p, hs)+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 en paquete</span>':(hs.length?' <span class="pq-chip" style="cursor:pointer" onclick="togglePaquete(\''+p.id+'\', event)">📦 +'+hs.length+'</span>':''))+(faltaPdf(p)?(esRamoAuto(p.ramo)?' <span style="font-size:10px;font-weight:700;color:#B91C1C">🔴 Sin PDF</span>':' <span style="font-size:10px;font-weight:600;color:#92400E">⚠ Sin PDF</span>'):'')+'</div></div>'
       +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+'</div>'
       +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div>'+(totPq?'<div style="font-size:10.5px;color:#5B21B6;margin-top:1px">Paquete $'+Math.round(totPq).toLocaleString('es-AR')+'/mes</div>':'')+'</div>'
@@ -9287,6 +9316,7 @@ function setTablero(tab, btn) {
   });
   if (btn) btn.className = 'btn btn-p btn-sm';
   cargarTareas();
+  setTimeout(mobSync, 0);
 }
 
 async function moverTarea(id, estado) {
@@ -9432,6 +9462,32 @@ function aplicarFiltroCross() {
   window._crossFiltroIds = null;
 }
 
+// ══ Celular: menú de abajo y menú lateral desplegable ══
+function esMovil() { return window.matchMedia('(max-width: 768px)').matches; }
+function mobMenu(abrir) { document.body.classList.toggle('mob-menu', !!abrir); }
+function mobIr(sec) {
+  mobMenu(false);
+  if (sec === 'hoy') {
+    tablerof = 'hoy';
+    document.querySelectorAll('#tablero-tabs .btn').forEach(function (b) { b.className = /setTablero\('hoy'/.test(b.getAttribute('onclick') || '') ? 'btn btn-sm btn-p' : 'btn btn-sm'; });
+    sec = 'tareas';
+  }
+  var b = document.querySelector('.nav-btn[data-sec="' + sec + '"]');
+  if (b) b.click(); else irASeccion(sec);
+  window.scrollTo(0, 0);
+}
+var _MOB_TIT = { dashboard: 'Dashboard', clientes: 'Clientes', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Seguimientos', analisis: 'Análisis', reportes: 'Reportes', companias: 'Compañías', config: 'Configuración' };
+function mobSync() {
+  var a = document.querySelector('.sec.active'), sec = a ? a.id.replace(/^sec-/, '') : '';
+  var m = sec === 'tareas' && tablerof === 'hoy' ? 'hoy' : sec;
+  document.querySelectorAll('#mob-nav button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-m') === m); });
+  if (esMovil()) { var t = document.getElementById('topbar-title'); if (t) t.textContent = m === 'hoy' ? 'Hoy' : (sec === 'clientes' && fichaId && document.querySelector('.ficha-wrap.open') ? ((document.getElementById('ficha-titulo') || {}).textContent || 'Cliente') : (_MOB_TIT[sec] || '')); }
+}
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('.sidebar .nav-btn')) mobMenu(false);
+  setTimeout(mobSync, 0);
+}, true);
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(function () {});
 function irASeccion(sec) {
   document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -9443,6 +9499,7 @@ function irASeccion(sec) {
   if (sec==='polizas') cargarPolizas();
   if (sec==='companias') cargarHistorialComp();
   if (sec==='reportes') repInit();
+  setTimeout(mobSync, 0);
 }
 
 // Actualizar badge al iniciar

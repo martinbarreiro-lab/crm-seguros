@@ -702,3 +702,136 @@ tr:hover td{background:var(--bg)}
 .nav-n{margin-left:auto;font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;border-radius:999px;padding:1px 7px;min-width:18px;text-align:center}
 .nav-n.rj{background:#FEE2E2;color:#B91C1C}
 #tar-hoy-wrap{margin-top:12px}
+
+/* ════════ CELULAR ════════ */
+#mob-nav,#mob-back,#ficha-contacto{display:none}
+@media (max-width:768px){
+  body{font-size:15px;background:#F4F6F9}
+  /* Menú lateral: se abre desde "Más" */
+  .sidebar{transform:translateX(-105%);transition:transform .22s ease;width:270px;z-index:1200;padding-bottom:env(safe-area-inset-bottom)}
+  body.mob-menu .sidebar{transform:none}
+  body.mob-menu #mob-back{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1150}
+  .main{margin-left:0;padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+  /* Barra de arriba oscura */
+  .topbar{background:#1E2A3B;border-bottom:none;padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+  .topbar-t,#topbar-title{color:#fff!important;font-size:19px;font-weight:700;letter-spacing:0;text-transform:none}
+  .topbar #of-btn,.topbar #notif-btn{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.15)!important;color:#fff!important}
+  .topbar #notif-btn svg{color:#CBD5E1!important}
+  .page{padding:12px 12px 16px}
+  /* Menú de abajo */
+  #mob-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#fff;border-top:1px solid #E8ECF0;padding:6px 4px calc(8px + env(safe-area-inset-bottom))}
+  #mob-nav button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:#9CA3AF;padding:4px 0;position:relative;cursor:pointer}
+  #mob-nav .mi{font-size:21px;line-height:1;filter:grayscale(1);opacity:.55}
+  #mob-nav button.on{color:#2E6DA4}#mob-nav button.on .mi{filter:none;opacity:1}
+  #mob-nav i{position:absolute;top:0;left:50%;margin-left:6px;font-style:normal;font-size:10px;font-weight:700;background:#F59E0B;color:#fff;border-radius:9px;padding:0 5px;line-height:16px;min-width:16px}
+  #mob-nav i:empty{display:none}#mob-nav i.rj{background:#E74C3C}
+  /* Modales a pantalla completa */
+  .modal-ov{padding:0;align-items:stretch}
+  .modal-box{max-width:100%!important;width:100%!important;max-height:100vh;height:100%;border-radius:0;padding:16px 14px calc(20px + env(safe-area-inset-bottom))}
+  .modal-box .fg2,.modal-box .fg3,.fg2,.fg3{grid-template-columns:1fr!important}
+  /* Grillas de 4 columnas → 2 */
+  [style*="grid-template-columns:repeat(4,1fr)"],.g4{grid-template-columns:1fr 1fr!important}
+  .toprow{flex-wrap:wrap;gap:8px}
+  /* Aviso de pólizas para enviar */
+  #aviso-envios,[id^="aviso-env"]{margin:8px 12px 0!important}
+
+  /* HOY (en Seguimientos) */
+  #tablero-tabs{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  #tablero-tabs .btn{white-space:nowrap}
+  #sec-tareas .toprow #btn-ntar{display:none}
+  #tar-hoy-wrap{background:transparent;border:none;padding:0;box-shadow:none}
+  #tar-hoy-wrap>.dz-tit{display:none}
+  .hz-kps{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .hz-kps .hz-k:last-child{display:none}
+  .hz-k{border-radius:12px}.hz-k b{font-size:22px}
+  .hz-h{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#6B7280;margin:16px 2px 8px}
+  .hz-row{flex-wrap:wrap;background:#fff;border:1px solid #E8ECF0;border-radius:14px;padding:12px 14px;margin-bottom:10px;gap:4px}
+  .hz-row .hz-tg{order:0;min-width:0;margin-bottom:4px}
+  .hz-row .hz-tx{order:1;flex-basis:100%}.hz-tx b{font-size:15px}.hz-tx small{white-space:normal;font-size:13px}
+  .hz-row .hz-bt{order:2;width:100%;display:flex;flex-wrap:nowrap;gap:8px;margin-top:10px}
+  .hz-b{flex:1;font-size:14px;font-weight:600;padding:10px 6px;border-radius:10px}
+  .hz-b.pri{background:#2E6DA4;border-color:#2E6DA4}
+  .hz-mas summary{padding:8px 2px}
+
+  /* CLIENTES */
+  .cl-section-header{padding:4px 0 10px}.cl-section-icon{display:none}
+  .cl-section-title{font-size:18px!important}.cl-section-sub{display:none}
+  .cl-search-bar{gap:8px}.cl-search-wrap{flex:1 1 100%}
+  .cl-filter-wrap{flex:1 1 calc(50% - 4px)}.cl-filter{width:100%}
+  .btn-nuevo-cl{flex:1 1 100%;justify-content:center}
+  .cl-table-header{display:none}
+  .cl-row{display:block;padding:12px 14px;min-height:0;border-radius:14px;margin-bottom:8px}
+  .cl-row:hover{transform:none}
+  .cl-col{padding:0}.cl-col+.cl-col{margin-top:4px}
+  .cl-col:nth-child(3),.cl-col:nth-child(5){display:none}
+  .cl-name{font-size:15px}
+  /* Ficha */
+  .ficha-wrap>div:first-child #ficha-titulo{font-size:18px!important;color:var(--text)!important}
+  #ficha-contacto{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+  #ficha-contacto a{background:#fff;border:1px solid #E8ECF0;border-radius:14px;padding:12px 0;text-align:center;font-size:13px;font-weight:600;color:var(--text);text-decoration:none}
+  #ficha-contacto a span{display:block;font-size:22px;margin-bottom:3px}
+  #ficha-contacto a.off{opacity:.4;pointer-events:none}
+  .ficha-tabs{flex-wrap:nowrap!important;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .ficha-tabs .ftab{flex-shrink:0}
+
+  /* PÓLIZAS */
+  .pol-row{grid-template-columns:1fr auto!important;row-gap:4px;padding:12px 14px!important;background:#fff;border:1px solid #E8ECF0!important;border-radius:14px;margin-bottom:8px}
+  .pol-row>div:nth-child(1){grid-column:1}
+  .pol-row>div:nth-child(2){grid-column:1;grid-row:2}
+  .pol-row>div:nth-child(3){grid-column:2;grid-row:1;text-align:right}
+  .pol-row>div:nth-child(4){display:none}
+  .pol-row>div:nth-child(5){grid-column:2;grid-row:2;text-align:right}
+  .pol-row>div:nth-child(6){display:none}
+  #pol-panel-list{background:transparent!important;border:none!important}
+  #sec-polizas [style*="grid-template-columns:2fr 1.2fr"]:not(.pol-row){display:none!important}
+
+  /* Detalle de póliza */
+  #mpd-box{padding:0!important}
+  #mpd-box [style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
+  .mpd-acc{flex-wrap:wrap}.mpd-b{flex:1 1 45%;justify-content:center;padding:11px 8px;font-size:14px}
+  .mpd-b.pri{flex-basis:100%}
+  .mpd-mas{flex:1 1 45%}.mpd-mas>summary{width:100%}
+  .mpd-menu{left:auto;right:0;min-width:240px}
+  .mpd-tab{flex-shrink:0;white-space:nowrap}
+  #mpd-box [style*="border-bottom:0.5px solid #E5E7EB"]{overflow-x:auto;flex-wrap:nowrap}
+  #mpd-tab-cont{max-height:none!important}
+
+  /* COBRANZAS: tabla → tarjetas */
+  #sec-cobranzas table thead{display:none}
+  #sec-cobranzas table,#sec-cobranzas tbody{display:block;width:100%}
+  #tbody-cob tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:#fff;border:1px solid #E8ECF0!important;border-radius:14px;padding:12px 14px;margin-bottom:8px}
+  #tbody-cob td{padding:0!important;display:block}
+  #tbody-cob td:nth-child(1){grid-column:1;grid-row:1}
+  #tbody-cob td:nth-child(5){grid-column:2;grid-row:1;font-size:15px!important}
+  #tbody-cob td:nth-child(2){grid-column:1;grid-row:2;font-size:12px}
+  #tbody-cob td:nth-child(2)::before{content:'Póliza '}
+  #tbody-cob td:nth-child(3){display:none}
+  #tbody-cob td:nth-child(4){grid-column:2;grid-row:2;text-align:right}
+  #tbody-cob td:nth-child(6){grid-column:1;grid-row:3;margin-top:6px}
+  #tbody-cob td:nth-child(7){grid-column:1/-1;grid-row:4;margin-top:8px}
+  #tbody-cob td:nth-child(7) a,#tbody-cob td:nth-child(7) button{padding:9px 14px!important;font-size:14px!important;border-radius:10px!important}
+  #tbody-cob td[colspan]{grid-column:1/-1}
+  #sec-cobranzas .toprow select{width:100%}
+
+  /* Dashboard */
+  .dz-head{flex-wrap:wrap}.dz-acc{width:100%}
+  .dz-kpis{grid-template-columns:1fr 1fr}
+}
+@media (max-width:768px){
+  .cl-row>*:last-child:not(:first-child){display:none}
+  #sec-clientes:has(.ficha-wrap.open) .cl-section-header,#sec-clientes:has(.ficha-wrap.open) #cl-count{display:none!important}
+  #ficha-titulo{display:none}
+  .ficha-wrap>div:first-child{margin-bottom:10px!important}
+  #ficha-pol-row{grid-template-columns:1fr!important}
+  .poliza-row{flex-wrap:wrap!important;padding:12px 14px!important}
+  .poliza-row>div:nth-child(1){width:auto!important;flex:1 1 60%!important}
+  .poliza-row>div:nth-child(2){display:none!important}
+  .poliza-row>div:nth-child(3){padding-left:8px!important}
+  #ficha-content [style*="grid-template-columns:1fr 1fr 1fr"],#ficha-content [style*="grid-template-columns:1fr 260px"],#ficha-content [style*="grid-template-columns:2fr 1fr"]{grid-template-columns:1fr!important}
+  #aviso-envios,.aviso-envios{font-size:12px!important;padding:8px 10px!important}
+}
+@media (max-width:768px){
+  .cl-name{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  #topbar-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 130px)}
+}
+@media (max-width:768px){.hz-b.wa{background:#25D366;border-color:#25D366;color:#fff}}
