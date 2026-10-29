@@ -665,8 +665,8 @@
             <div class="kanban-col-header"><div style="width:8px;height:8px;border-radius:50%;background:var(--amber)"></div><div class="kanban-col-title">Esp. respuesta</div><div class="kanban-col-cnt" id="cnt-r">0</div></div>
             <div class="kanban-body" id="col-r"></div>
           </div>
-          <div class="kanban-col">
-            <div class="kanban-col-header"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><div class="kanban-col-title">Cerrado</div><div class="kanban-col-cnt" id="cnt-c">0</div></div>
+          <div class="kanban-col" id="col-cerr-wrap">
+            <div class="kanban-col-header" onclick="if(esMovil())this.parentNode.classList.toggle('k-abierta')"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><div class="kanban-col-title">Cerrado</div><div class="kanban-col-cnt" id="cnt-c">0</div></div>
             <div class="kanban-body" id="col-c"></div>
           </div>
           <div class="kanban-col" id="col-canceladas-wrap">
