@@ -3259,13 +3259,15 @@ var _HZ_ETAPAS = {
     ['otro', 'Seguir', 'Otra cosa (la escribo abajo)']],
   cuota: [['avise', 'Le avisé, espero el pago', 'Ya le mandé el aviso al cliente'],
     ['promesa', 'Quedó en pagar', 'Me dijo que paga (poné la fecha abajo)'],
+    ['pago', 'Ya pagó', 'Registro el pago y la saco de pendientes'],
     ['auto', 'Paga con tarjeta o débito', 'No es para reclamar: la saco de la lista'],
     ['otro', 'Seguir', 'Otra cosa (la escribo abajo)']]
 };
 function _hzProxDia(dow) { var x = new Date(); x.setDate(x.getDate() + ((dow - x.getDay() + 7) % 7 || 7)); return _hzIso(x); }
 function hoyEstadoRenov(pid) { hoyEstado('r:' + pid); }
+var _cobEst = {};
 function hoyEstado(key) {
-  var x = _hz.est[key]; if (!x) return;
+  var x = (_hz.est || {})[key] || _cobEst[key]; if (!x) return;
   var p = x.pol || {}, m = _envModal(), dd = function (n) { var y = new Date(); y.setDate(y.getDate() + n); return _hzIso(y); };
   var et = _HZ_ETAPAS[x.kind], rapidas = [['Mañana', dd(1)], ['El martes', _hzProxDia(2)], ['En 1 semana', dd(7)]];
   var cab = x.kind === 'cuota' ? (x.cuotas.length === 1 ? 'Cuota ' + (x.cuotas[0].numero_cuota || '') : x.cuotas.length + ' cuotas') + ' · ' + _hz$(x.cuotas.reduce(function (a, c) { return a + Number(c.monto); }, 0)) + ' · ' + esc(textoPolizaTarea(p))
@@ -3274,7 +3276,7 @@ function hoyEstado(key) {
   document.getElementById('env-cuerpo').innerHTML =
     '<div style="font-size:13px;margin-bottom:12px"><b>' + esc(nombreClienteLista(p.clientes || {}) || '') + '</b>' + (cab ? ' · ' + cab : '') + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:6px">' + et.map(function (e, i) {
-      return '<label class="hz-et"><input type="radio" name="hz-et" value="' + e[0] + '"' + (i === 0 ? ' checked' : '') + ' onchange="document.getElementById(\'hz-et-fw\').style.display=this.value===\'auto\'?\'none\':\'\'"> <span><b>' + e[1] + '</b><small>' + e[2] + '</small></span></label>';
+      return '<label class="hz-et"><input type="radio" name="hz-et" value="' + e[0] + '"' + (i === 0 ? ' checked' : '') + ' onchange="document.getElementById(\'hz-et-fw\').style.display=(this.value===\'auto\'||this.value===\'pago\')?\'none\':\'\'"> <span><b>' + e[1] + '</b><small>' + e[2] + '</small></span></label>';
     }).join('') + '</div>'
     + '<div id="hz-et-fw"><label class="hz-l" style="margin-top:12px">' + (x.kind === 'cuota' ? 'Si no pagó, volver a reclamar el' : 'Si no hay novedades, reclamar el') + '</label>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + rapidas.map(function (r) { return '<button type="button" class="hz-b" onclick="document.getElementById(\'hz-et-f\').value=\'' + r[1] + '\'">' + r[0] + ' <span style="color:var(--muted)">' + fmtDate(r[1]).slice(0, 5) + '</span></button>'; }).join('')
@@ -3285,16 +3287,23 @@ function hoyEstado(key) {
   m.classList.add('open');
 }
 async function hoyEstadoGuardar(key) {
-  var x = _hz.est[key]; if (!x) return;
+  var x = (_hz.est || {})[key] || _cobEst[key]; if (!x) return;
   var p = x.pol || {}, et = (document.querySelector('input[name="hz-et"]:checked') || {}).value;
   var e = _HZ_ETAPAS[x.kind].find(function (z) { return z[0] === et; }), f = document.getElementById('hz-et-f').value, com = document.getElementById('hz-et-c').value.trim();
-  if (et !== 'auto' && !f) { alert('Elegí la fecha para reclamar.'); return; }
+  var sinFecha = et === 'auto' || et === 'pago';
+  if (!sinFecha && !f) { alert('Elegí la fecha para reclamar.'); return; }
   if (et === 'otro' && !com) { alert('Escribí en el comentario qué está pasando.'); return; }
   var b = document.getElementById('hz-et-btn'); b.disabled = true; b.textContent = 'Guardando…';
   var nom = nombreClienteLista(p.clientes || {});
-  var nota = e[1] + (com ? ': ' + com : '') + (et === 'auto' ? '.' : '. Si no hay novedades, reclamar el ' + fmtDate(f) + '.');
+  var nota = e[1] + (com ? ': ' + com : '') + (sinFecha ? '.' : '. Si no hay novedades, reclamar el ' + fmtDate(f) + '.');
   try {
-    if (x.kind === 'cuota' && et === 'auto') {
+    if (x.kind === 'cuota' && et === 'pago') {
+      var tot = x.cuotas.reduce(function (a, c) { return a + Number(c.monto); }, 0);
+      if (!confirm('¿Registrar el pago de ' + (x.cuotas.length === 1 ? 'la cuota' : 'las ' + x.cuotas.length + ' cuotas') + ' (' + _hz$(tot) + ')?')) { b.disabled = false; b.textContent = 'Guardar'; return; }
+      var rp = await sb.from('cobranzas').update({ estado: 'pagada', fecha_pago: _hzIso(new Date()) }).in('id', x.cuotas.map(function (c) { return c.id; })); if (rp.error) throw rp.error;
+      if (x.tarea) await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Pagó' + (com ? ': ' + com : '') }).eq('id', x.tarea.id);
+      nota = 'Pagó ' + (x.cuotas.length === 1 ? 'la cuota' : x.cuotas.length + ' cuotas') + ' (' + _hz$(tot) + ')' + (com ? ': ' + com : '') + '.';
+    } else if (x.kind === 'cuota' && et === 'auto') {
       // Se marca la póliza como débito/tarjeta: deja de aparecer en lo que hay que reclamar (no se guarda ningún dato de la tarjeta)
       var ids = x.cuotas.map(function (c) { return c.poliza_id; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
       if (!confirm('¿Marcar ' + (ids.length === 1 ? 'la póliza' : 'las ' + ids.length + ' pólizas') + ' como pago con tarjeta o débito? Sus cuotas dejan de aparecer para reclamar.')) { b.disabled = false; b.textContent = 'Guardar'; return; }
@@ -3314,7 +3323,8 @@ async function hoyEstadoGuardar(key) {
       await sb.from('notas_tareas').insert({ tarea_id: tid, texto: nota, tipo: 'sistema' });
     }
     if (p.cliente_id) await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: x.kind === 'cuota' ? 'cobranza' : x.kind === 'renov' ? 'renovacion' : 'seguimiento', tipo: 'sistema', poliza_id: (x.kind === 'cuota' ? x.cuotas[0].poliza_id : p.id) || null, poliza_numero: p.numero_poliza || null, poliza_ramo: p.ramo || null, resumen: '📝 ' + nota, usuario_nombre: user.email, es_automatico: false });
-    cerrarModal('modal-envio'); mostrarAlerta(et === 'auto' ? 'Listo: no aparece más para reclamar.' : 'Anotado. El ' + fmtDate(f) + ' te aparece en Hoy para reclamar.'); cargarHoy();
+    cerrarModal('modal-envio'); mostrarAlerta(et === 'pago' ? 'Pago registrado.' : et === 'auto' ? 'Listo: no aparece más para reclamar.' : 'Anotado. El ' + fmtDate(f) + ' te aparece en Hoy para reclamar.'); cargarHoy();
+    var sc = document.getElementById('sec-cobranzas'); if (sc && sc.classList.contains('active') && typeof cargarCobranzas === 'function') cargarCobranzas();
   } catch (err) { b.disabled = false; b.textContent = 'Guardar'; alert('No se pudo guardar: ' + (err.message || err)); }
 }
 async function hoyNoRenueva(pid) {
@@ -8660,7 +8670,7 @@ function exportarSiniestrosCSV() {
 // ---- COBRANZAS ----
 // ── Cobranzas ─────────────────────────────────────────────
 var _cobData = [];
-var _cobTab = 'pendiente';
+var _cobTab = 'pendiente', _cobMoras = {};
 
 function cobSetTab(tab) {
   _cobTab = tab;
@@ -8763,13 +8773,19 @@ function cobRender() {
         var moraColor = dias > 60 ? '#A32D2D' : dias > 30 ? '#854F0B' : '#713F12';
         var moraLabel = dias > 60 ? '+60 días' : dias > 30 ? '31-60 días' : dias + ' días';
         col6 = '<span style="background:'+moraBg+';color:'+moraColor+';font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">'+moraLabel+'</span>';
+        var tm = _cobMoras[c._cliente_id];
+        if (tm) col6 += '<div style="font-size:11px;color:#1E40AF;margin-top:3px">' + esc(String(tm.titulo).split(' — ')[0]) + (tm.fecha_limite ? ' · reclamar ' + fmtDate(tm.fecha_limite).slice(0, 5) : '') + '</div>';
+        var its = c._items || [c];
+        _cobEst['k:' + c.id] = { kind: 'cuota', tarea: tm || null, cuotas: its.map(function (z) { return { id: z.id, poliza_id: z.poliza_id, monto: z.monto, numero_cuota: z.numero_cuota, fecha_vencimiento: z.fecha_vencimiento }; }),
+          pol: { numero_poliza: c._numero_poliza, ramo: c._ramo, aseguradora: c._aseguradora, cliente_id: c._cliente_id, clientes: c._cl || {} } };
         // WhatsApp
         var waNum = c._telefono ? normalizarTelefono(c._telefono) : '';        var msgWa = encodeURIComponent('Hola ' + (c._nombre||'') + ', te recordamos que tenés una cuota vencida de ' + monto + ' correspondiente a tu póliza N° ' + pol + ' de ' + aseg + '. Cualquier consulta estamos a disposición. Gracias!');
         var waUrl = waNum ? 'https://wa.me/'+waNum+'?text='+msgWa : 'https://wa.me/?text='+msgWa;
         col7 = '<a href="'+waUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);color:var(--med);text-decoration:none">'
           + '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.016 22l4.985-1.397A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 0 1-4.076-1.124l-.29-.174-3.022.847.807-2.965-.19-.302A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>'
           + 'Avisar</a>'
-          + ' <button type="button" title="Que el chat de Cobranzas arme el mail" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+c.id+'\']={cliente_id:\''+(c.cliente_id||'')+'\'||null,poliza_id:\''+(c.poliza_id||'')+'\'||null,texto:\'Cuota '+(c.numero_cuota||'')+' vencida · '+monto.replace(/'/g,'')+' · póliza N° '+String(pol).replace(/'/g,'')+'\'};abrirGestionarPorMail(\'cobranzas\',window._ofRefs[\''+c.id+'\'])" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📧</button>';
+          + ' <button type="button" title="Que el chat de Cobranzas arme el mail" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+c.id+'\']={cliente_id:\''+(c.cliente_id||'')+'\'||null,poliza_id:\''+(c.poliza_id||'')+'\'||null,texto:\'Cuota '+(c.numero_cuota||'')+' vencida · '+monto.replace(/'/g,'')+' · póliza N° '+String(pol).replace(/'/g,'')+'\'};abrirGestionarPorMail(\'cobranzas\',window._ofRefs[\''+c.id+'\'])" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📧</button>'
+          + ' <button type="button" title="Anotar en qué está el cobro" onclick="hoyEstado(\'k:'+c.id+'\')" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📝 En qué está</button>';
       } else {
         col6 = c.fecha_pago ? fmtDate(c.fecha_pago) : '—';
         col7 = comPct ? '<span style="font-size:12px;font-weight:500;color:var(--blue)">$'
@@ -8838,13 +8854,15 @@ async function cargarCobranzas() {
   if (lbl) lbl.textContent = mesesNom[mes-1] + ' ' + anio;
 
   // Traer cobranzas, pólizas y clientes por separado (sin join anidado)
-  var [resMes, resPend, polsRes] = await Promise.all([
+  var [resMes, resPend, polsRes, morasRes] = await Promise.all([
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de').eq('productor_id', user.id).limit(2000)
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de').eq('productor_id', user.id).limit(2000),
+    sb.from('tareas').select('id,titulo,fecha_limite,estado,cliente_id').eq('productor_id', user.id).eq('tipo', 'Gestionar mora').eq('estado', 'esperando')
   ]);
+  _cobMoras = {}; (morasRes.data || []).forEach(function (t) { if (t.cliente_id) _cobMoras[t.cliente_id] = t; });
 
   // Clientes: usar allCl si está disponible, sino cargar
   if (!clCob.length) { await cargarClientesSilente(); clCob = allCl; }
@@ -8879,6 +8897,7 @@ async function cargarCobranzas() {
       _auto: esPagoAutomatico(pol, c),
       _pol_estado: pol.estado || '',
       _pq: pol.paquete_de || pol.id || c.id,
+      _cl: cl.id ? cl : null, _cliente_id: pol.cliente_id || c.cliente_id || null,
       _pq_num: pol.paquete_de && polIdx[pol.paquete_de] ? polIdx[pol.paquete_de].numero_poliza : null,
     });
   });
