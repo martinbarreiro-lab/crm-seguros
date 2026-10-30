@@ -3095,7 +3095,7 @@ async function cargarHoy() {
   try {
     var R = await Promise.all([
       sb.from('tareas').select('id,titulo,tipo,tablero,descripcion,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id', uid).not('estado', 'in', '("cerrada","cancelada","completada")'),
-      _todo(function () { return sb.from('cobranzas').select('id,monto,numero_cuota,total_cuotas,fecha_vencimiento,medio_pago,cliente_id,poliza_id,polizas(numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado),clientes(nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario)').eq('productor_id', uid).eq('estado', 'pendiente').lte('fecha_vencimiento', hoy).order('fecha_vencimiento'); }),
+      _todo(function () { return sb.from('cobranzas').select('id,monto,numero_cuota,total_cuotas,fecha_vencimiento,medio_pago,cliente_id,poliza_id,polizas(numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado,paquete_de),clientes(nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario)').eq('productor_id', uid).eq('estado', 'pendiente').lte('fecha_vencimiento', hoy).order('fecha_vencimiento'); }),
       sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,fecha_inicio,bien_asegurado,datos_ramo,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente,email_principal)').eq('productor_id', uid).eq('estado', 'activa').gte('fecha_vencimiento', hoy).lte('fecha_vencimiento', _hzIso(en30)).order('fecha_vencimiento'),
       sb.from('interacciones').select('poliza_id,created_at').eq('productor_id', uid).eq('categoria', 'renovacion').eq('tipo', 'email').gte('created_at', new Date(hoyD.getTime() - 60 * 864e5).toISOString()),
       sb.from('cotizaciones').select('cliente_id').eq('productor_id', uid).not('estado', 'in', '("aceptada","rechazada")')
@@ -3117,7 +3117,8 @@ async function cargarHoy() {
       if (tm && tm.fecha_limite && tm.fecha_limite > hoy) return; // ya gestionada: vuelve a aparecer el día para reclamar
       _hz.cuotas[k] = cs; _hz.est['c:' + k] = { kind: 'cuota', cuotas: cs, tarea: tm || null, pol: Object.assign({}, c0.polizas || {}, { cliente_id: c0.cliente_id, clientes: c0.clientes }) };
       var pol = c0.polizas || {};
-      var tit = (cs.length === 1 ? 'Cuota ' + (c0.numero_cuota ? c0.numero_cuota + (c0.total_cuotas ? '/' + c0.total_cuotas : '') + ' ' : '') + 'contado' : cs.length + ' cuotas contado') + ' · ' + _hz$(tot);
+      var esPq = cs.length > 1 && cs.every(function (c) { var r = (c.polizas || {}).paquete_de || c.poliza_id; return r === ((cs[0].polizas || {}).paquete_de || cs[0].poliza_id) && c.fecha_vencimiento === cs[0].fecha_vencimiento; });
+      var tit = esPq ? '📦 Cuota del paquete · ' + _hz$(tot) : (cs.length === 1 ? 'Cuota ' + (c0.numero_cuota ? c0.numero_cuota + (c0.total_cuotas ? '/' + c0.total_cuotas : '') + ' ' : '') + 'contado' : cs.length + ' cuotas contado') + ' · ' + _hz$(tot);
       var sub = esc(nomCl(c0.clientes) || 'Sin cliente') + ' · ' + esc(cs.length === 1 ? textoPolizaTarea(pol) : cs.map(function (c) { return (c.polizas || {}).ramo || ''; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).join(', '))
         + (tm ? ' · <span style="color:#1E40AF">' + esc(String(tm.titulo).split(' — ')[0].toLowerCase()) + ' (reclamar hoy)</span>' : '');
       var fila = { o: c0.fecha_vencimiento, h: _hzRow(d === 0 ? 'hoy' : d === -1 ? 'venció ayer' : 'hace ' + (-d) + ' días', d === 0 ? 'am' : 'rj', tit, sub,
@@ -8720,6 +8721,21 @@ function cobRender() {
     rows.sort(function(a,b){ return (b.fecha_pago||'') > (a.fecha_pago||'') ? 1 : -1; });
   }
 
+  // Paquetes (ej. robo de bicicleta + vida + RC): las cuotas del mismo vencimiento van en una sola fila con el total
+  var grp = {}, rows2 = [];
+  rows.forEach(function (c) {
+    var k = c._pq + '|' + c.fecha_vencimiento + '|' + c.estado;
+    if (!grp[k]) { grp[k] = Object.assign({}, c, { _items: [c] }); rows2.push(grp[k]); return; }
+    var g = grp[k]; g._items.push(c); g.monto = (parseFloat(g.monto) || 0) + (parseFloat(c.monto) || 0);
+  });
+  rows2.forEach(function (g) {
+    if (g._items.length < 2) return;
+    var pr = g._items.find(function (c) { return !c._pq_num; }) || g._items[0];
+    g._ramo = '📦 Paquete: ' + g._items.map(function (c) { return c._ramo; }).join(' + ');
+    g._numero_poliza = (pr._numero_poliza || g._pq_num || '') + ' +' + (g._items.length - 1);
+    g.id = pr.id; g.poliza_id = pr.poliza_id;
+  });
+  rows = rows2;
   var totalImporte = rows.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); }, 0);
   var cfg = _cfg || {};
   var comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
@@ -8827,7 +8843,7 @@ async function cargarCobranzas() {
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado').eq('productor_id', user.id).limit(2000)
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de').eq('productor_id', user.id).limit(2000)
   ]);
 
   // Clientes: usar allCl si está disponible, sino cargar
@@ -8862,6 +8878,8 @@ async function cargarCobranzas() {
       _dias_mora: diasMora,
       _auto: esPagoAutomatico(pol, c),
       _pol_estado: pol.estado || '',
+      _pq: pol.paquete_de || pol.id || c.id,
+      _pq_num: pol.paquete_de && polIdx[pol.paquete_de] ? polIdx[pol.paquete_de].numero_poliza : null,
     });
   });
 
