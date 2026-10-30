@@ -433,8 +433,8 @@
         </div>
         <div class="g4">
           <div class="metric"><div class="lbl">Total</div><div class="val" id="cotz-total">—</div></div>
-          <div class="metric"><div class="lbl">Pendientes</div><div class="val" id="cotz-pend" style="color:var(--amber)">—</div></div>
-          <div class="metric"><div class="lbl">Presentadas</div><div class="val" id="cotz-pres" style="color:var(--med)">—</div></div>
+          <div class="metric"><div class="lbl">Pedidas / cotizadas</div><div class="val" id="cotz-pend" style="color:var(--amber)">—</div></div>
+          <div class="metric"><div class="lbl">Presentadas al cliente</div><div class="val" id="cotz-pres" style="color:var(--med)">—</div></div>
           <div class="metric"><div class="lbl">Aceptadas</div><div class="val" id="cotz-acep" style="color:var(--green)">—</div></div>
         </div>
         <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center">
@@ -444,9 +444,9 @@
           </div>
           <select id="cotz-fil-estado" onchange="filtrarCotizaciones()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
             <option value="">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="en_proceso">En proceso</option>
-            <option value="presentada">Presentada</option>
+            <option value="pendiente">Pedida a la compañía</option>
+            <option value="en_proceso">Cotizada · falta presentar</option>
+            <option value="presentada">Presentada al cliente</option>
             <option value="aceptada">Aceptada</option>
             <option value="rechazada">Rechazada</option>
           </select>
@@ -3098,7 +3098,7 @@ async function cargarHoy() {
       _todo(function () { return sb.from('cobranzas').select('id,monto,numero_cuota,total_cuotas,fecha_vencimiento,medio_pago,cliente_id,poliza_id,polizas(numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado,paquete_de),clientes(nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario)').eq('productor_id', uid).eq('estado', 'pendiente').lte('fecha_vencimiento', hoy).order('fecha_vencimiento'); }),
       sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,fecha_inicio,bien_asegurado,datos_ramo,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente,email_principal)').eq('productor_id', uid).eq('estado', 'activa').gte('fecha_vencimiento', hoy).lte('fecha_vencimiento', _hzIso(en30)).order('fecha_vencimiento'),
       sb.from('interacciones').select('poliza_id,created_at').eq('productor_id', uid).eq('categoria', 'renovacion').eq('tipo', 'email').gte('created_at', new Date(hoyD.getTime() - 60 * 864e5).toISOString()),
-      sb.from('cotizaciones').select('cliente_id').eq('productor_id', uid).not('estado', 'in', '("aceptada","rechazada")')
+      sb.from('cotizaciones').select('id,cliente_id,ramo,aseguradora,estado,created_at,updated_at,fecha_envio,datos_riesgo,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', uid).not('estado', 'in', '("aceptada","rechazada")')
     ]);
     var tars = R[0].data || [], cobs = (Array.isArray(R[1]) ? R[1] : (R[1].data || [])), pols = R[2].data || [], mails = R[3].data || [], cots = R[4].data || [];
     var nomCl = function (c) { return c ? nombreClienteLista(c) : ''; };
@@ -3153,6 +3153,20 @@ async function cargarHoy() {
       (d < 0 ? atras : deHoy).push(fila);
     });
 
+    // Cotizaciones sin respuesta (las que vienen de una renovación las recuerda su tarea)
+    cots.forEach(function (c) {
+      var dr = c.datos_riesgo || {}; if (dr.tarea_id) return;
+      if (c.estado !== 'pendiente' && c.estado !== 'presentada') return;
+      var desde = c.estado === 'presentada' ? (c.fecha_envio || String(c.updated_at || c.created_at).slice(0, 10)) : String(c.created_at).slice(0, 10);
+      var cuando = dr.reclamar_el || (function () { var x = new Date(desde + 'T12:00:00'); x.setDate(x.getDate() + 3); return _hzIso(x); })();
+      if (cuando > hoy) return;
+      var d = _hzDias(cuando, hoy);
+      var tit = c.estado === 'pendiente' ? 'Reclamar la cotización a ' + (c.aseguradora || 'la compañía') : 'Preguntarle al cliente por la cotización';
+      var B = [_hzB('Abrir', "hoyAbrirCot('" + c.id + "')", true), _hzB('Mañana', "hoyCotManana('" + c.id + "')")];
+      var fila = { o: cuando, h: _hzRow(d === 0 ? 'hoy' : 'hace ' + (-d) + ' días', d === 0 ? 'am' : 'rj', esc(tit), esc(nomCl(c.clientes)) + ' · ' + esc(RAMO_LABELS_COT[c.ramo] || c.ramo || '') + ' · pedida el ' + fmtDate(String(c.created_at).slice(0, 10)), B) };
+      (d < 0 ? atras : deHoy).push(fila);
+    });
+
     // Renovaciones de los próximos 30 días (sin ART, que renueva sola, ni las de corto plazo)
     var mailPol = {}; mails.forEach(function (m) { if (m.poliza_id) mailPol[m.poliza_id] = m.created_at; });
     var cotCl = {}; cots.forEach(function (c) { if (c.cliente_id) cotCl[c.cliente_id] = 1; });
@@ -3200,6 +3214,17 @@ async function cargarHoy() {
     console.error('Hoy:', e);
     box.innerHTML = '<div style="font-size:13px;color:var(--red);padding:8px 0">No se pudo cargar: ' + esc(e.message || String(e)) + '</div>';
   }
+}
+
+function hoyAbrirCot(id) {
+  mobIr('cotizaciones');
+  setTimeout(function () { var b = document.getElementById('cotz-sb-body-' + id); if (b && b.style.display === 'none') abrirDetalleCotizacion(id); if (b) b.scrollIntoView({ block: 'center' }); }, 700);
+}
+async function hoyCotManana(id) {
+  var r = await sb.from('cotizaciones').select('datos_riesgo').eq('id', id).single();
+  var d = new Date(); d.setDate(d.getDate() + 1);
+  await sb.from('cotizaciones').update({ datos_riesgo: Object.assign({}, (r.data || {}).datos_riesgo || {}, { reclamar_el: _hzIso(d) }) }).eq('id', id);
+  mostrarAlerta('Pasada para mañana'); cargarHoy();
 }
 async function hoyTareaHecha(id) {
   var r = await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Hecha (desde Hoy)' }).eq('id', id);
@@ -3321,6 +3346,7 @@ async function hoyEstadoGuardar(key) {
         if (ins.error) throw ins.error; tid = ins.data.id;
       }
       await sb.from('notas_tareas').insert({ tarea_id: tid, texto: nota, tipo: 'sistema' });
+      if (x.kind === 'renov') { try { await _cotDesdeRenov(p, et, nota, tid, f); } catch (eC) { console.warn('cotización:', eC); } }
     }
     if (p.cliente_id) await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: x.kind === 'cuota' ? 'cobranza' : x.kind === 'renov' ? 'renovacion' : 'seguimiento', tipo: 'sistema', poliza_id: (x.kind === 'cuota' ? x.cuotas[0].poliza_id : p.id) || null, poliza_numero: p.numero_poliza || null, poliza_ramo: p.ramo || null, resumen: '📝 ' + nota, usuario_nombre: user.email, es_automatico: false });
     cerrarModal('modal-envio'); mostrarAlerta(et === 'pago' ? 'Pago registrado.' : et === 'auto' ? 'Listo: no aparece más para reclamar.' : 'Anotado. El ' + fmtDate(f) + ' te aparece en Hoy para reclamar.'); cargarHoy();
@@ -7839,9 +7865,9 @@ document.addEventListener('DOMContentLoaded', function() {
 var _cotzData = [];
 var RAMO_LABELS_COT = {auto:'Automotor',hogar:'Hogar',comercio:'Integral de comercio',art:'ART',ap:'Accidentes Personales',rc:'Responsabilidad Civil',vida:'Vida',otros:'Otros'};
 var ESTADO_COT = {
-  pendiente:   {bg:'#FAEEDA',color:'#633806',label:'Pendiente'},
-  en_proceso:  {bg:'#EEEDFE',color:'#3C3489',label:'En proceso'},
-  presentada:  {bg:'#E6F1FB',color:'#0C447C',label:'Presentada'},
+  pendiente:   {bg:'#FAEEDA',color:'#633806',label:'Pedida a la compañía'},
+  en_proceso:  {bg:'#EEEDFE',color:'#3C3489',label:'Cotizada · falta presentar'},
+  presentada:  {bg:'#E6F1FB',color:'#0C447C',label:'Presentada al cliente'},
   aceptada:    {bg:'#EAF3DE',color:'#27500A',label:'✓ Aceptada'},
   rechazada:   {bg:'#FCEBEB',color:'#791F1F',label:'Rechazada'},
 };
@@ -7909,6 +7935,9 @@ function renderCotCard(cot, isInline) {
   html.push('<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:'+est.bg+';color:'+est.color+'">'+est.label+'</span>');
   html.push('</div>');
   html.push('<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">');
+  var _desde = cot.estado === 'presentada' ? (cot.fecha_envio || String(cot.updated_at || cot.created_at).slice(0, 10)) : String(cot.created_at).slice(0, 10);
+  var _dEsp = Math.floor((Date.now() - new Date(_desde + 'T12:00:00')) / 864e5);
+  if ((cot.estado === 'pendiente' || cot.estado === 'presentada') && _dEsp >= 0) html.push('<span style="font-size:11px;padding:2px 8px;border-radius:10px;' + (_dEsp >= 3 ? 'background:#FEE2E2;color:#B91C1C' : 'background:#F3F4F6;color:#6B7280') + '">' + (cot.estado === 'pendiente' ? 'esperando a la compañía' : 'esperando al cliente') + ' · ' + (_dEsp === 0 ? 'hoy' : _dEsp === 1 ? '1 día' : _dEsp + ' días') + '</span>');
   html.push('<span style="font-size:11px;color:var(--muted)">'+fmtDate(cot.created_at)+'</span>');
   html.push('<span id="'+chevId+'" onclick="toggleCotSb(\''+bodyId+'\',\''+chevId+'\')" style="font-size:13px;color:var(--muted);cursor:pointer;padding:2px 4px">▼</span>');
   html.push('<button type="button" onclick="eliminarCotizacion(\''+cot.id+'\')" title="Eliminar cotización" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;border:0.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit"><i class=\"ti ti-trash\" style=\"font-size:12px\"></i>Eliminar</button>');
@@ -7983,8 +8012,11 @@ function renderCotCard(cot, isInline) {
     html.push('<div style="padding:12px;text-align:center;color:var(--lt);font-size:13px">Sin cotizaciones cargadas · <button type="button" class="btn btn-sm btn-p" onclick="abrirCargarOfertas(\''+cot.id+'\')">+ Cargar</button></div>');
   }
   html.push('<div style="display:flex;gap:6px;margin-top:8px">');
-  html.push('<button type="button" class="btn btn-sm" onclick="abrirCargarOfertas(\''+cot.id+'\')">+ Cargar cotización</button>');
+  html.push('<button type="button" class="btn btn-sm" onclick="abrirCargarOfertas(\''+cot.id+'\')">' + (cot.estado === 'pendiente' ? '📥 Llegó la cotización' : '+ Cargar cotización') + '</button>');
   if(cot.estado==='en_proceso'||cot.estado==='pendiente') html.push('<button type="button" class="btn btn-sm btn-p" onclick="marcarCotzPresentada(\''+cot.id+'\')">✉ Presentada al cliente</button>');
+  if(cot.estado==='pendiente') html.push('<button type="button" class="btn btn-sm" onclick="tarMailCot(\''+cot.id+'\',\'Reclamar la cotización a la compañía\')">🔁 Reclamar a la compañía</button>');
+  if(cot.estado==='presentada') html.push('<button type="button" class="btn btn-sm" onclick="tarMailCot(\''+cot.id+'\',\'Preguntarle al cliente si la acepta\')">💬 Preguntarle al cliente</button>');
+  if(cot.estado!=='aceptada'&&cot.estado!=='rechazada') html.push('<button type="button" class="btn btn-sm" onclick="cotNoInteresa(\''+cot.id+'\')">✕ No le interesó</button>');
   html.push('</div>');
   html.push('</div></div>');
   return html.join('');
@@ -8033,7 +8065,7 @@ function abrirDetalleCotizacion(cotId) {
 }
 
 async function marcarCotzPresentada(cotId) {
-  await sb.from('cotizaciones').update({estado:'presentada'}).eq('id',cotId);
+  await sb.from('cotizaciones').update({estado:'presentada', fecha_envio: new Date().toISOString().slice(0,10)}).eq('id',cotId);
   mostrarAlerta('✅ Cotización marcada como presentada');
   var cot = _cotzData.find(function(c){ return c.id===cotId; });
   if (cot) { cot.estado='presentada'; abrirDetalleCotizacion(cotId); }
@@ -8125,6 +8157,41 @@ async function guardarOfertas() {
   var idx = _cotzData.findIndex(function(c){ return c.id===cotId; });
   if (idx > -1) { _cotzData[idx].ofertas = ofertas; _cotzData[idx].estado='en_proceso'; }
   abrirDetalleCotizacion(cotId);
+}
+
+
+// Cotización: armar el mail en el chat del proyecto (reclamar a la compañía o preguntar al cliente)
+function tarMailCot(cotId, que) {
+  var c = (_cotzData || []).find(function (x) { return x.id === cotId; }); if (!c) return;
+  window._ofRefs = window._ofRefs || {};
+  window._ofRefs[cotId] = { cliente_id: c.cliente_id || null, poliza_id: (c.datos_riesgo || {}).poliza_id || null, texto: que + ': ' + (RAMO_LABELS_COT[c.ramo] || c.ramo || '') + (c.aseguradora ? ' · ' + c.aseguradora : '') };
+  abrirGestionarPorMail('cotizaciones', window._ofRefs[cotId]);
+}
+async function cotNoInteresa(cotId) {
+  var m = prompt('¿Por qué no le interesó? (precio, se queda en su compañía…)'); if (m === null) return;
+  var r = await sb.from('cotizaciones').update({ estado: 'rechazada', razon_rechazo: m || null }).eq('id', cotId);
+  if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  mostrarAlerta('Cotización marcada como no interesada'); cargarCotizaciones();
+}
+// Ramo del CRM → ramo de cotización
+function ramoCot(r) {
+  r = String(r || '');
+  return /automotor|moto/i.test(r) ? 'auto' : /combinado|hogar/i.test(r) ? 'hogar' : /comercio|integral/i.test(r) ? 'comercio' : /^ART$|riesgos del trabajo/i.test(r) ? 'art'
+    : /accidentes/i.test(r) ? 'ap' : /responsabilidad|rc/i.test(r) ? 'rc' : /vida/i.test(r) ? 'vida' : 'otros';
+}
+// Desde una renovación: la etapa queda reflejada en Cotizaciones (pedida → presentada → aceptada)
+async function _cotDesdeRenov(p, et, nota, tareaId, reclamar) {
+  if (!p || !p.cliente_id) return;
+  var rk = ramoCot(p.ramo);
+  var q = await sb.from('cotizaciones').select('id,estado,datos_riesgo').eq('productor_id', user.id).eq('cliente_id', p.cliente_id).eq('ramo', rk).not('estado', 'in', '("aceptada","rechazada")').order('created_at', { ascending: false }).limit(1);
+  var c = (q.data || [])[0];
+  var dr = Object.assign({}, (c && c.datos_riesgo) || {}, { poliza_id: p.id || null, renovacion: true, vence: p.fecha_vencimiento || null, tarea_id: tareaId || null, reclamar_el: reclamar || null });
+  if (p.bien_asegurado) dr.bien = p.bien_asegurado;
+  if (et === 'cia') {
+    if (c) await sb.from('cotizaciones').update({ estado: 'pendiente', datos_riesgo: dr }).eq('id', c.id);
+    else await sb.from('cotizaciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, ramo: rk, aseguradora: p.aseguradora || null, estado: 'pendiente', notas: 'Renovación de la póliza ' + (p.numero_poliza || '') + (p.fecha_vencimiento ? ' (vence ' + fmtDate(p.fecha_vencimiento) + ')' : '') + '. ' + nota, datos_riesgo: dr });
+  } else if (et === 'cli' && c) await sb.from('cotizaciones').update({ estado: 'presentada', fecha_envio: _hzIso(new Date()), datos_riesgo: dr }).eq('id', c.id);
+  else if (et === 'apr' && c) await sb.from('cotizaciones').update({ estado: 'aceptada', datos_riesgo: dr }).eq('id', c.id);
 }
 
 // ---- NUEVA COTIZACIÓN ----
