@@ -3155,9 +3155,12 @@ async function cargarHoy() {
       var tRen = ts.find(function (t) { return _tipoTarea(t) === 'renovacion'; });
       var espera = ts.some(function (t) { return t.tipo === 'Confirmar renovación' || t.estado === 'esperando'; });
       _hz.renov[p.id] = { pol: p, tarea: tRen || null };
-      var est = espera ? 'esperando a la compañía' : mailPol[p.id] ? 'mail enviado el ' + fmtDate(String(mailPol[p.id]).slice(0, 10)) : cotCl[p.cliente_id] ? 'cotizando' : 'sin cotizar';
+      var tEsp = ts.find(function (t) { return t.estado === 'esperando' && /^(Esperando|Reclamar|Seguir)/.test(t.titulo || ''); });
+      var est = tEsp ? '<span style="color:#1E40AF">' + esc(String(tEsp.titulo).split(' — ')[0].toLowerCase()) + (tEsp.fecha_limite ? ' · reclamar el ' + fmtDate(tEsp.fecha_limite) : '') + '</span>'
+        : espera ? 'esperando a la compañía' : mailPol[p.id] ? 'mail enviado el ' + fmtDate(String(mailPol[p.id]).slice(0, 10)) : cotCl[p.cliente_id] ? 'cotizando' : 'sin cotizar';
       var B = [];
       if (!mailPol[p.id] && !espera) B.push(_hzB('Mail al cliente', "hoyMailRenov('" + p.id + "')", true));
+      B.push(_hzB('📝 En qué está', "hoyEstadoRenov('" + p.id + "')"));
       B.push(_hzB('Abrir', "abrirDetallePol('" + p.id + "')"));
       B.push(_hzB('No renueva', "hoyNoRenueva('" + p.id + "')"));
       renov.push(_hzRow(d === 0 ? 'hoy' : d === 1 ? 'mañana' : 'en ' + d + ' días', d <= 7 ? 'am' : 'gr', esc(textoPolizaTarea(p)) + ' · ' + est, esc(nomCl(p.clientes)) + (p.bien_asegurado ? ' · ' + esc(p.bien_asegurado) : ''), B));
@@ -3232,6 +3235,55 @@ async function hoyYaPago(k) {
     if (!quedan) await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Pagó · al día' }).eq('cliente_id', cs[0].cliente_id).eq('productor_id', user.id).eq('tipo', 'Gestionar mora').not('estado', 'in', '("cerrada","cancelada","completada")');
   }
   mostrarAlerta('Listo: cuota' + (cs.length === 1 ? '' : 's') + ' pagada' + (cs.length === 1 ? '' : 's')); cargarHoy();
+}
+// Renovación: anotar en qué está (pedí cotización, mandé al cliente…) y cuándo reclamar si no hay respuesta
+var _HZ_ETAPAS = [
+  ['cia', 'Esperando cotización de la compañía', 'Le pasé los datos a la compañía para que cotice'],
+  ['cli', 'Esperando respuesta del cliente', 'Le mandé la cotización / el aviso al cliente'],
+  ['apr', 'Esperando aprobación de la compañía', 'El cliente aceptó, la compañía tiene que emitir'],
+  ['otro', 'Seguir', 'Otra cosa (la escribo abajo)']
+];
+function _hzProxDia(dow) { var x = new Date(); x.setDate(x.getDate() + ((dow - x.getDay() + 7) % 7 || 7)); return _hzIso(x); }
+function hoyEstadoRenov(pid) {
+  var x = _hz.renov[pid]; if (!x) return;
+  var p = x.pol, m = _envModal(), dd = function (n) { var y = new Date(); y.setDate(y.getDate() + n); return _hzIso(y); };
+  var rapidas = [['Mañana', dd(1)], ['El martes', _hzProxDia(2)], ['En 1 semana', dd(7)]];
+  document.getElementById('env-titulo').textContent = '📝 ¿En qué está la renovación?';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<div style="font-size:13px;margin-bottom:12px"><b>' + esc(nombreClienteLista(p.clientes || {})) + '</b> · ' + esc(textoPolizaTarea(p)) + ' · vence ' + fmtDate(p.fecha_vencimiento) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px">' + _HZ_ETAPAS.map(function (e, i) {
+      return '<label class="hz-et"><input type="radio" name="hz-et" value="' + e[0] + '"' + (i === 0 ? ' checked' : '') + '> <span><b>' + e[1] + '</b><small>' + e[2] + '</small></span></label>';
+    }).join('') + '</div>'
+    + '<label class="hz-l" style="margin-top:12px">Si no hay novedades, reclamar el</label>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + rapidas.map(function (r) { return '<button type="button" class="hz-b" onclick="document.getElementById(\'hz-et-f\').value=\'' + r[1] + '\'">' + r[0] + ' <span style="color:var(--muted)">' + fmtDate(r[1]).slice(0, 5) + '</span></button>'; }).join('')
+    + '<input type="date" id="hz-et-f" value="' + _hzProxDia(2) + '" class="hz-in" style="width:auto"></div>'
+    + '<label class="hz-l">Comentario (opcional)</label><textarea id="hz-et-c" rows="3" class="hz-in" placeholder="Ej: pasé los nuevos montos a la compañía"></textarea>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button><button type="button" class="btn btn-p" id="hz-et-btn" onclick="hoyEstadoRenovGuardar(\'' + pid + '\')">Guardar</button></div>';
+  m.querySelector('.modal-box').style.maxWidth = '520px';
+  m.classList.add('open');
+}
+async function hoyEstadoRenovGuardar(pid) {
+  var x = _hz.renov[pid]; if (!x) return;
+  var p = x.pol, et = (document.querySelector('input[name="hz-et"]:checked') || {}).value || 'cia';
+  var e = _HZ_ETAPAS.find(function (z) { return z[0] === et; }), f = document.getElementById('hz-et-f').value, com = document.getElementById('hz-et-c').value.trim();
+  if (!f) { alert('Elegí la fecha para reclamar.'); return; }
+  if (et === 'otro' && !com) { alert('Escribí en el comentario qué está pasando.'); return; }
+  var b = document.getElementById('hz-et-btn'); b.disabled = true; b.textContent = 'Guardando…';
+  var nom = nombreClienteLista(p.clientes || {});
+  var titulo = (et === 'otro' ? 'Seguir: ' + com.slice(0, 60) : e[1]) + ' — ' + nom + ' (' + (p.ramo || '') + ')';
+  var nota = e[1] + (com ? ': ' + com : '') + '. Si no hay novedades, reclamar el ' + fmtDate(f) + '.';
+  try {
+    var tid = x.tarea && x.tarea.id;
+    if (tid) {
+      var r = await sb.from('tareas').update({ estado: 'esperando', fecha_limite: f, titulo: titulo }).eq('id', tid); if (r.error) throw r.error;
+    } else {
+      var ins = await sb.from('tareas').insert({ productor_id: user.id, cliente_id: p.cliente_id, poliza_id: p.id, titulo: titulo, tablero: 'renovaciones', tipo: 'Cotizar renovación', estado: 'esperando', prioridad: 'media', fecha_limite: f, auto_generada: false }).select('id').single();
+      if (ins.error) throw ins.error; tid = ins.data.id;
+    }
+    await sb.from('notas_tareas').insert({ tarea_id: tid, texto: nota, tipo: 'sistema' });
+    await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: 'renovacion', tipo: 'sistema', poliza_id: p.id, poliza_numero: p.numero_poliza || null, poliza_ramo: p.ramo || null, resumen: '🔄 Renovación: ' + nota, usuario_nombre: user.email, es_automatico: false });
+    cerrarModal('modal-envio'); mostrarAlerta('Anotado. El ' + fmtDate(f) + ' te aparece en Hoy para reclamar.'); cargarHoy();
+  } catch (err) { b.disabled = false; b.textContent = 'Guardar'; alert('No se pudo guardar: ' + (err.message || err)); }
 }
 async function hoyNoRenueva(pid) {
   var x = _hz.renov[pid];
