@@ -3096,7 +3096,7 @@ async function cargarHoy() {
     var R = await Promise.all([
       sb.from('tareas').select('id,titulo,tipo,tablero,descripcion,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id', uid).not('estado', 'in', '("cerrada","cancelada","completada")'),
       _todo(function () { return sb.from('cobranzas').select('id,monto,numero_cuota,total_cuotas,fecha_vencimiento,medio_pago,cliente_id,poliza_id,polizas(numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado),clientes(nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario)').eq('productor_id', uid).eq('estado', 'pendiente').lte('fecha_vencimiento', hoy).order('fecha_vencimiento'); }),
-      sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,fecha_inicio,bien_asegurado,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente,email_principal)').eq('productor_id', uid).eq('estado', 'activa').gte('fecha_vencimiento', hoy).lte('fecha_vencimiento', _hzIso(en30)).order('fecha_vencimiento'),
+      sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,fecha_inicio,bien_asegurado,datos_ramo,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente,email_principal)').eq('productor_id', uid).eq('estado', 'activa').gte('fecha_vencimiento', hoy).lte('fecha_vencimiento', _hzIso(en30)).order('fecha_vencimiento'),
       sb.from('interacciones').select('poliza_id,created_at').eq('productor_id', uid).eq('categoria', 'renovacion').eq('tipo', 'email').gte('created_at', new Date(hoyD.getTime() - 60 * 864e5).toISOString()),
       sb.from('cotizaciones').select('cliente_id').eq('productor_id', uid).not('estado', 'in', '("aceptada","rechazada")')
     ]);
@@ -3156,7 +3156,10 @@ async function cargarHoy() {
     var mailPol = {}; mails.forEach(function (m) { if (m.poliza_id) mailPol[m.poliza_id] = m.created_at; });
     var cotCl = {}; cots.forEach(function (c) { if (c.cliente_id) cotCl[c.cliente_id] = 1; });
     var tarPol = {}; tars.forEach(function (t) { if (t.poliza_id) (tarPol[t.poliza_id] = tarPol[t.poliza_id] || []).push(t); });
+    // Las que van en paquete (vida, AP… con el auto) se renuevan con la principal: no aparecen solas
+    var hijosPq = {}; pols.forEach(function (p) { if (p.paquete_de) (hijosPq[p.paquete_de] = hijosPq[p.paquete_de] || []).push(p); });
     pols.forEach(function (p) {
+      if (p.paquete_de && pols.some(function (q) { return q.id === p.paquete_de; })) return;
       if (/ART|riesgos del trabajo|vida obligatori/i.test(p.ramo || '') || esCortoPlazo(p)) return;
       var d = _hzDias(p.fecha_vencimiento, hoy), ts = tarPol[p.id] || [];
       var tRen = ts.find(function (t) { return _tipoTarea(t) === 'renovacion'; });
@@ -3170,7 +3173,8 @@ async function cargarHoy() {
       B.push(_hzB('📝 En qué está', "hoyEstado('r:" + p.id + "')"));
       B.push(_hzB('Abrir', "abrirDetallePol('" + p.id + "')"));
       B.push(_hzB('No renueva', "hoyNoRenueva('" + p.id + "')"));
-      renov.push(_hzRow(d === 0 ? 'hoy' : d === 1 ? 'mañana' : 'en ' + d + ' días', d <= 7 ? 'am' : 'gr', esc(textoPolizaTarea(p)) + ' · ' + est, esc(nomCl(p.clientes)) + (p.bien_asegurado ? ' · ' + esc(p.bien_asegurado) : ''), B));
+      var conPq = (hijosPq[p.id] || []).map(function (h) { return /accidentes/i.test(h.ramo || '') ? 'AP' : h.ramo; });
+      renov.push(_hzRow(d === 0 ? 'hoy' : d === 1 ? 'mañana' : 'en ' + d + ' días', d <= 7 ? 'am' : 'gr', esc(textoPolizaTarea(p)) + (conPq.length ? ' <span class="pq-chip">📦 + ' + esc(conPq.join(' y ')) + '</span>' : '') + ' · ' + est, esc(nomCl(p.clientes)) + (p.bien_asegurado ? ' · ' + esc(p.bien_asegurado) : ''), B));
     });
 
     var ord = function (a, b) { return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; };
@@ -9692,7 +9696,7 @@ async function verificarRenovaciones() {
   if (!pols || !pols.length) return;
   for (var i=0;i<pols.length;i++) {
     var p = pols[i];
-    if (esCortoPlazo(p)) continue;
+    if (esCortoPlazo(p) || p.paquete_de) continue; // las del paquete se renuevan con la principal
     var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
     var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).not('estado','in','("cerrada","completada","cancelada")');  // cualquier tarea abierta de esa póliza (también en espera)
     if (existing && existing.length) continue;
