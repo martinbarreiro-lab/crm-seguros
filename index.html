@@ -11722,6 +11722,7 @@ async function renderMpdCobertura(p) {
     if(dr.acreedor_prendario) rows.push(['Acreedor prendario',dr.acreedor_prendario]);
     var sumaVal = dr.suma_asegurada || p.suma_asegurada;
     if(sumaVal) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(sumaVal)+'</strong>']);
+    if(dr.ajuste_automatico) rows.push(['Ajuste automático de suma', dr.ajuste_automatico]);
     if(dr.franquicia_desc || dr.franquicia_monto) {
       var franTxt = dr.franquicia_desc ? dr.franquicia_desc.trim() : '';
       // Calcular valor real de franquicia
@@ -14132,13 +14133,17 @@ function _extraerAutoPdf(T, d) {
       var cobs = [], rx = /([A-Z][A-Z0-9ÑÁÉÍÓÚ.,%\/() ]*?)\s*\$\s*([\d,]+\.\d{2})/g, c;
       while ((c = rx.exec(m[1]))) {
         var nom = c[1].trim(); if (/^LIMITE\b/.test(nom)) continue;
-        var fr = nom.match(/\s(\d{1,2}\s?%)\s*LIMITE$/); nom = nom.replace(/\s*\d{1,2}\s?%?\s*LIMITE$|\s+LIMITE$/, '').trim();
+        // El "20%" que va al lado de cada riesgo es la columna "Ajuste auto. suma aseg. %", NO la franquicia
+        nom = nom.replace(/\s*\d{1,2}\s?%?\s*LIMITE$|\s+LIMITE$/, '').trim();
         if (nom.length < 3 || nom.length > 80) continue;
-        cobs.push({ descripcion: _capi(nom) + (fr ? ' (franquicia ' + fr[1].replace(/\s/g, '') + ')' : ''), suma: _impUS(c[2]) });
-        if (fr && !d.franquicia_desc) d.franquicia_desc = fr[1].replace(/\s/g, '') + ' (porcentual)';
+        cobs.push({ descripcion: _capi(nom), suma: _impUS(c[2]) });
       }
       if (cobs.length) d.coberturas = cobs;
     }
+    if ((m = T.match(/AJUSTE AUTOMATICO DEL\s+(\d{1,3})\s*%/))) d.ajuste_automatico = m[1] + '%';
+    // Franquicia real: "FRANQUICIA PORCENTUAL FRANQUICIA VARIABLE 5% MONTO FRANQUICIA $ 500,000.00" (o un monto fijo)
+    if ((m = T.match(/FRANQUICIA (?:PORCENTUAL|VARIABLE)\s+(?:FRANQUICIA )?(VARIABLE|FIJA)?\s*(\d{1,2}(?:[.,]\d+)?)\s*%/))) d.franquicia_desc = m[2].replace(',', '.') + '%' + (m[1] ? ' (' + m[1].toLowerCase() + ')' : '');
+    if ((m = T.match(/MONTO FRANQUICIA\s*\$\s*([\d,]+\.\d{2})/))) { d.franquicia_monto = _impUS(m[1]); if (!d.franquicia_desc) d.franquicia_desc = 'Fija'; }
     if ((m = T.match(/PREMIO FINAL:\s*([\d,]+\.\d{2})/))) d.premio = _impUS(m[1]);
     if ((m = T.match(/PERIODO CUOTAS\s+(?:RENOVACION\s+)?(?:\d+\s*-\s*)?(\d{1,3}) DIAS (\d{1,2}) CUOTAS/))) d.cuotas = +m[2];
     if (d.premio && d.cuotas) { d.valor_cuota = Math.round(d.premio / d.cuotas * 100) / 100; d.forma_pago = d.cuotas + ' cuotas'; }
@@ -14441,7 +14446,7 @@ async function _crearPolizaNueva(it) {
   }
   var vto = d.fecha_vencimiento || _sumarMeses(d.fecha_inicio, 12);
   var dr = {}; if (d.patente) dr.patente = d.patente; if (d.referencia && d.referencia !== String(d.numero_poliza)) dr.referencia = d.referencia; dr.fuente = 'PDF de la póliza (' + it.file.name + ')';
-  ['marca', 'modelo', 'marca_modelo', 'anio', 'motor', 'chasis', 'uso', 'suma_asegurada', 'franquicia_desc'].forEach(function (k) { if (d[k]) dr[k] = d[k]; });
+  ['marca', 'modelo', 'marca_modelo', 'anio', 'motor', 'chasis', 'uso', 'suma_asegurada', 'franquicia_desc', 'franquicia_monto', 'ajuste_automatico'].forEach(function (k) { if (d[k]) dr[k] = d[k]; });
   if (d.corto_plazo) dr.corto_plazo = true;
   if (d.personas) dr.personas = d.personas;
   if (d.producto) dr.producto = d.producto; if (d.ubicacion) dr.direccion_riesgo = tituloDir(d.ubicacion); if (d.mensual) dr.refacturacion = 'mensual';
@@ -14474,7 +14479,9 @@ async function _planCompletarPoliza(polId, d) {
   var rp = await sb.from('polizas').select('*, clientes(*)').eq('id', polId).single(); if (rp.error) throw rp.error;
   var p = rp.data, cl = p.clientes || {};
   var dr = Object.assign({}, p.datos_ramo || {}), cambios = [], upP = {}, upC = {}, cambioDr = false;
-  var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', producto: 'plan/cobertura' };
+  var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', franquicia_monto: 'monto de franquicia', ajuste_automatico: 'ajuste automático', producto: 'plan/cobertura' };
+  // Franquicia mal leída antes (se tomaba el ajuste automático): se corrige con el PDF
+  if (d.franquicia_desc && /\(porcentual\)$/.test(dr.franquicia_desc || '') && dr.franquicia_desc !== d.franquicia_desc) { delete dr.franquicia_desc; delete dr.franquicia_monto; }
   Object.keys(ETQ).forEach(function (k) { if (d[k] && !dr[k]) { dr[k] = d[k]; cambioDr = true; cambios.push(ETQ[k] + ': ' + d[k]); } });
   if (d.referencia && !dr.referencia && _numSinCeros(d.referencia) !== _numSinCeros(p.numero_poliza)) { dr.referencia = d.referencia; cambioDr = true; }
   if (d.personas && d.personas.length && JSON.stringify(d.personas) !== JSON.stringify(dr.personas || [])) { dr.personas = d.personas; cambioDr = true; cambios.push('nómina: ' + d.personas.length + (d.personas.length === 1 ? ' persona' : ' personas')); }
