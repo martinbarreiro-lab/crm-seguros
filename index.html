@@ -298,7 +298,7 @@
             <svg class="cl-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input type="text" placeholder="Buscar por nombre, DNI, CUIT, patente..." id="srch-cl">
+            <input type="text" placeholder="Buscar por nombre, DNI, CUIT, patente, N° póliza o compañía..." id="srch-cl">
           </div>
           <div class="cl-filter-wrap">
             <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -385,7 +385,7 @@
         <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:6px;flex:2;min-width:200px;background:var(--bg);border-radius:var(--rsm);padding:7px 10px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="srch-pol" placeholder="Buscar cliente, N° póliza..." oninput="filtrarPolizasPanel()" style="border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text)">
+            <input type="text" id="srch-pol" placeholder="Buscar cliente, N° póliza, compañía, patente..." oninput="filtrarPolizasPanel()" style="border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text)">
           </div>
           <select id="fil-pol-estado" onchange="filtrarPolizasPanel()" style="flex:1;font-size:12px;background:var(--bg);border:none;border-radius:var(--rsm);padding:7px 10px;color:var(--text)">
             <option value="">Todos los estados</option>
@@ -3685,10 +3685,17 @@ async function cargarClientes(filtro, estado) {
   var orden = document.getElementById('ord-cl') ? document.getElementById('ord-cl').value : 'apellido';
   var cont = document.getElementById('tbody-cl');
   cont.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
+  if (!window._filCliOk) { window._filCliOk = true; try { await poblarFiltrosClientes(); ramoFil = (document.getElementById('fil-ramo-cl') || {}).value || ''; asegFil = (document.getElementById('fil-aseg-cl') || {}).value || ''; } catch (e) {} }
 
   var q = sb.from('clientes').select('*').eq('productor_id', user.id);
   if (estado && estado !== 'sin_poliza') q = q.eq('estado', estado);
-  if (filtro) q = q.or('nombre.ilike.%' + filtro + '%,apellido.ilike.%' + filtro + '%,dni.ilike.%' + filtro + '%,patente.ilike.%' + filtro + '%');
+  if (filtro) {
+    // Además del nombre/DNI, busca por razón social, CUIT, y por las pólizas: número, patente o compañía
+    var fq = filtro.replace(/[,()%]/g, ' ').trim();
+    var pRes = await sb.from('polizas').select('cliente_id').eq('productor_id', user.id).or('numero_poliza.ilike.%' + fq + '%,patente.ilike.%' + fq + '%,aseguradora.ilike.%' + fq + '%,bien_asegurado.ilike.%' + fq + '%').limit(1000);
+    var idsPol = Array.from(new Set((pRes.data || []).map(function (x) { return x.cliente_id; }).filter(Boolean)));
+    q = q.or('nombre.ilike.%' + fq + '%,apellido.ilike.%' + fq + '%,razon_social.ilike.%' + fq + '%,dni.ilike.%' + fq + '%,cuit.ilike.%' + fq + '%,patente.ilike.%' + fq + '%' + (idsPol.length ? ',id.in.(' + idsPol.join(',') + ')' : ''));
+  }
   if (orden === 'reciente') q = q.order('created_at', {ascending: false});
   else if (orden === 'estado') q = q.order('estado');
   else q = q.order('apellido');
@@ -3705,14 +3712,14 @@ async function cargarClientes(filtro, estado) {
 
   if (ramoFil && clientes.length) {
     var ids = clientes.map(function(cl) { return cl.id; });
-    var rRes = await sb.from('polizas').select('cliente_id').in('cliente_id', ids).eq('ramo', ramoFil).eq('estado', 'activa');
+    var rRes = await sb.from('polizas').select('cliente_id').in('cliente_id', ids).ilike('ramo', '%' + ramoFil + '%').eq('estado', 'activa');
     var idsConRamo = new Set((rRes.data || []).map(function(p) { return p.cliente_id; }));
     clientes = clientes.filter(function(cl) { return idsConRamo.has(cl.id); });
   }
 
   if (asegFil && clientes.length) {
     var ids2 = clientes.map(function(cl) { return cl.id; });
-    var aRes = await sb.from('polizas').select('cliente_id').in('cliente_id', ids2).ilike('aseguradora', '%' + asegFil + '%');
+    var aRes = await sb.from('polizas').select('cliente_id').in('cliente_id', ids2).eq('aseguradora', asegFil).eq('estado', 'activa');
     var idsConAseg = new Set((aRes.data || []).map(function(p) { return p.cliente_id; }));
     clientes = clientes.filter(function(cl) { return idsConAseg.has(cl.id); });
   }
@@ -3863,6 +3870,21 @@ document.getElementById('srch-cl').addEventListener('input', function() {
 document.getElementById('fil-cl').addEventListener('change', function() {
   cargarClientes(document.getElementById('srch-cl').value, this.value);
 });
+// Los filtros de compañía, ramo y orden no tenían acción: ahora recargan la lista
+['fil-aseg-cl', 'fil-ramo-cl', 'ord-cl'].forEach(function (id) {
+  var e = document.getElementById(id); if (e) e.addEventListener('change', function () { cargarClientes(document.getElementById('srch-cl').value, document.getElementById('fil-cl').value); });
+});
+// Compañías y ramos reales de la cartera (antes era una lista fija e incompleta)
+async function poblarFiltrosClientes() {
+  var r = await sb.from('polizas').select('aseguradora,ramo').eq('productor_id', user.id).eq('estado', 'activa').limit(2000);
+  var ps = r.data || [];
+  var put = function (id, vals, todos) {
+    var e = document.getElementById(id); if (!e) return; var v = e.value;
+    e.innerHTML = '<option value="">' + todos + '</option>' + vals.map(function (x) { return '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('');
+  };
+  put('fil-aseg-cl', Array.from(new Set(ps.map(function (p) { return p.aseguradora; }).filter(Boolean))).sort(), 'Todas las compañías');
+  put('fil-ramo-cl', Array.from(new Set(ps.map(function (p) { return p.ramo; }).filter(Boolean))).sort(), 'Todos los ramos');
+}
 
 function actualizarSelectsClientes() {
   ['fp-cl', 'fc-cl', 'fs-cl', 'fcob-cl', 'ft-cl', 'fil-tar-cl'].forEach(function(id) {
@@ -7168,9 +7190,9 @@ function filtrarPolizasPanel() {
 
   var filtered = pool.filter(function(p) {
     var cl = allCl.find(function(c){ return c.id===p.cliente_id; });
-    var nombre = cl ? (cl.apellido+' '+cl.nombre).toLowerCase() : '';
-    var numPol = (p.numero_poliza||'').toLowerCase();
-    if (ql && !nombre.includes(ql) && !numPol.includes(ql)) return false;
+    var nombre = cl ? ((cl.apellido||'')+' '+(cl.nombre||'')+' '+(cl.razon_social||'')).toLowerCase() : '';
+    var otros = [p.numero_poliza, p.aseguradora, p.ramo, p.patente, p.bien_asegurado].join(' ').toLowerCase();
+    if (ql && !nombre.includes(ql) && !otros.includes(ql)) return false;
     if (filRamo && (p.ramo||'').toLowerCase().indexOf(filRamo.toLowerCase()) === -1) return false;
     if (filAseg && p.aseguradora !== filAseg) return false;
     if (filEst === 'proxima') {
