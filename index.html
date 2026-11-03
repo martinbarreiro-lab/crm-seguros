@@ -11417,6 +11417,8 @@ function abrirBajaPoliza(polId, numero, ramo, aseguradora, clienteId) {
   if (otroTxt) otroTxt.value = '';
   var detalle = document.getElementById('baja-detalle');
   if (detalle) detalle.value = '';
+  var rw = document.getElementById('baja-reemp-wrap'); if (rw) rw.style.display = 'none';
+  var rnum = document.getElementById('baja-reemp-num'); if (rnum) rnum.value = '';
   var adj = document.getElementById('baja-adjunto');
   if (adj) adj.value = '';
   document.getElementById('modal-baja').classList.add('open');
@@ -11426,6 +11428,8 @@ function toggleBajaOtro() {
   var m = document.getElementById('baja-motivo');
   var w = document.getElementById('baja-otro-wrap');
   if (w) w.style.display = (m && m.value === 'Otro') ? 'block' : 'none';
+  var wr = document.getElementById('baja-reemp-wrap');
+  if (wr) wr.style.display = (m && m.value === 'Anulación y reemplazo') ? 'block' : 'none';
 }
 
 
@@ -11436,6 +11440,16 @@ async function confirmarBaja() {
   var otroTxt = document.getElementById('baja-otro-texto').value.trim();
   if (esOtro && !otroTxt) { alert('Especificá el motivo'); return; }
   var motivoFinal = esOtro ? ('Otro: ' + otroTxt) : motivo;
+  var reemp = null;
+  if (motivo === 'Anulación y reemplazo') {
+    var rn = (document.getElementById('baja-reemp-num').value || '').trim();
+    if (!rn) { alert('Indicá el número de la póliza que la reemplaza'); return; }
+    var rr = await sb.from('polizas').select('id,numero_poliza,datos_ramo').eq('productor_id', user.id).ilike('numero_poliza', '%' + rn.replace(/^0+/, '') + '%').limit(5);
+    reemp = (rr.data || []).find(function (x) { return String(x.numero_poliza).replace(/^0+/, '') === rn.replace(/^0+/, ''); });
+    if (!reemp) { alert('La póliza ' + rn + ' no está cargada en el CRM. Cargala primero y después anulá esta.'); return; }
+    if (reemp.id === window._bajaPolizaId) { alert('La póliza de reemplazo no puede ser la misma.'); return; }
+    motivoFinal = 'Anulación y reemplazo por la póliza N° ' + reemp.numero_poliza;
+  }
   var detalle = document.getElementById('baja-detalle').value.trim();
   var polId = window._bajaPolizaId;
   var clienteId = window._bajaClienteId;
@@ -11455,7 +11469,10 @@ async function confirmarBaja() {
     } catch(e) { console.warn('adj baja:', e); }
   }
   // Cambiar estado póliza
-  var res = await sb.from('polizas').update({ estado: 'baja', motivo_cancelacion: motivoFinal }).eq('id', polId);
+  var drA = (await sb.from('polizas').select('datos_ramo').eq('id', polId).single()).data || {};
+  var res = await sb.from('polizas').update({ estado: 'baja', motivo_cancelacion: motivoFinal + (detalle ? ' — ' + detalle : ''),
+    datos_ramo: Object.assign({}, drA.datos_ramo || {}, { anulacion: { motivo: motivo, detalle: (esOtro ? otroTxt : detalle) || null, reemplazada_por: reemp ? reemp.numero_poliza : null, fecha: new Date().toISOString().slice(0, 10) } }) }).eq('id', polId);
+  if (!res.error && reemp) await sb.from('polizas').update({ datos_ramo: Object.assign({}, reemp.datos_ramo || {}, { reemplaza_a: (window._bajaDatos || {}).numero || null }) }).eq('id', reemp.id);
   if (res.error) { alert('Error: ' + res.error.message); return; }
   // Registrar en historial
   await registrarHistorial({
@@ -14596,6 +14613,7 @@ function tituloDir(t) { return String(t || '').toLowerCase().replace(/(^|[\s.(])
       <label>Motivo de baja *</label>
       <select id="baja-motivo" onchange="toggleBajaOtro()">
         <option value="">Seleccionar motivo...</option>
+        <option value="Anulación y reemplazo">Anulación y reemplazo (la reemplaza otra póliza)</option>
         <option value="Venta de la unidad">Venta de la unidad</option>
         <option value="Desistimiento del cliente">Desistimiento del cliente</option>
         <option value="Cambio de compañía">Cambio de compañía</option>
@@ -14604,6 +14622,10 @@ function tituloDir(t) { return String(t || '').toLowerCase().replace(/(^|[\s.(])
         <option value="Fallecimiento del asegurado">Fallecimiento del asegurado</option>
         <option value="Otro">Otro</option>
       </select>
+    </div>
+    <div class="frow" id="baja-reemp-wrap" style="display:none">
+      <label>N° de la póliza que la reemplaza *</label>
+      <input type="text" id="baja-reemp-num" placeholder="Ej: 69367279 (tiene que estar cargada en el CRM)">
     </div>
     <div class="frow" id="baja-otro-wrap" style="display:none">
       <label>Especificar motivo *</label>
