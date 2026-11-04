@@ -13464,15 +13464,15 @@ async function analizarPostImportacion(uid) {
   if (cobVenc.length) {
     modalHtml += '<div style="padding:10px 12px;background:var(--rl);border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--red)">Cuotas vencidas</div>'
-      +'<div style="font-size:11px;color:var(--muted)">'+cobVenc.length+' cuotas de pago manual (contado o cupón) sin cobrar, de '+new Set(cobVenc.map(function(c){return c.cliente_id||c.poliza_id;})).size+' clientes (una tarea por cliente)</div></div>'
-      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-cob-venc" checked> Crear tareas</label>'
+      +'<div style="font-size:11px;color:var(--muted)">'+cobVenc.length+' cuotas de pago manual (contado o cupón) sin cobrar, de '+new Set(cobVenc.map(function(c){return c.cliente_id||c.poliza_id;})).size+' clientes · se siguen en Cobranzas y en Hoy</div></div>'
+      +'<button type="button" class="btn btn-sm" onclick="document.getElementById(\'modal-analisis-import\').remove();mobIr(\'cobranzas\')">Ver en Cobranzas</button>'
       +'</div>';
   }
   if (cobProx.length) {
     modalHtml += '<div style="padding:10px 12px;background:#EAF3DE;border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between">'
       +'<div><div style="font-size:13px;font-weight:500;color:var(--green)">Cuotas próximas</div>'
       +'<div style="font-size:11px;color:var(--muted)">'+cobProx.length+' cuotas vencen en los próximos '+diasCobr+' días</div></div>'
-      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="chk-cob-prox"> Crear tareas</label>'
+      +'<button type="button" class="btn btn-sm" onclick="document.getElementById(\'modal-analisis-import\').remove();mobIr(\'cobranzas\')">Ver en Cobranzas</button>'
       +'</div>';
   }
   if (polSinCliente&&polSinCliente.length) {
@@ -13491,7 +13491,7 @@ async function analizarPostImportacion(uid) {
   modalHtml += '</div>'
     +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'
     +'<button type="button" class="btn" onclick="document.getElementById(\'modal-analisis-import\').remove()">Omitir</button>'
-    +'<button type="button" class="btn btn-p" onclick="ejecutarTareasImport()">Crear tareas seleccionadas</button>'
+    +(polRenov.length ? '<button type="button" class="btn btn-p" onclick="ejecutarTareasImport()">Crear tareas seleccionadas</button>' : '')
     +'</div>'
     +'</div></div>';
 
@@ -13536,43 +13536,8 @@ async function ejecutarTareasImport() {
     lista.forEach(function(c){ var k = c.poliza_id || ('cl_'+c.cliente_id); (g[k] = g[k] || []).push(c); });
     return Object.keys(g).map(function(k){ return g[k].sort(function(a,b){ return a.fecha_vencimiento < b.fecha_vencimiento ? -1 : 1; }); });
   };
-  if (document.getElementById('chk-cob-venc')&&document.getElementById('chk-cob-venc').checked) {
-    // Una tarea por CLIENTE con todas sus pólizas y cuotas vencidas; si ya tiene una abierta, se actualiza
-    var porCl = {};
-    cobVenc.forEach(function(c){ var pol = c.polizas || {}; var k = c.cliente_id || pol.cliente_id || ('pol_'+c.poliza_id); (porCl[k] = porCl[k] || { cl: pol.clientes, cid: c.cliente_id || pol.cliente_id || null, pols: {} }); var pp = porCl[k].pols[c.poliza_id] = porCl[k].pols[c.poliza_id] || { pol: pol, n: 0, deuda: 0, id: c.poliza_id, cuotas: [] }; pp.n++; pp.deuda += Number(c.monto)||0; pp.cuotas.push(c); });
-    var { data: moraAbiertas } = await sb.from('tareas').select('id,cliente_id').eq('productor_id', uid).eq('tipo','Gestionar mora').in('estado',['pendiente','encurso','esperando']);
-    var moraPorCl = {}; (moraAbiertas||[]).forEach(function(t){ if (t.cliente_id) moraPorCl[t.cliente_id] = t.id; });
-    var nAct = 0;
-    for (var kk in porCl) {
-      var g = porCl[kk], ps = Object.values(g.pols).sort(function(a,b){ return b.deuda - a.deuda; });
-      var nCuotas = ps.reduce(function(a,x){ return a + x.n; }, 0), deuda = ps.reduce(function(a,x){ return a + x.deuda; }, 0);
-      var datos = {
-        titulo: 'Cobrar ' + (nCuotas === 1 ? 'cuota vencida' : nCuotas + ' cuotas vencidas') + ' — ' + nomDe(g.cl),
-        descripcion: 'Debe ' + $f(deuda) + ' (pago manual: contado o cupón).\n' + ps.map(function(x){
-          var cs = x.cuotas.slice().sort(function(a,b){ return a.fecha_vencimiento < b.fecha_vencimiento ? -1 : 1; });
-          return '• ' + (x.pol.ramo||'') + ' N° ' + (x.pol.numero_poliza||'') + (x.pol.aseguradora ? ' (' + x.pol.aseguradora + ')' : '') + ': ' + $f(x.deuda) + '\n'
-            + cs.map(function(c){ return '   - Cuota ' + (c.numero_cuota||'?') + ' · vence ' + fmtDate(c.fecha_vencimiento) + ' · ' + $f(c.monto); }).join('\n');
-        }).join('\n'),
-        prioridad: deuda > 50000 ? 'alta' : 'media', fecha_limite: hoyISO
-      };
-      if (g.cid && moraPorCl[g.cid]) { await sb.from('tareas').update(datos).eq('id', moraPorCl[g.cid]); nAct++; continue; }
-      filas.push(Object.assign({ productor_id: uid, cliente_id: g.cid, poliza_id: ps.length === 1 ? ps[0].id : null,
-        tablero: 'cobranzas', tipo: 'Gestionar mora', categoria: 'cobranza', estado: 'pendiente', auto_generada: true }, datos));
-    }
-    compLog('ok', Object.keys(porCl).length+' clientes con cuotas vencidas ('+cobVenc.length+' cuotas)' + (nAct ? ' · '+nAct+' tareas actualizadas' : ''));
-  }
-  if (document.getElementById('chk-cob-prox')&&document.getElementById('chk-cob-prox').checked) {
-    var gp = agrupar(cobProx);
-    gp.forEach(function(cs){
-      var c0 = cs[0], pol = c0.polizas || {};
-      filas.push({ productor_id: uid, cliente_id: c0.cliente_id || pol.cliente_id || null, poliza_id: c0.poliza_id || null,
-        titulo: 'Recordar cuota — ' + nomDe(pol.clientes),
-        descripcion: textoPolizaTarea(pol) + ' · ' + cs.map(function(c){ return 'cuota ' + (c.numero_cuota||'?') + ' vence ' + fmtDate(c.fecha_vencimiento) + ' (' + $f(c.monto) + ')'; }).join(', '),
-        tablero: 'cobranzas', tipo: 'Cobrar cuota', categoria: 'cobranza', prioridad: 'media',
-        estado: 'pendiente', vencimiento: c0.fecha_vencimiento, fecha_limite: c0.fecha_vencimiento, auto_generada: true });
-    });
-    compLog('ok', gp.length+' tareas de cuotas próximas');
-  }
+  // Cuotas: ya no se crean tareas automáticas ("Gestionar mora" / "Recordar cuota").
+  // Las cuotas se ven directo en Cobranzas y en Hoy; la tarea de seguimiento la creás vos con "En qué está".
   for (var q = 0; q < filas.length; q += 50) {
     var r = await sb.from('tareas').insert(filas.slice(q, q+50));
     if (r.error) { compLog('error', 'Error creando tareas: ' + r.error.message); break; }
