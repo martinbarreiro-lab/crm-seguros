@@ -7831,6 +7831,24 @@ function textoPolizaTarea(p) {
   return [p.ramo, p.numero_poliza ? 'N° ' + p.numero_poliza : '', p.aseguradora].filter(Boolean).join(' · ');
 }
 var _genTareasEnCurso = false;
+// Pólizas que ya tienen (o tuvieron) tarea de renovación para ESTE vencimiento, abierta o cerrada.
+// Así, si cerrás la tarea ("valores enviados", "renueva el 10/11"), el CRM no la vuelve a crear.
+async function _polConRenovGestionada(pols) {
+  var res = {}; if (!pols || !pols.length) return res;
+  var vto = {}; pols.forEach(function (p) { vto[p.id] = p.fecha_vencimiento; });
+  var { data } = await sb.from('tareas').select('poliza_id,estado,tablero,tipo,titulo,vencimiento,created_at').in('poliza_id', Object.keys(vto));
+  (data || []).forEach(function (t) {
+    var v = vto[t.poliza_id]; if (!v) return;
+    var abierta = ['cerrada', 'completada', 'cancelada'].indexOf(t.estado) < 0;
+    if (abierta) { res[t.poliza_id] = 1; return; }
+    var esRenov = t.tablero === 'renovaciones' || /renov/i.test((t.tipo || '') + ' ' + (t.titulo || ''));
+    if (!esRenov) return;
+    var desde = new Date(v + 'T12:00:00'); desde.setDate(desde.getDate() - 60);
+    if (t.vencimiento === v || (t.created_at && new Date(t.created_at) >= desde)) res[t.poliza_id] = 1;
+  });
+  return res;
+}
+
 async function generarTareasAutoVencimiento() {
   if (!user || _genTareasEnCurso) return;
   _genTareasEnCurso = true;
@@ -7849,8 +7867,7 @@ async function generarTareasAutoVencimiento() {
     var ids = Object.keys(cands);
     if (!ids.length) return;
     // Pólizas que ya tienen una tarea abierta (automática o hecha a mano)
-    var { data: abiertas } = await sb.from('tareas').select('poliza_id').in('poliza_id', ids).not('estado', 'in', '("cerrada","completada","cancelada")');
-    var yaTiene = {}; (abiertas || []).forEach(function (t) { yaTiene[t.poliza_id] = 1; });
+    var yaTiene = await _polConRenovGestionada(ids.map(function (id) { return cands[id].p; }));
     var faltan = ids.filter(function (id) { return !yaTiene[id]; });
     if (!faltan.length) return;
     var { data: pcl } = await sb.from('polizas').select('id,clientes(nombre,apellido,razon_social,tipo_cliente)').in('id', faltan);
@@ -9820,12 +9837,12 @@ async function verificarRenovaciones() {
   var hoyStr = hoy.toISOString().split('T')[0];
   var { data: pols } = await sb.from('polizas').select('*,clientes(nombre,apellido)').eq('productor_id',user.id).eq('estado','activa').lte('fecha_vencimiento',limStr).gte('fecha_vencimiento',hoyStr);
   if (!pols || !pols.length) return;
+  var gestionadas = await _polConRenovGestionada(pols);
   for (var i=0;i<pols.length;i++) {
     var p = pols[i];
     if (esCortoPlazo(p) || p.paquete_de) continue; // las del paquete se renuevan con la principal
     var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
-    var { data: existing } = await sb.from('tareas').select('id').eq('poliza_id',p.id).not('estado','in','("cerrada","completada","cancelada")');  // cualquier tarea abierta de esa póliza (también en espera)
-    if (existing && existing.length) continue;
+    if (gestionadas[p.id]) continue; // ya tiene tarea abierta, o ya se gestionó la renovación de este vencimiento
     await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+' ('+p.ramo+')', tablero:'renovaciones', tipo:'Cotizar renovación' });
   }
 }
@@ -13398,8 +13415,9 @@ async function analizarPostImportacion(uid) {
   });
 
   // Filtrar pólizas por vencer sin tarea ya existente
+  var renovGest = await _polConRenovGestionada(polVencer||[]);
   var polRenov = (polVencer||[]).filter(function(p){
-    return !tareasIdx[p.id+'_renovaciones'] && !/ART/i.test(p.ramo||'') && !p.paquete_de && !esCortoPlazo(p);
+    return !tareasIdx[p.id+'_renovaciones'] && !renovGest[p.id] && !/ART/i.test(p.ramo||'') && !p.paquete_de && !esCortoPlazo(p);
   });
 
   // Filtrar cobranzas con tarea ya existente
