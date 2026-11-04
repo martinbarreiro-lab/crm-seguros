@@ -7862,6 +7862,8 @@ async function generarTareasAutoVencimiento() {
       if (esCortoPlazo(p)) return; // seguro por unos días: no se renueva
       var e = calcEstadoVto(p.fecha_vencimiento);
       if (e.key !== 'urgente' && e.key !== 'vencida') return;
+      // Vencida hace 45 días o menos: de esa se ocupa "¿Se renovó?" (generarTareasConfirmarRenovacion), no se crea "Renovar"
+      if (e.key === 'vencida') { var h45 = new Date(); h45.setDate(h45.getDate() - 45); if (p.fecha_vencimiento >= h45.toISOString().slice(0, 10)) return; }
       cands[p.id] = { p: p, e: e };
     });
     var ids = Object.keys(cands);
@@ -13983,13 +13985,27 @@ async function generarTareasConfirmarRenovacion() {
   });
   if (!cands.length) return;
   var ids = cands.map(function (p) { return p.id; });
-  var { data: ya } = await sb.from('tareas').select('poliza_id').in('poliza_id', ids).eq('tipo', 'Confirmar renovación');
-  var tiene = {}; (ya || []).forEach(function (t) { tiene[t.poliza_id] = 1; });
+  var { data: ya } = await sb.from('tareas').select('id,poliza_id,tipo,tablero,estado').in('poliza_id', ids)
+    .or('tipo.eq."Confirmar renovación",and(tablero.eq.renovaciones,estado.in.(pendiente,encurso,esperando))');
+  var tiene = {}, pasar = {};
+  (ya || []).forEach(function (t) {
+    if (t.tipo === 'Cotizar renovación' && ['pendiente', 'encurso'].indexOf(t.estado) >= 0 && !tiene[t.poliza_id]) pasar[t.poliza_id] = t.id; // la "Renovar" abierta pasa a "¿Se renovó?"
+    else tiene[t.poliza_id] = 1; // ya tiene "¿Se renovó?" o una de renovación que estás siguiendo vos (ej. esperando a la compañía)
+  });
+  Object.keys(tiene).forEach(function (k) { delete pasar[k]; });
   var faltan = cands.filter(function (p) { return !tiene[p.id]; });
   if (!faltan.length) return;
   var { data: pcl } = await sb.from('polizas').select('id,clientes(nombre,apellido,razon_social,tipo_cliente)').in('id', faltan.map(function (p) { return p.id; }));
   var clPor = {}; (pcl || []).forEach(function (x) { clPor[x.id] = x.clientes; });
-  await sb.from('tareas').insert(faltan.map(function (p) {
+  var nuevas = faltan.filter(function (p) { return !pasar[p.id]; });
+  for (var i = 0; i < faltan.length; i++) {
+    var pp = faltan[i]; if (!pasar[pp.id]) continue;
+    var cl0 = clPor[pp.id];
+    await sb.from('tareas').update({ tipo: 'Confirmar renovación', titulo: '¿Se renovó? — ' + (cl0 ? nombreClienteLista(cl0) : 'Sin cliente'),
+      descripcion: textoPolizaTarea(pp) + ' · Venció ' + fmtDate(pp.fecha_vencimiento), prioridad: 'urgente', fecha_limite: pp.fecha_vencimiento, vencimiento: pp.fecha_vencimiento, estado: 'pendiente' }).eq('id', pasar[pp.id]);
+  }
+  if (!nuevas.length) return;
+  await sb.from('tareas').insert(nuevas.map(function (p) {
     var cl = clPor[p.id];
     return { productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id, titulo: '¿Se renovó? — ' + (cl ? nombreClienteLista(cl) : 'Sin cliente'),
       descripcion: textoPolizaTarea(p) + ' · Venció ' + fmtDate(p.fecha_vencimiento), tipo: 'Confirmar renovación', tablero: 'renovaciones', categoria: 'renovacion',
