@@ -2341,7 +2341,7 @@ async function abrirEnviarPoliza(polId, doc, tareaId) {
     var url = doc === 'endoso' ? pol.endoso_pdf_url : pol.pdf_url;
     if (!url) {
       cuerpo.innerHTML = '<div style="padding:16px;font-size:13px;color:#374151">Esta póliza todavía no tiene el PDF ' + (doc === 'endoso' ? 'del endoso' : '') + ' cargado.<br><br>'
-        + '<button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\');abrirEditarPoliza(\'' + polId + '\')">Subir el PDF</button></div>';
+        + '<button type="button" class="btn btn-p" onclick="subirPdfPoliza(\'' + polId + '\')">Subir el PDF</button></div>';
       return;
     }
     var c = pol.cliente_id ? await sb.from('clientes').select('*').eq('id', pol.cliente_id).single() : { data: {} };
@@ -2681,10 +2681,28 @@ function abrirModalEndoso(polId, modo) {
   document.getElementById('env-titulo').textContent = 'Cargar endoso';
   document.getElementById('env-cuerpo').innerHTML =
     '<div class="frow"><label>¿Qué se modificó?</label><textarea id="end-detalle" placeholder="Ej: cambio de suma asegurada, cambio de domicilio, alta de accesorio..." style="min-height:70px"></textarea></div>'
-    + '<div class="frow"><label>PDF del endoso</label><input type="file" id="end-pdf" accept="application/pdf"></div>'
+    + '<div class="frow"><label>PDF del endoso</label><input type="file" id="end-pdf" accept="application/pdf"><div id="end-leido" style="font-size:12px;color:var(--muted);margin-top:4px"></div></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button>'
     + '<button type="button" class="btn btn-p" id="end-guardar" onclick="guardarEndoso(\'' + polId + '\')">Guardar endoso</button></div>';
+  document.getElementById('end-pdf').onchange = function () { if (this.files[0]) _endLeer(this.files[0], polId); };
   m.classList.add('open');
+}
+// Lee el PDF del endoso: número, motivo y premio; completa "¿Qué se modificó?" si está vacío
+async function _endLeer(f, polId) {
+  var info = document.getElementById('end-leido'); info.textContent = 'Leyendo el PDF…';
+  try {
+    var T = _normTxt(await _textoPdf(f)), d = {}; try { d = extraerDatosPoliza(T, f.name) || {}; } catch (e) {}
+    var mN = T.match(/ENDOSO\s*(?:N[°º.]?|NRO\.?|NUMERO)?\s*:?\s*(\d{1,6})\b/), mM = T.match(/(?:MOTIVO(?: DEL ENDOSO)?|CONCEPTO|TIPO DE ENDOSO)\s*:?\s*([A-ZÁÉÍÓÚÑ0-9 .,\/-]{4,80}?)(?=\s{2,}|\s[A-Z]+\s*:|$)/);
+    var partes = [];
+    if (mN && mN[1] !== '0') partes.push('Endoso N° ' + mN[1]);
+    if (mM) partes.push(_capi(mM[1].trim().toLowerCase()));
+    if (d.premio) partes.push('premio $' + Number(d.premio).toLocaleString('es-AR'));
+    var ta = document.getElementById('end-detalle');
+    if (partes.length && !ta.value.trim()) { ta.value = partes.join(' · '); ta.style.background = '#F0FDF4'; }
+    var rp = await sb.from('polizas').select('numero_poliza').eq('id', polId).single(), av = '';
+    if (rp.data && d.numero_poliza && _numSinCeros(d.numero_poliza) !== _numSinCeros(rp.data.numero_poliza)) av = ' ⚠ Ojo: el PDF es de la póliza N° ' + d.numero_poliza + ', no de la ' + rp.data.numero_poliza + '.';
+    info.textContent = (partes.length ? '✅ Leí el endoso: ' + partes.join(' · ') + (ta.value.trim() ? '' : '') + '. Si querés, agregá más detalle.' : '✅ PDF cargado. No encontré el motivo: escribilo arriba.') + av;
+  } catch (e) { info.textContent = '✅ PDF cargado (no lo pude leer: escribí qué se modificó).'; }
 }
 
 async function guardarEndoso(polId) {
@@ -6423,13 +6441,14 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
   if (!premio || premio <= 0) { alert('Debe ingresar el premio total'); return; }
   if (!pago) { alert('Debe seleccionar la forma de pago'); return; }
   if (!pdfFile && !window._editPolizaId) { alert('Debe adjuntar el PDF de la póliza (obligatorio)'); return; }
+  var _pdfD = pdfFile ? window._fpPdf : null;
 
   // Validar datos básicos del cliente desde su ficha
   const cl = allCl.find(function(c) { return c.id === cid; });
   if (!cl) { alert('Cliente no encontrado'); return; }
   const datosBasicosFaltantes = [];
   if (!cl.nombre && !cl.apellido) datosBasicosFaltantes.push('Nombre');
-  if (!cl.dni) datosBasicosFaltantes.push('DNI/CUIT');
+  if (!cl.dni && !(_pdfD && (_pdfD.dni || _pdfD.cuit))) datosBasicosFaltantes.push('DNI/CUIT'); // si el PDF trae el DNI, se completa solo al guardar
   if (datosBasicosFaltantes.length) {
     alert('El cliente no tiene cargados estos datos obligatorios: ' + datosBasicosFaltantes.join(', ') + '. Completalos en su ficha antes de cargar la póliza.');
     return;
@@ -6485,7 +6504,7 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     cliente_id: cid,
     productor_id: user.id,
     aseguradora: aseg,
-    numero: numAseg,
+    numero_poliza: numAseg,
     ramo: ramo,
     cobertura: (function(){
       var cob = document.getElementById('fp-cobertura').value.trim();
@@ -6523,8 +6542,24 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
     poliza.patente = datosRamo.patente;
   }
 
+  if (window._editPolizaId) {
+    // EDITAR: actualiza la misma póliza (no crea otra); el PDF y las cédulas solo si se subió uno nuevo
+    var upE = Object.assign({}, poliza); delete upE.productor_id; delete upE.estado;
+    if (!pdfUrl) delete upE.pdf_url; if (!cvFrenteUrl) delete upE.cedula_verde_frente_url; if (!cvDorsoUrl) delete upE.cedula_verde_dorso_url;
+    var rE = await sb.from('polizas').update(upE).eq('id', window._editPolizaId);
+    if (rE.error) { alert('Error guardando la póliza: ' + rE.error.message); return; }
+    var idE = window._editPolizaId; window._editPolizaId = null;
+    if (_pdfD) { try { var plE = await _planCompletarPoliza(idE, _pdfD); await plE.aplicar(); } catch (e) { console.warn('completar desde PDF', e); } }
+    window._fpPdf = null;
+    cerrarModal('modal-pol');
+    if (typeof cargarPolizas === 'function') try { await cargarPolizas(); } catch (e) {}
+    mostrarAlerta('✅ Póliza actualizada.');
+    return;
+  }
   const { data: polNueva, error } = await sb.from('polizas').insert(poliza).select('id').single();
   if (error) { alert('Error guardando póliza: ' + error.message); return; }
+  if (_pdfD && polNueva && polNueva.id) { try { var plN = await _planCompletarPoliza(polNueva.id, _pdfD); await plN.aplicar(); } catch (e) { console.warn('completar desde PDF', e); } }
+  window._fpPdf = null;
   // Tarea automática para enviarle la póliza al cliente (nueva o renovación)
   if (polNueva && polNueva.id) await crearTareaEnvio(polNueva.id, cid, 'poliza', window._renovandoDe ? 'renovacion' : 'nueva', ramo);
 
@@ -10421,6 +10456,8 @@ function setupUploads() {
     {input:'up-poliza', label:null, text:'✅ Póliza cargada'},
     {input:'up-cedula', label:null, text:'✅ Cédula cargada'},
   ];
+  var fpPdfEl = document.getElementById('fp-pdf');
+  if (fpPdfEl && !fpPdfEl._lee) { fpPdfEl._lee = true; fpPdfEl.addEventListener('change', function () { if (this.files && this.files[0]) setTimeout(function () { _fpLeerPdf(fpPdfEl.files[0]); }, 0); }); }
   uploads.forEach(function(u) {
     const el = document.getElementById(u.input);
     if (!el) return;
@@ -11300,6 +11337,8 @@ function resetModalPoliza() {
   // Reset all inputs and selects in modal-pol
   const modal = document.getElementById('modal-pol');
   if (!modal) return;
+  window._editPolizaId = null; window._fpPdf = null;
+  modal.querySelectorAll('input,select').forEach(function (i) { i.style.background = ''; });
   modal.querySelectorAll('input').forEach(function(i) {
     if (i.type === 'file') i.value = '';
     else if (i.type === 'date' || i.type === 'number' || i.type === 'text' || i.type === 'email') i.value = '';
@@ -11407,6 +11446,7 @@ async function abrirEditarPoliza(polId) {
     var p = s.split('/');
     if (p.length === 3) { el.value = (p[2].length===2?'20'+p[2]:p[2])+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'); }
   }
+  (function () { var se = document.getElementById('fp-aseg'); if (se && p.aseguradora && ![].some.call(se.options, function (o) { return o.value === p.aseguradora; })) { var o = document.createElement('option'); o.value = o.textContent = p.aseguradora; se.appendChild(o); } })();
   sv('fp-aseg', p.aseguradora);
   sv('fp-num-aseg', p.numero_poliza);
   sv('fp-cobertura', p.cobertura);
@@ -11706,7 +11746,7 @@ function mpdAcciones(p) {
     h += '<button type="button" class="mpd-b pri" onclick="abrirEnviarPoliza(\'' + p.id + '\')">📤 Enviar póliza</button>'
       + '<button type="button" class="mpd-b" onclick="window.open(\'' + p.pdf_url + '\',\'_blank\')">📄 Ver PDF</button>';
   } else {
-    h += '<button type="button" class="mpd-b pri" onclick="' + cerrarY("abrirEditarPoliza('" + p.id + "')") + '">📄 Subir el PDF</button>';
+    h += '<button type="button" class="mpd-b pri" onclick="' + cerrarY("subirPdfPoliza('" + p.id + "')") + '">📄 Subir el PDF</button>';
   }
   h += '<button type="button" class="mpd-b" onclick="' + cerrarY("renovarRapido('" + p.id + "')") + '">🔄 Renovar</button>'
     + '<button type="button" class="mpd-b" onclick="' + cerrarY("abrirEditarPoliza('" + p.id + "')") + '">✏ Editar</button>'
@@ -14927,6 +14967,116 @@ async function _planCompletarPoliza(polId, d) {
     if (Object.keys(upC).length) { var r2 = await sb.from('clientes').update(upC).eq('id', cl.id); if (r2.error) throw r2.error; }
     if (nCob) { var r3 = await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: polId, descripcion: c.descripcion, suma_asegurada: c.suma }; })); if (r3.error) throw r3.error; }
   } };
+}
+// ══ Subir el PDF a una póliza existente: lo lee y completa solo lo que falta; pide a mano solo lo que no pudo leer ══
+var _sp = null;
+function _spAvisos(p, d, cl) {
+  var av = [], norm = function (s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  if (d.numero_poliza && _numSinCeros(d.numero_poliza) !== _numSinCeros(p.numero_poliza) && (!d.referencia || _numSinCeros(d.referencia) !== _numSinCeros(p.numero_poliza)))
+    av.push('El PDF es de la póliza N° ' + d.numero_poliza + ' y esta es la N° ' + p.numero_poliza + '.');
+  if (d.patente && p.patente && norm(d.patente) !== norm(p.patente)) av.push('La patente del PDF (' + d.patente + ') no es la de la póliza (' + p.patente + ').');
+  if (d.asegurado && cl && cl.id) {
+    var nc = norm(nombreClienteLista(cl)), pal = String(d.asegurado).toUpperCase().split(/[^A-ZÑ]+/).filter(function (w) { return w.length > 3; });
+    if (pal.length && !pal.some(function (w) { return nc.indexOf(norm(w)) >= 0; })) av.push('El asegurado del PDF es "' + d.asegurado + '", no ' + nombreClienteLista(cl) + '.');
+  }
+  return av;
+}
+function subirPdfPoliza(polId) {
+  _sp = { polId: polId, file: null, d: null, plan: null };
+  var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '560px';
+  document.getElementById('env-titulo').textContent = '📄 Subir el PDF de la póliza';
+  document.getElementById('env-cuerpo').innerHTML =
+    '<label id="sp-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:#475569">📄 Elegí el PDF (lo leo y completo los datos solo)<input type="file" id="sp-pdf" accept="application/pdf,.pdf" style="display:none"></label>'
+    + '<div id="sp-res" style="margin-top:10px;font-size:13px"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="cerrarModal(\'modal-envio\')">Cancelar</button><button type="button" class="btn btn-p" id="sp-ok" disabled onclick="guardarPdfPoliza()">Guardar</button></div>';
+  document.getElementById('sp-pdf').onchange = function () { if (this.files[0]) _spLeer(this.files[0]); };
+  m.classList.add('open');
+}
+async function _spLeer(f) {
+  _sp.file = f;
+  var res = document.getElementById('sp-res'), ok = document.getElementById('sp-ok');
+  document.getElementById('sp-drop').firstChild.textContent = '📄 ' + f.name + ' ';
+  res.innerHTML = '<span style="color:var(--muted)">Leyendo el PDF…</span>'; ok.disabled = true;
+  try {
+    var d = extraerDatosPoliza(_normTxt(await _textoPdf(f)), f.name) || {};
+    var plan = await _planCompletarPoliza(_sp.polId, d), p = plan.p;
+    _sp.d = d; _sp.plan = plan;
+    var av = _spAvisos(p, d, p.clientes);
+    // Lo que hace falta y el PDF no trae: solo eso se pide a mano
+    var falta = [];
+    if (!p.prima_anual && !d.premio) falta.push('<div class="frow"><label>Premio total ($) — no lo encontré en el PDF</label><input type="number" id="sp-premio"></div>');
+    if (!p.forma_pago && !d.forma_pago) falta.push('<div class="frow"><label>Forma de pago — no la encontré en el PDF (opcional)</label><select id="sp-pago"><option value="">Seleccionar…</option><option>Mensual</option><option>Trimestral</option><option>Semestral</option><option>Anual</option><option value="Anual ref. mensual">Anual con refacturación mensual</option></select></div>');
+    res.innerHTML = (av.length ? '<div style="background:#FEF2F2;color:#991B1B;border-radius:8px;padding:8px 10px;margin-bottom:8px">⚠ ' + av.map(esc).join('<br>⚠ ') + '</div>' : '')
+      + (plan.cambios.length ? '<div style="background:#F0FDF4;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Del PDF completo:</b><br>• ' + plan.cambios.map(esc).join('<br>• ') + '</div>'
+        : '<div style="color:var(--muted);margin-bottom:8px">La póliza ya tenía todos los datos del PDF: solo se guarda el archivo.</div>')
+      + (plan.avisos.length ? '<div style="font-size:12px;color:#92400E;margin-bottom:8px">' + plan.avisos.map(esc).join('<br>') + '</div>' : '')
+      + falta.join('');
+    ok.disabled = false; ok.textContent = av.length ? 'Guardar igual' : 'Guardar';
+  } catch (e) {
+    res.innerHTML = '<span style="color:#991B1B">No pude leer el PDF (' + esc(e.message || String(e)) + '). Igual lo podés guardar.</span>';
+    _sp.d = null; _sp.plan = null; ok.disabled = false;
+  }
+}
+async function guardarPdfPoliza() {
+  if (!_sp || !_sp.file) return;
+  var ok = document.getElementById('sp-ok'); ok.disabled = true; ok.textContent = 'Guardando…';
+  try {
+    var path = 'polizas/' + _sp.polId + '/' + Date.now() + '_poliza_' + _sp.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    var up = await sb.storage.from('archivos').upload(path, _sp.file, { contentType: 'application/pdf' });
+    if (up.error) throw up.error;
+    var upd = { pdf_url: sb.storage.from('archivos').getPublicUrl(path).data.publicUrl };
+    var pr = document.getElementById('sp-premio'), pg = document.getElementById('sp-pago');
+    if (pr && parseFloat(pr.value)) upd.prima_anual = parseFloat(pr.value);
+    if (pg && pg.value) upd.forma_pago = pg.value;
+    var r = await sb.from('polizas').update(upd).eq('id', _sp.polId); if (r.error) throw r.error;
+    if (_sp.plan) await _sp.plan.aplicar();
+    var p = _sp.plan ? _sp.plan.p : null;
+    if (p) await registrarHistorial({ cliente_id: p.cliente_id, categoria: 'poliza', tipo: 'sistema', poliza_id: p.id, poliza_numero: p.numero_poliza, poliza_ramo: p.ramo,
+      resumen: '📄 PDF cargado en la póliza N° ' + p.numero_poliza + (_sp.plan.cambios.length ? '. Se completó: ' + _sp.plan.cambios.join(' · ') : '') });
+    cerrarModal('modal-envio'); try { cerrarModal('modal-pol-det'); } catch (e) {}
+    if (typeof cargarPolizas === 'function') try { await cargarPolizas(); } catch (e) {}
+    mostrarAlerta('✅ PDF guardado' + (_sp.plan && _sp.plan.cambios.length ? ' y se completaron ' + _sp.plan.cambios.length + ' datos' : '') + '.');
+    if (typeof abrirDetallePol === 'function') abrirDetallePol(_sp.polId);
+  } catch (e) { ok.disabled = false; ok.textContent = 'Guardar'; alert('No se pudo guardar: ' + (e.message || e)); }
+}
+// ══ Formulario de póliza (nueva / editar): al adjuntar el PDF lo lee y completa los campos vacíos ══
+function _fpSet(id, val, llenos, etq) {
+  var el = document.getElementById(id); if (!el || val == null || val === '') return;
+  if (String(el.value || '').trim()) return;
+  if (el.tagName === 'SELECT' && ![].some.call(el.options, function (o) { return o.value === String(val); })) {
+    var o = document.createElement('option'); o.value = o.textContent = String(val); el.appendChild(o);
+  }
+  el.value = val; el.style.background = '#F0FDF4';
+  try { el.dispatchEvent(new Event('change')); } catch (e) {}
+  if (etq) llenos.push(etq);
+}
+async function _fpLeerPdf(f) {
+  var st = document.getElementById('fp-pdf-status'); window._fpPdf = null;
+  if (st) st.textContent = 'Leyendo el PDF…';
+  try {
+    var d = extraerDatosPoliza(_normTxt(await _textoPdf(f)), f.name) || {}; window._fpPdf = d;
+    var ll = [];
+    var num = d.numero_poliza ? String(d.numero_poliza).replace(/^0+(?=\d)/, '') : '';
+    var cur = (document.getElementById('fp-num-aseg') || {}).value || '';
+    var av = (num && cur && _numSinCeros(cur) !== _numSinCeros(num)) ? ' ⚠ Ojo: el PDF es de la póliza N° ' + num + '.' : '';
+    _fpSet('fp-aseg', d.aseguradora, ll, 'compañía');
+    _fpSet('fp-num-aseg', num, ll, 'N° de póliza');
+    _fpSet('fp-cobertura', d.producto, ll, 'cobertura');
+    _fpSet('fp-inicio', d.fecha_inicio, ll, 'vigencia');
+    _fpSet('fp-periodo', d.periodo_meses, ll, null);
+    _fpSet('fp-vto', d.fecha_vencimiento, ll, null);
+    _fpSet('fp-premio', d.premio, ll, 'premio');
+    var pago = d.mensual || d.prorroga ? 'Anual ref. mensual' : (d.cuotas === 1 ? 'Anual' : (d.cuotas === 12 ? 'Mensual' : (d.cuotas === 2 ? 'Semestral' : (d.cuotas === 4 ? 'Trimestral' : ''))));
+    _fpSet('fp-pago', pago, ll, 'forma de pago');
+    _fpSet('fp-cuotas', d.cuotas, ll, 'cuotas');
+    _fpSet('fp-valor-cuota', d.valor_cuota, ll, 'cuota');
+    _fpSet('fp-auto-patente', d.patente, ll, 'patente');
+    _fpSet('fp-auto-anio', d.anio, ll, 'año');
+    _fpSet('fp-auto-motor', d.motor, ll, 'motor');
+    _fpSet('fp-auto-chasis', d.chasis, ll, 'chasis');
+    _fpSet('fp-auto-suma', d.suma_asegurada, ll, 'suma asegurada');
+    if (st) st.textContent = (ll.length ? '✅ PDF leído: completé ' + ll.join(', ') + ' (en verde). Lo demás (vehículo, coberturas, nómina, datos del cliente) se completa al guardar.' : '✅ PDF cargado. Los campos ya estaban completos; al guardar sumo lo que falte (coberturas, nómina, datos del cliente).') + av;
+  } catch (e) { if (st) st.textContent = '✅ PDF cargado (no lo pude leer: completá los datos a mano).'; }
 }
 // Botón de la póliza: lee el PDF ya cargado y completa lo que falta
 async function completarDesdePdf(polId) {
