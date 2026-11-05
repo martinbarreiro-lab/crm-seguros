@@ -74,6 +74,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
         Seguimientos / Tareas <span class="nav-n" id="nav-tar-n" style="display:none"></span>
       </button>
+      <button type="button" class="nav-btn" data-sec="base">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+        Base de datos
+      </button>
 
       <div class="nav-sec">Pólizas</div>
       <button type="button" class="nav-btn" data-sec="polizas">
@@ -530,6 +534,7 @@
       </div>
 
       <!-- COBRANZAS -->
+      <div id="sec-base" class="sec"></div>
       <div id="sec-cobranzas" class="sec">
         <div class="toprow" style="align-items:flex-start">
           <div>
@@ -2843,7 +2848,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('sec-' + sec).classList.add('active');
     this.classList.add('active');
-    const titles = { dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
+    const titles = { base: 'Base de datos', dashboard: 'Dashboard', clientes: '', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Tareas', analisis: 'Análisis', config: 'Configuración' };
     document.getElementById('topbar-title').textContent = titles[sec] !== undefined ? titles[sec] : sec;
     if (sec === 'clientes') {
       fichaId = null;
@@ -2871,6 +2876,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (sec === 'cotizaciones') cargarCotizaciones();
     if (sec === 'siniestros') cargarSiniestros();
     if (sec === 'cobranzas') { _cobCli = null; cargarCobranzas(); }
+    if (sec === 'base') cargarBase();
     if (sec === 'tareas') cargarTareas();
     if (sec === 'analisis') cargarAnalisis();
     if (sec === 'config') cargarConfig();
@@ -4023,6 +4029,159 @@ function requierePdf(p) {
   // No piden PDF: ART, vida obligatorio y accidentes personales (nunca es urgente pedirlas)
   if (/^ART$/i.test(r) || /vida obligatorio/i.test(r) || /accidentes personales|accidentes a pasajeros/i.test(r)) return false;
   return true;
+}
+// ══ BASE DE DATOS: personas que nos pasaron (nóminas, siniestros, mails) para futuras campañas ══
+var _bd = { data: [], cli: {} };
+var _BD_ORIG = { nomina: 'Nómina de póliza', siniestro: 'Siniestro', beneficiario: 'Beneficiario', mail: 'Mail / chat', manual: 'Cargado a mano' };
+var _BD_EST = { nuevo: 'Nuevo', contactado: 'Contactado', interesado: 'Interesado', prospecto: 'Pasó a prospecto', no_interesa: 'No le interesa' };
+function _bdEdad(f) { if (!f) return null; var d = new Date(f + 'T12:00:00'), h = new Date(), e = h.getFullYear() - d.getFullYear(); if (h.getMonth() < d.getMonth() || (h.getMonth() === d.getMonth() && h.getDate() < d.getDate())) e--; return e; }
+async function cargarBase() {
+  var sec = document.getElementById('sec-base'); if (!sec) return;
+  if (!document.getElementById('bd-lista')) {
+    var sel = function (id, ops) { return '<select id="' + id + '" onchange="bdRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white)">' + ops.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>'; };
+    sec.innerHTML = '<div class="toprow" style="align-items:flex-start"><div><div style="font-size:18px;font-weight:500">Base de datos</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:2px">Personas que nos pasaron los clientes (nóminas, siniestros, mails) para futuras campañas. No son clientes.</div></div>'
+      + '<div style="display:flex;gap:8px"><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">'
+      + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
+      + sel('bd-orig', [['', 'Todos los orígenes']].concat(Object.keys(_BD_ORIG).map(function (k) { return [k, _BD_ORIG[k]]; })))
+      + sel('bd-est', [['', 'Todos los estados']].concat(Object.keys(_BD_EST).map(function (k) { return [k, _BD_EST[k]]; })))
+      + sel('bd-cli', [['no', 'Que no son clientes'], ['', 'Clientes y no clientes'], ['si', 'Solo los que ya son clientes']])
+      + sel('bd-cont', [['', 'Con o sin contacto'], ['tel', 'Con teléfono'], ['mail', 'Con mail'], ['sin', 'Sin teléfono ni mail']])
+      + '<span style="font-size:12px;color:var(--muted)">Edad</span><input id="bd-emin" type="number" placeholder="desde" oninput="bdRender()" style="width:64px;font-size:12px;padding:6px"><input id="bd-emax" type="number" placeholder="hasta" oninput="bdRender()" style="width:64px;font-size:12px;padding:6px">'
+      + '</div><div id="bd-total" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div><div id="bd-lista"></div>';
+  }
+  document.getElementById('bd-lista').innerHTML = '<div style="color:var(--muted);padding:12px">Cargando…</div>';
+  var r = await sb.from('base_contactos').select('*').eq('productor_id', user.id).order('created_at', { ascending: false }).limit(5000);
+  _bd.data = r.data || [];
+  bdRender();
+}
+function _bdFiltrados() {
+  var v = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
+  var q = v('bd-q').toUpperCase(), o = v('bd-orig'), e = v('bd-est'), c = v('bd-cli'), ct = v('bd-cont'), emin = parseInt(v('bd-emin')), emax = parseInt(v('bd-emax'));
+  return _bd.data.filter(function (x) {
+    if (q && [x.nombre, x.dni, x.localidad, x.origen_detalle, x.notas, x.ocupacion, (x.etiquetas || []).join(' ')].join(' ').toUpperCase().indexOf(q) < 0) return false;
+    if (o && x.origen !== o) return false;
+    if (e && x.estado !== e) return false;
+    if (c === 'no' && x.cliente_id) return false;
+    if (c === 'si' && !x.cliente_id) return false;
+    if (ct === 'tel' && !x.telefono) return false;
+    if (ct === 'mail' && !x.email) return false;
+    if (ct === 'sin' && (x.telefono || x.email)) return false;
+    var ed = _bdEdad(x.fecha_nacimiento);
+    if (!isNaN(emin) && (ed === null || ed < emin)) return false;
+    if (!isNaN(emax) && (ed === null || ed > emax)) return false;
+    return true;
+  });
+}
+function bdRender() {
+  var box = document.getElementById('bd-lista'); if (!box) return;
+  var l = _bdFiltrados();
+  document.getElementById('bd-total').textContent = l.length + ' de ' + _bd.data.length + ' personas';
+  if (!l.length) { box.innerHTML = '<div style="color:var(--muted);padding:16px;background:var(--white);border-radius:var(--r);border:0.5px solid var(--border)">' + (_bd.data.length ? 'Nadie con esos filtros.' : 'Todavía no hay personas. Se cargan solas cuando el CRM lee una nómina o un siniestro, o desde el chat.') + '</div>'; return; }
+  var th = function (t) { return '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border)">' + t + '</th>'; };
+  box.innerHTML = '<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
+    + th('Nombre') + th('DNI') + th('Edad') + th('Contacto') + th('Localidad') + th('De dónde salió') + th('Estado') + '</tr></thead><tbody>'
+    + l.slice(0, 500).map(function (x) {
+      var ed = _bdEdad(x.fecha_nacimiento);
+      return '<tr class="row" style="cursor:pointer;border-top:0.5px solid var(--border)" onclick="bdEditar(\'' + x.id + '\')">'
+        + '<td style="padding:8px 10px;font-weight:500">' + esc(x.nombre) + (x.cliente_id ? ' <span style="font-size:10px;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:8px">ya es cliente</span>' : '') + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : '') + '</td>'
+        + '<td style="padding:8px 10px">' + esc(x.dni || '') + '</td>'
+        + '<td style="padding:8px 10px">' + (ed !== null ? ed : '') + '</td>'
+        + '<td style="padding:8px 10px">' + esc([x.telefono, x.email].filter(Boolean).join(' · ')) + '</td>'
+        + '<td style="padding:8px 10px">' + esc(x.localidad || '') + '</td>'
+        + '<td style="padding:8px 10px;font-size:12px;color:var(--muted)">' + esc(x.origen_detalle || _BD_ORIG[x.origen] || '') + ((x.origenes || []).length > 1 ? ' (+' + ((x.origenes || []).length - 1) + ')' : '') + '</td>'
+        + '<td style="padding:8px 10px;font-size:12px">' + esc(_BD_EST[x.estado] || x.estado) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
+}
+function bdEditar(id) {
+  var x = id ? _bd.data.find(function (y) { return y.id === id; }) : {};
+  if (!x) return;
+  _bd.edit = x;
+  var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '560px';
+  var f = function (lbl, idc, val, type) { return '<div class="frow" style="flex:1"><label>' + lbl + '</label><input id="' + idc + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '"></div>'; };
+  document.getElementById('env-titulo').textContent = id ? x.nombre : 'Agregar persona';
+  document.getElementById('env-cuerpo').innerHTML =
+    f('Nombre y apellido *', 'bd-f-nom', x.nombre)
+    + '<div style="display:flex;gap:8px">' + f('DNI', 'bd-f-dni', x.dni) + f('Fecha de nacimiento', 'bd-f-nac', x.fecha_nacimiento, 'date') + '</div>'
+    + '<div style="display:flex;gap:8px">' + f('Teléfono', 'bd-f-tel', x.telefono) + f('Mail', 'bd-f-mail', x.email) + '</div>'
+    + '<div style="display:flex;gap:8px">' + f('Localidad', 'bd-f-loc', x.localidad) + f('Ocupación / empresa', 'bd-f-ocu', x.ocupacion) + '</div>'
+    + '<div style="display:flex;gap:8px"><div class="frow" style="flex:1"><label>Estado</label><select id="bd-f-est">' + Object.keys(_BD_EST).map(function (k) { return '<option value="' + k + '"' + ((x.estado || 'nuevo') === k ? ' selected' : '') + '>' + _BD_EST[k] + '</option>'; }).join('') + '</select></div>'
+    + '<div class="frow" style="flex:1"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="bd-f-noc"' + (x.no_contactar ? ' checked' : '') + ' style="width:auto"> No contactar</label></div></div>'
+    + f('Etiquetas (separadas por coma)', 'bd-f-etq', (x.etiquetas || []).join(', '))
+    + '<div class="frow"><label>Notas</label><textarea id="bd-f-not" rows="3">' + esc(x.notas || '') + '</textarea></div>'
+    + (id ? '<div style="font-size:12px;color:var(--muted);margin:6px 0"><b>De dónde salió:</b><br>' + ((x.origenes || []).map(function (o) { return '• ' + esc(o.detalle || _BD_ORIG[o.origen] || o.origen) + (o.fecha ? ' (' + fmtDate(o.fecha) + ')' : ''); }).join('<br>') || esc(x.origen_detalle || '')) + '</div>' : '')
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">'
+    + (id && !x.cliente_id ? '<button type="button" class="btn" onclick="bdAProspecto()">→ Pasar a prospecto</button>' : '')
+    + (x.cliente_id ? '<button type="button" class="btn" onclick="cerrarModal(\'modal-envio\');irAFichaCliente(\'' + x.cliente_id + '\')">Ver cliente</button>' : '')
+    + '<button type="button" class="btn btn-p" onclick="bdGuardar()">Guardar</button></div>';
+  m.classList.add('open');
+}
+function _bdForm() {
+  var v = function (i) { return (document.getElementById(i).value || '').trim(); };
+  return { nombre: v('bd-f-nom').toUpperCase(), dni: v('bd-f-dni').replace(/\D/g, '') || null, fecha_nacimiento: v('bd-f-nac') || null, telefono: v('bd-f-tel') || null, email: v('bd-f-mail').toLowerCase() || null,
+    localidad: v('bd-f-loc') || null, ocupacion: v('bd-f-ocu') || null, estado: v('bd-f-est'), no_contactar: document.getElementById('bd-f-noc').checked,
+    etiquetas: v('bd-f-etq') ? v('bd-f-etq').split(',').map(function (t) { return t.trim(); }).filter(Boolean) : [], notas: v('bd-f-not') || null, updated_at: new Date().toISOString() };
+}
+async function bdGuardar() {
+  var d = _bdForm(), x = _bd.edit || {};
+  if (!d.nombre) { alert('Falta el nombre.'); return; }
+  var r = x.id ? await sb.from('base_contactos').update(d).eq('id', x.id)
+    : await sb.from('base_contactos').insert(Object.assign(d, { productor_id: user.id, origen: 'manual', origen_detalle: 'Cargado a mano', origenes: [{ origen: 'manual', detalle: 'Cargado a mano', fecha: new Date().toISOString().slice(0, 10) }] }));
+  if (r.error) { alert(/duplicate|unique/i.test(r.error.message) ? 'Ya hay una persona con ese DNI en la base.' : 'No se pudo guardar: ' + r.error.message); return; }
+  cerrarModal('modal-envio'); cargarBase();
+}
+async function bdAProspecto() {
+  var x = _bd.edit, d = _bdForm(); if (!x || !x.id) return;
+  if (!confirm('¿Creo a ' + d.nombre + ' como prospecto en Clientes?')) return;
+  var p = d.nombre.split(/,\s*|\s+/), ap = d.nombre.indexOf(',') > 0 ? d.nombre.split(',')[0].trim() : p[0], no = d.nombre.indexOf(',') > 0 ? d.nombre.split(',').slice(1).join(',').trim() : p.slice(1).join(' ');
+  var rc = await sb.from('clientes').insert({ productor_id: user.id, apellido: ap, nombre: no, tipo_cliente: 'cliente', estado: 'prospecto', dni: d.dni, fecha_nacimiento: d.fecha_nacimiento,
+    telefono_principal: d.telefono, email_principal: d.email, localidad: d.localidad, notas: 'Viene de la Base de datos: ' + (x.origen_detalle || '') }).select('id').single();
+  if (rc.error) { alert('No se pudo crear: ' + rc.error.message); return; }
+  await sb.from('base_contactos').update(Object.assign(d, { estado: 'prospecto', cliente_id: rc.data.id })).eq('id', x.id);
+  cerrarModal('modal-envio'); mostrarAlerta('Listo: ' + d.nombre + ' quedó como prospecto en Clientes.'); cargarBase();
+}
+function bdExportar() {
+  var l = _bdFiltrados(); if (!l.length) { alert('No hay nadie para exportar con esos filtros.'); return; }
+  var cols = [['Nombre', 'nombre'], ['DNI', 'dni'], ['Nacimiento', 'fecha_nacimiento'], ['Edad', null], ['Teléfono', 'telefono'], ['Mail', 'email'], ['Localidad', 'localidad'], ['Ocupación', 'ocupacion'], ['Origen', 'origen_detalle'], ['Estado', 'estado'], ['Ya es cliente', null], ['No contactar', null], ['Etiquetas', null], ['Notas', 'notas']];
+  var q = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+  var rows = [cols.map(function (c) { return q(c[0]); }).join(';')].concat(l.map(function (x) {
+    return cols.map(function (c) {
+      if (c[0] === 'Edad') return q(_bdEdad(x.fecha_nacimiento));
+      if (c[0] === 'Ya es cliente') return q(x.cliente_id ? 'Sí' : 'No');
+      if (c[0] === 'No contactar') return q(x.no_contactar ? 'Sí' : '');
+      if (c[0] === 'Etiquetas') return q((x.etiquetas || []).join(', '));
+      if (c[0] === 'Estado') return q(_BD_EST[x.estado] || x.estado);
+      return q(x[c[1]]);
+    }).join(';');
+  }));
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'base_de_datos_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+}
+// Registra en la Base las personas de una nómina leída de un PDF (no clientes): mismo DNI = misma persona, suma el origen
+async function registrarNominaEnBase(personas, pol, nomCliente) {
+  try {
+    if (!personas || !personas.length || !user) return;
+    var det = 'Nómina ' + (pol.ramo || '') + ' de ' + (nomCliente || '?') + ' (póliza ' + (pol.numero_poliza || '') + ')';
+    var dnis = personas.map(function (p) { return String(p.dni || '').replace(/\D/g, ''); }).filter(Boolean);
+    var ex = dnis.length ? await sb.from('base_contactos').select('id,dni,origenes,fecha_nacimiento').eq('productor_id', user.id).in('dni', dnis) : { data: [] };
+    var por = {}; (ex.data || []).forEach(function (x) { por[x.dni] = x; });
+    var hoy = new Date().toISOString().slice(0, 10), nuevos = [];
+    for (var i = 0; i < personas.length; i++) {
+      var p = personas[i], dni = String(p.dni || '').replace(/\D/g, ''); if (!p.nombre) continue;
+      var o = { origen: 'nomina', detalle: det, fecha: hoy };
+      if (dni && por[dni]) {
+        var x = por[dni], ors = x.origenes || [];
+        if (!ors.some(function (y) { return y.detalle === det; })) await sb.from('base_contactos').update({ origenes: ors.concat([o]), fecha_nacimiento: x.fecha_nacimiento || p.nacimiento || null, updated_at: new Date().toISOString() }).eq('id', x.id);
+      } else nuevos.push({ productor_id: user.id, nombre: String(p.nombre).toUpperCase(), dni: dni || null, fecha_nacimiento: p.nacimiento || null, origen: 'nomina', origen_detalle: det, origenes: [o], cliente_origen_id: pol.cliente_id || null, poliza_origen_id: pol.id || null });
+    }
+    if (nuevos.length) {
+      var cl = await sb.from('clientes').select('id,dni').eq('productor_id', user.id).in('dni', nuevos.map(function (n) { return n.dni; }).filter(Boolean));
+      var cpor = {}; (cl.data || []).forEach(function (c) { cpor[c.dni] = c.id; });
+      nuevos.forEach(function (n) { if (n.dni && cpor[n.dni]) n.cliente_id = cpor[n.dni]; });
+      await sb.from('base_contactos').insert(nuevos);
+    }
+  } catch (e) { console.warn('base contactos', e); }
 }
 // " · Comercio Zurich N° 52000329853": para que las tareas del mismo cliente no se confundan
 function sufPolTarea(p) { if (!p || !p.numero_poliza) return ''; return ' · ' + [p.ramo, p.aseguradora].filter(Boolean).join(' ') + ' N° ' + p.numero_poliza; }
@@ -9724,7 +9883,7 @@ function mobIr(sec) {
   if (b) b.click(); else irASeccion(sec);
   window.scrollTo(0, 0);
 }
-var _MOB_TIT = { dashboard: 'Dashboard', clientes: 'Clientes', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Seguimientos', analisis: 'Análisis', reportes: 'Reportes', companias: 'Compañías', config: 'Configuración' };
+var _MOB_TIT = { base: 'Base de datos', dashboard: 'Dashboard', clientes: 'Clientes', polizas: 'Pólizas', cotizaciones: 'Cotizaciones', siniestros: 'Siniestros', cobranzas: 'Cobranzas', tareas: 'Seguimientos', analisis: 'Análisis', reportes: 'Reportes', companias: 'Compañías', config: 'Configuración' };
 function mobSync() {
   var a = document.querySelector('.sec.active'), sec = a ? a.id.replace(/^sec-/, '') : '';
   var m = sec === 'tareas' && tablerof === 'hoy' ? 'hoy' : sec;
@@ -11711,6 +11870,7 @@ function renderMpdPersonas(p) {
         if (d.personas && d.personas.length) {
           dr.personas = d.personas; p.datos_ramo = dr;
           await sb.from('polizas').update({ datos_ramo: dr }).eq('id', p.id);
+          registrarNominaEnBase(d.personas, p, p.clientes ? nombreClienteLista(p.clientes) : '');
         }
       } catch (e) {}
       if (_mpdPolData === p) { renderDetallePol(); mpdSetTab('personas'); }
@@ -14298,6 +14458,7 @@ async function guardarRenovacion() {
     if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
     if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
     _rv.cambios = cambios;
+    if (_rv.d && _rv.d.personas && _rv.d.personas.length) registrarNominaEnBase(_rv.d.personas, pn, p.clientes ? nombreClienteLista(p.clientes) : '');
     _ofOfrecerEnvio(pn);
   } catch (e) { btn.disabled = false; btn.textContent = 'Guardar renovación'; alert('No se pudo guardar: ' + (e.message || e)); }
 }
@@ -14710,6 +14871,7 @@ async function _crearPolizaNueva(it) {
   if (rp.error) throw rp.error;
   it.pol = rp.data; it.creada = true;
   if (d.coberturas && d.coberturas.length) await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: rp.data.id, descripcion: c.descripcion, suma_asegurada: c.suma }; }));
+  if (d.personas && d.personas.length) registrarNominaEnBase(d.personas, rp.data, nombreClienteLista(cl));
   if (n.clienteNuevo) {
     // Tarea para completar el cliente: se cierra sola cuando le cargás teléfono o mail
     var lim = new Date(); // para hoy: así aparece en "Hoy" y en "Tu día" 
@@ -14761,6 +14923,7 @@ async function _planCompletarPoliza(polId, d) {
   } else if (d.fecha_inicio && d.fecha_inicio !== p.fecha_inicio) avisos.push('En el PDF la vigencia es ' + fmtDate(d.fecha_inicio) + ' al ' + fmtDate(d.fecha_vencimiento) + ' y en el CRM ' + fmtDate(p.fecha_inicio) + ' al ' + fmtDate(p.fecha_vencimiento) + ' (no la cambio; si está mal, usá ✏ Editar).');
   return { p: p, cambios: cambios, avisos: avisos, aplicar: async function () {
     if (Object.keys(upP).length) { var r1 = await sb.from('polizas').update(upP).eq('id', polId); if (r1.error) throw r1.error; }
+    if (d.personas && d.personas.length) registrarNominaEnBase(d.personas, p, cl.id ? nombreClienteLista(cl) : '');
     if (Object.keys(upC).length) { var r2 = await sb.from('clientes').update(upC).eq('id', cl.id); if (r2.error) throw r2.error; }
     if (nCob) { var r3 = await sb.from('coberturas').insert(d.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: polId, descripcion: c.descripcion, suma_asegurada: c.suma }; })); if (r3.error) throw r3.error; }
   } };
