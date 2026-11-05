@@ -597,6 +597,7 @@
             <option value="61">+60 días</option>
           </select>
           <label id="cob-ver-auto-lbl" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="cob-ver-auto" onchange="cobRender()"> <span id="cob-ver-auto-txt">Ver también las que se cobran solas</span></label>
+          <span id="cob-fil-cli"></span>
           <div style="flex:1"></div>
           <div id="cob-total-label" style="font-size:12px;color:var(--muted)"></div>
         </div>
@@ -2869,7 +2870,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (sec === 'polizas') { _polCache = {}; _polActualEstado = 'activa'; cargarPolizas('activa'); }
     if (sec === 'cotizaciones') cargarCotizaciones();
     if (sec === 'siniestros') cargarSiniestros();
-    if (sec === 'cobranzas') cargarCobranzas();
+    if (sec === 'cobranzas') { _cobCli = null; cargarCobranzas(); }
     if (sec === 'tareas') cargarTareas();
     if (sec === 'analisis') cargarAnalisis();
     if (sec === 'config') cargarConfig();
@@ -2927,12 +2928,12 @@ async function cargarDashboard() {
 
   // ── Datos base, en paralelo ──
   var R = await Promise.all([
-    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,prima_anual,valor_cuota,forma_pago,periodo_meses,cantidad_cuotas,fecha_vencimiento,pdf_url,datos_ramo,estado,paquete_de').eq('productor_id',uid).eq('estado','activa'),
+    sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,prima_anual,valor_cuota,forma_pago,periodo_meses,cantidad_cuotas,fecha_vencimiento,pdf_url,datos_ramo,estado,paquete_de,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa'),
     sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
-    sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
+    sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
     sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
-    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
+    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,poliza_id,numero_cuota,medio_pago,polizas(forma_pago,medio_pago,ramo,estado,numero_poliza,aseguradora,cliente_id),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
@@ -2945,13 +2946,13 @@ async function cargarDashboard() {
   // ── Avisos (chips) ──
   var vence30 = pols.filter(function(p){ return p.fecha_vencimiento && p.fecha_vencimiento <= iso(en30); }).length;
   var artDeuda = pols.filter(function(p){ return /ART/i.test(p.ramo||'') && Number(dr(p).saldo) > 0; }).length;
-  var sinPdfAuto = pols.filter(function(p){ return faltaPdf(p) && esRamoAuto(p.ramo); }).length;
+  var polSinPdfAuto = pols.filter(function(p){ return faltaPdf(p) && esRamoAuto(p.ramo); }), sinPdfAuto = polSinPdfAuto.length;
   var sinPdf = pols.filter(function(p){ return faltaPdf(p) && !esRamoAuto(p.ramo); }).length;
   var aEnviar = tars.filter(function(t){ return /^Enviar (póliza|endoso)/i.test(t.tipo||''); }).length;
   var chips = [];
   var chip = function(n, txt, cls, js){ if (n) chips.push('<button type="button" class="dz-chip '+cls+'" onclick="'+js+'"><i></i><b>'+n+'</b> '+txt+'</button>'); };
   chip(vence30, vence30 === 1 ? 'vence en 30 días' : 'vencen en 30 días', 'am', "irASeccion('polizas')");
-  chip(cuotasVenc, cuotasVenc === 1 ? 'cuota vencida' : 'cuotas vencidas', 'rj', "irASeccion('cobranzas')");
+  chip(cuotasVenc, cuotasVenc === 1 ? 'cuota vencida' : 'cuotas vencidas', 'rj', "irACobranzasCliente()");
   chip(artDeuda, 'ART con saldo deudor', 'rj', "irASeccion('polizas')");
   chip(aEnviar, aEnviar === 1 ? 'póliza para enviar' : 'pólizas para enviar', 'az', "irASeccion('tareas')");
   chip(sinPdfAuto, sinPdfAuto === 1 ? 'auto sin PDF (obligatorio)' : 'autos sin PDF (obligatorio)', 'rj', "irASeccion('polizas')");
@@ -2997,20 +2998,25 @@ async function cargarDashboard() {
       var esRenov = t.tipo === 'Confirmar renovación' && t.poliza_id;
       if (t.tipo === 'Completar cliente' && t.cliente_id) { items.push({ o: t.fecha_limite, h: '<div class="dz-item am" onclick="completarCliente(\''+t.cliente_id+'\')"><span class="w">'+fmtD(t.fecha_limite)+'</span><div class="t"><b>✏️ Completar cliente</b> · '+esc_(t.titulo||'').replace(/^Completar datos del cliente — /,'')+'</div><span class="r">Completar →</span></div>' }); return; }
       if (esRenov) cls = 'rj';
-      items.push({ o: esRenov ? '0000' : t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="'+(esRenov ? 'abrirConfirmarRenovacion(\''+t.poliza_id+'\',\''+t.id+'\')' : 'irASeccion(\'tareas\')')+'"><span class="w">'+(esRenov ? 'VENCIÓ' : fmtD(t.fecha_limite))+'</span><div class="t"><b>'+(esRenov ? '🔄 ¿Se renovó?' : esc_(t.tipo || 'Tarea'))+'</b> · '+esc_(t.titulo||'').replace(/^¿Se renovó\? — /,'')+(t.clientes && !esRenov ? ' · '+esc_(nomCl(t.clientes)) : '')+'</div><span class="r">'+(esRenov ? 'Responder →' : 'Tareas →')+'</span></div>' });
+      var titT = String(t.titulo || '').replace(/^¿Se renovó\? — /, ''), nT = t.clientes ? nomCl(t.clientes) : '';
+      if (nT && titT.toUpperCase().indexOf(nT.toUpperCase()) < 0) titT += ' · ' + nT;
+      if (t.polizas && t.polizas.numero_poliza && titT.indexOf(t.polizas.numero_poliza) < 0) titT += sufPolTarea(t.polizas);
+      items.push({ o: esRenov ? '0000' : t.fecha_limite, h: '<div class="dz-item '+cls+'" onclick="'+(esRenov ? 'abrirConfirmarRenovacion(\''+t.poliza_id+'\',\''+t.id+'\')' : 'verDetalleTarea(\''+t.id+'\')')+'"><span class="w">'+(esRenov ? 'VENCIÓ' : fmtD(t.fecha_limite))+'</span><div class="t"><b>'+(esRenov ? '🔄 ¿Se renovó?' : esc_(t.tipo || 'Tarea'))+'</b> · '+esc_(titT)+'</div><span class="r">'+(esRenov ? 'Responder →' : 'Abrir →')+'</span></div>' });
     });
   pols.filter(function(p){ return p.fecha_vencimiento === hoy || p.fecha_vencimiento === manana; }).forEach(function(p){
     var cl = (venc.find(function(v){ return v.id === p.id; })||{}).clientes;
     items.push({ o: p.fecha_vencimiento, h: '<div class="dz-item am" onclick="abrirDetallePol(\''+p.id+'\')"><span class="w">'+fmtD(p.fecha_vencimiento)+'</span><div class="t"><b>Vence</b> '+esc_(p.ramo||'')+' '+esc_(p.numero_poliza||'')+(cl ? ' · '+esc_(nomCl(cl)) : '')+'</div><span class="r">Ver póliza →</span></div>' });
   });
   cuotasHoy.forEach(function(c){
-    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irASeccion(\'cobranzas\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota</b> '+$(c.monto)+(c.clientes ? ' · '+esc_(nomCl(c.clientes)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
+    var pc = c.polizas || {}, cidC = c.cliente_id || pc.cliente_id || '', nC = c.clientes ? nomCl(c.clientes) : '';
+    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irACobranzasCliente(\''+cidC+'\',\'\',\''+c.fecha_vencimiento+'\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota'+(c.numero_cuota ? ' '+c.numero_cuota : '')+'</b> '+$(c.monto)+(nC ? ' · '+esc_(nC) : '')+(pc.numero_poliza ? esc_(sufPolTarea(pc)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
   });
   items.sort(function(a,b){ return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; });
   var tdHtml = items.slice(0, 7).map(function(x){ return x.h; }).join('');
   if (items.length > 7) tdHtml += '<div class="dz-sub" style="margin:4px 0 0">y '+(items.length-7)+' más en Tareas</div>';
-  if (sinPdfAuto) tdHtml = '<div class="dz-item rj" onclick="irASeccion(\'polizas\')"><span class="w">PENDIENTE</span><div class="t"><b>'+sinPdfAuto+(sinPdfAuto === 1 ? ' póliza de auto' : ' pólizas de auto')+' sin PDF</b> · es obligatorio tenerlas para mandarlas</div><span class="r">Pólizas →</span></div>' + tdHtml;
-  if (cuotasVenc) tdHtml += '<div class="dz-item rj" onclick="irASeccion(\'cobranzas\')"><span class="w">PENDIENTE</span><div class="t"><b>Cuotas vencidas</b> · '+cuotasVenc+' para reclamar</div><span class="r">Cobranzas →</span></div>';
+  if (sinPdfAuto) tdHtml = polSinPdfAuto.slice(0, 5).map(function(p){ return '<div class="dz-item rj" onclick="abrirDetallePol(\''+p.id+'\')"><span class="w">SIN PDF</span><div class="t"><b>Subir el PDF</b> · '+esc_(p.clientes ? nomCl(p.clientes) : 'Sin cliente')+esc_(sufPolTarea(p))+'</div><span class="r">Ver póliza →</span></div>'; }).join('')
+    + (sinPdfAuto > 5 ? '<div class="dz-sub" style="margin:0 0 6px">y '+(sinPdfAuto-5)+' autos más sin PDF en Pólizas</div>' : '') + tdHtml;
+  if (cuotasVenc) tdHtml += '<div class="dz-item rj" onclick="irACobranzasCliente()"><span class="w">PENDIENTE</span><div class="t"><b>Cuotas vencidas</b> · '+cuotasVenc+' para reclamar</div><span class="r">Cobranzas →</span></div>';
   if (el('dz-tudia')) el('dz-tudia').innerHTML = tdHtml || '<div style="font-size:13px;color:var(--lt);padding:8px 0">Nada para hoy ni mañana</div>';
 
   // ── Vencimientos con estado de renovación ──
@@ -4018,6 +4024,8 @@ function requierePdf(p) {
   if (/^ART$/i.test(r) || /vida obligatorio/i.test(r) || /accidentes personales|accidentes a pasajeros/i.test(r)) return false;
   return true;
 }
+// " · Comercio Zurich N° 52000329853": para que las tareas del mismo cliente no se confundan
+function sufPolTarea(p) { if (!p || !p.numero_poliza) return ''; return ' · ' + [p.ramo, p.aseguradora].filter(Boolean).join(' ') + ' N° ' + p.numero_poliza; }
 function faltaPdf(p) { return requierePdf(p) && !p.pdf_url; }
 // Paquete del auto plegado (▸ / ▾)
 var _pqAbiertos = {};
@@ -7882,7 +7890,7 @@ async function generarTareasAutoVencimiento() {
       var dias = e.dias;
       return {
         productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id,
-        titulo: (e.key === 'vencida' ? 'Renovar (vencida) — ' : 'Renovar — ') + nom + ((_allPolizas || []).some(function (x) { return x.paquete_de === p.id; }) ? ' (paquete)' : ''),
+        titulo: (e.key === 'vencida' ? 'Renovar (vencida) — ' : 'Renovar — ') + nom + sufPolTarea(p) + ((_allPolizas || []).some(function (x) { return x.paquete_de === p.id; }) ? ' (paquete)' : ''),
         descripcion: textoPolizaTarea(p) + ' · Vence ' + fmtDate(p.fecha_vencimiento) + (dias !== null && dias !== undefined ? (dias < 0 ? ' (hace ' + Math.abs(dias) + ' días)' : ' (en ' + dias + ' días)') : ''),
         tipo: 'Cotizar renovación', tablero: 'renovaciones', categoria: 'renovacion',
         prioridad: e.key === 'vencida' ? 'urgente' : 'alta',
@@ -8778,7 +8786,16 @@ function exportarSiniestrosCSV() {
 // ---- COBRANZAS ----
 // ── Cobranzas ─────────────────────────────────────────────
 var _cobData = [];
-var _cobTab = 'pendiente', _cobMoras = {};
+var _cobTab = 'pendiente', _cobMoras = {}, _cobCli = null;
+// Desde el Dashboard: abre Cobranzas en Pendientes, filtrado por cliente (si se pasa) y en el mes de la cuota
+function irACobranzasCliente(cid, nom, fecha) {
+  var sel = document.getElementById('cob-mes-sel');
+  if (sel && fecha) { var mv = String(fecha).slice(0, 7); if ([].some.call(sel.options, function (o) { return o.value === mv; })) sel.value = mv; }
+  mobIr('cobranzas');
+  _cobCli = cid ? { id: cid, nom: nom || '' } : null;
+  _cobTab = 'pendiente'; try { cobSetTab('pendiente'); } catch (e) {}
+}
+function cobQuitarFiltroCli() { _cobCli = null; cobRender(); }
 
 function cobSetTab(tab) {
   _cobTab = tab;
@@ -8811,6 +8828,7 @@ function cobRender() {
   if (!tbody) return;
   var verAuto = !!(document.getElementById('cob-ver-auto')||{}).checked;
   var nAuto = _cobData.filter(function(c){ return (c.estado==='pendiente'||c.estado==='vencida') && c._auto; }).length;
+  var fc = document.getElementById('cob-fil-cli'); if (fc) fc.innerHTML = _cobCli ? '<button type="button" class="btn btn-sm" onclick="cobQuitarFiltroCli()" style="background:#EFF6FF;color:#1E40AF;border-color:#BFDBFE">Solo ' + esc(_cobCli.nom || ((_cobData.find(function (x) { return x._cliente_id === _cobCli.id; }) || {})._cliente) || 'este cliente') + ' ✕</button>' : '';
   var lblA = document.getElementById('cob-ver-auto-lbl'); if (lblA) lblA.style.display = _cobTab === 'pendiente' && nAuto ? 'flex' : 'none';
   var txA = document.getElementById('cob-ver-auto-txt'); if (txA) txA.textContent = 'Ver también las ' + nAuto + ' que se cobran solas (tarjeta, débito, ARCA, anuladas)';
 
@@ -8823,6 +8841,7 @@ function cobRender() {
       if (c.estado !== 'pagada' && c.estado !== 'cancelado') return false;
     }
     if (filAseg && c._aseguradora !== filAseg) return false;
+    if (_cobCli && c._cliente_id !== _cobCli.id) return false;
     if (filMora && _cobTab === 'pendiente') {
       var dias = c._dias_mora || 0;
       if (filMora === '1' && (dias < 1 || dias > 30)) return false;
@@ -8995,6 +9014,7 @@ async function cargarCobranzas() {
     }
     var nombre = cl.id ? nombreClienteLista(cl) : '—';
     return Object.assign({}, c, {
+      _cliente_id: pol.cliente_id || c.cliente_id || null,
       _cliente: nombre,
       _nombre: cl.nombre || '',
       _telefono: cl.telefono_principal || cl.telefono_secundario || '',
@@ -9845,7 +9865,7 @@ async function verificarRenovaciones() {
     if (esCortoPlazo(p) || p.paquete_de) continue; // las del paquete se renuevan con la principal
     var nombreCl = p.clientes ? nombreClienteLista(p.clientes) : '';
     if (gestionadas[p.id]) continue; // ya tiene tarea abierta, o ya se gestionó la renovación de este vencimiento
-    await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+' ('+p.ramo+')', tablero:'renovaciones', tipo:'Cotizar renovación' });
+    await crearTareaAuto({ cliente_id:p.cliente_id, poliza_id:p.id, titulo:'Cotizar renovación — '+nombreCl+sufPolTarea(p), tablero:'renovaciones', tipo:'Cotizar renovación' });
   }
 }
 
@@ -13524,7 +13544,7 @@ async function ejecutarTareasImport() {
       var lim = new Date(p.fecha_vencimiento+'T12:00:00'); lim.setDate(lim.getDate()-10);
       var limISO = lim.toISOString().slice(0,10); if (limISO < hoyISO) limISO = hoyISO;
       filas.push({ productor_id: uid, cliente_id: p.cliente_id || null, poliza_id: p.id,
-        titulo: 'Renovar — ' + nomDe(p.clientes),
+        titulo: 'Renovar — ' + nomDe(p.clientes) + sufPolTarea(p),
         descripcion: textoPolizaTarea(p) + ' · Vence ' + fmtDate(p.fecha_vencimiento),
         tablero: 'renovaciones', tipo: 'Cotizar renovación', categoria: 'renovacion', prioridad: 'alta',
         estado: 'pendiente', vencimiento: p.fecha_vencimiento, fecha_limite: limISO, auto_generada: true });
@@ -14001,13 +14021,13 @@ async function generarTareasConfirmarRenovacion() {
   for (var i = 0; i < faltan.length; i++) {
     var pp = faltan[i]; if (!pasar[pp.id]) continue;
     var cl0 = clPor[pp.id];
-    await sb.from('tareas').update({ tipo: 'Confirmar renovación', titulo: '¿Se renovó? — ' + (cl0 ? nombreClienteLista(cl0) : 'Sin cliente'),
+    await sb.from('tareas').update({ tipo: 'Confirmar renovación', titulo: '¿Se renovó? — ' + (cl0 ? nombreClienteLista(cl0) : 'Sin cliente') + sufPolTarea(pp),
       descripcion: textoPolizaTarea(pp) + ' · Venció ' + fmtDate(pp.fecha_vencimiento), prioridad: 'urgente', fecha_limite: pp.fecha_vencimiento, vencimiento: pp.fecha_vencimiento, estado: 'pendiente' }).eq('id', pasar[pp.id]);
   }
   if (!nuevas.length) return;
   await sb.from('tareas').insert(nuevas.map(function (p) {
     var cl = clPor[p.id];
-    return { productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id, titulo: '¿Se renovó? — ' + (cl ? nombreClienteLista(cl) : 'Sin cliente'),
+    return { productor_id: user.id, cliente_id: p.cliente_id || null, poliza_id: p.id, titulo: '¿Se renovó? — ' + (cl ? nombreClienteLista(cl) : 'Sin cliente') + sufPolTarea(p),
       descripcion: textoPolizaTarea(p) + ' · Venció ' + fmtDate(p.fecha_vencimiento), tipo: 'Confirmar renovación', tablero: 'renovaciones', categoria: 'renovacion',
       prioridad: 'urgente', vencimiento: p.fecha_vencimiento, fecha_limite: p.fecha_vencimiento, estado: 'pendiente', auto_generada: true };
   }));
