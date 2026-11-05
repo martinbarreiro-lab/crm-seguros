@@ -14029,18 +14029,22 @@ async function abrirConfirmarRenovacion(polId, tareaId) {
 }
 function _sumarMeses(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); }
 function renovacionSi(otraCia) {
-  var p = _rv.pol; _rv.otraCia = otraCia;
+  var p = _rv.pol; _rv.otraCia = otraCia; _rv.d = null; _rv.cobViejas = null;
   var ini = p.fecha_vencimiento || new Date().toISOString().slice(0, 10), vto = _sumarMeses(ini, p.periodo_meses || 12);
+  document.getElementById('modal-envio').querySelector('.modal-box').style.maxWidth = '640px';
   document.getElementById('env-titulo').textContent = otraCia ? '🔀 Cargar la póliza en la compañía nueva' : '🔄 Cargar la renovación';
   document.getElementById('env-cuerpo').innerHTML =
-    '<label id="rv-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:13px;color:#475569;margin-bottom:10px">📄 Subí el PDF de la póliza nueva (completa los datos solo)<input type="file" id="rv-pdf" accept="application/pdf,.pdf" style="display:none"></label>'
+    '<label id="rv-drop" style="display:block;border:2px dashed #CBD5E1;border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:13px;color:#475569;margin-bottom:10px">📄 Subí el PDF de la póliza nueva (lee todos los datos y te muestra qué cambió)<input type="file" id="rv-pdf" accept="application/pdf,.pdf" style="display:none"></label>'
     + '<div id="rv-leido" style="font-size:12px;color:var(--muted);margin:-4px 0 8px"></div>'
     + '<div class="frow"><label>N° de póliza nueva *</label><input id="rv-num" placeholder="Número de la renovación"></div>'
     + '<div class="frow"><label>Compañía</label><input id="rv-cia" value="' + (otraCia ? '' : esc(p.aseguradora || '')) + '"' + (otraCia ? ' placeholder="¿A qué compañía pasó?"' : '') + '></div>'
     + '<div style="display:flex;gap:8px"><div class="frow" style="flex:1"><label>Desde</label><input type="date" id="rv-ini" value="' + ini + '"></div><div class="frow" style="flex:1"><label>Hasta</label><input type="date" id="rv-vto" value="' + vto + '"></div></div>'
-    + '<div class="frow"><label>Cuota mensual nueva ($)</label><input type="number" id="rv-cuota" value="' + (p.valor_cuota || '') + '"></div>'
+    + '<div class="frow"><label>Cuota nueva ($)</label><input type="number" id="rv-cuota" value="' + (p.valor_cuota || '') + '"></div>'
+    + '<div id="rv-comp"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn" onclick="abrirConfirmarRenovacion(\'' + p.id + '\',' + (_rv.tareaId ? '\'' + _rv.tareaId + '\'' : 'null') + ')">← Volver</button><button type="button" class="btn btn-p" id="rv-ok" onclick="guardarRenovacion()">Guardar renovación</button></div>';
   document.getElementById('rv-pdf').onchange = function () { var f = this.files[0]; if (f) _leerPdfRenovacion(f); };
+  ['rv-num', 'rv-cia', 'rv-ini', 'rv-vto', 'rv-cuota'].forEach(function (id) { document.getElementById(id).addEventListener('input', _rvComparar); });
+  sb.from('coberturas').select('descripcion,suma_asegurada').eq('poliza_id', p.id).then(function (r) { _rv.cobViejas = r.data || []; _rvComparar(); });
 }
 async function _leerPdfRenovacion(f) {
   _rv.file = f;
@@ -14049,41 +14053,138 @@ async function _leerPdfRenovacion(f) {
   info.textContent = 'Leyendo el PDF…';
   try {
     var T = _normTxt(await _textoPdf(f)), viejo = _numSinCeros(_rv.pol.numero_poliza), num = '';
+    var dx = {}; try { dx = extraerDatosPoliza(T, f.name) || {}; } catch (e) { dx = {}; }
+    _rv.d = dx;
+    if (dx.numero_poliza && _numSinCeros(dx.numero_poliza) !== viejo) num = String(dx.numero_poliza).replace(/^0+(?=\d)/, '');
     var m, re = /P[OÓ]LIZA[^0-9]{0,30}([0-9][0-9.\-]{3,14}[0-9])(?![0-9])/g;
-    while ((m = re.exec(T)) && !num) { var c = m[1].replace(/\D/g, ''); if (c.length >= 4 && _numSinCeros(c) !== viejo) num = c; }
-    var fechas = [], rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/g, x;
-    while ((x = rf.exec(T))) { var iso = x[3] + '-' + ('0' + x[2]).slice(-2) + '-' + ('0' + x[1]).slice(-2); if (fechas.indexOf(iso) < 0) fechas.push(iso); }
-    var ini = document.getElementById('rv-ini').value, msg = [];
+    while (!num && (m = re.exec(T))) { var c = m[1].replace(/\D/g, ''); if (c.length >= 4 && _numSinCeros(c) !== viejo) num = c; }
+    var msg = [];
     if (num) { document.getElementById('rv-num').value = num; msg.push('N° ' + num); }
-    if (fechas.indexOf(ini) >= 0) {
-      // el "hasta" es la fecha que cae cerca de inicio + período (no las de las cuotas)
-      var obj = new Date(_sumarMeses(ini, _rv.pol.periodo_meses || 12) + 'T12:00:00');
-      var sig = fechas.filter(function (d) { return Math.abs(new Date(d + 'T12:00:00') - obj) <= 20 * 864e5; })
-        .sort(function (a, b) { return Math.abs(new Date(a + 'T12:00:00') - obj) - Math.abs(new Date(b + 'T12:00:00') - obj); })[0];
-      if (sig) { document.getElementById('rv-vto').value = sig; msg.push('vigencia ' + fmtDate(ini) + ' → ' + fmtDate(sig)); }
+    if (dx.fecha_inicio && dx.fecha_vencimiento) {
+      document.getElementById('rv-ini').value = dx.fecha_inicio; document.getElementById('rv-vto').value = dx.fecha_vencimiento;
+      msg.push('vigencia ' + fmtDate(dx.fecha_inicio) + ' → ' + fmtDate(dx.fecha_vencimiento) + (dx.prorroga ? ' (prórroga automática)' : ''));
+    } else {
+      var fechas = [], rf = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/g, x;
+      while ((x = rf.exec(T))) { var iso = x[3] + '-' + ('0' + x[2]).slice(-2) + '-' + ('0' + x[1]).slice(-2); if (fechas.indexOf(iso) < 0) fechas.push(iso); }
+      var ini = document.getElementById('rv-ini').value;
+      if (fechas.indexOf(ini) >= 0) {
+        var obj = new Date(_sumarMeses(ini, _rv.pol.periodo_meses || 12) + 'T12:00:00');
+        var sig = fechas.filter(function (d) { return Math.abs(new Date(d + 'T12:00:00') - obj) <= 20 * 864e5; })
+          .sort(function (a, b) { return Math.abs(new Date(a + 'T12:00:00') - obj) - Math.abs(new Date(b + 'T12:00:00') - obj); })[0];
+        if (sig) { document.getElementById('rv-vto').value = sig; msg.push('vigencia ' + fmtDate(ini) + ' → ' + fmtDate(sig)); }
+      }
     }
-    // Sancor: si tiene prórroga automática, la vigencia es "desde" → fecha de la prórroga
-    var dx = extraerDatosPoliza(T, f.name);
-    if (dx.prorroga) { document.getElementById('rv-ini').value = dx.fecha_inicio; document.getElementById('rv-vto').value = dx.fecha_vencimiento; msg = msg.filter(function (x) { return x.indexOf('vigencia') < 0; }); msg.push('vigencia ' + fmtDate(dx.fecha_inicio) + ' → ' + fmtDate(dx.fecha_vencimiento) + ' (prórroga automática)'); }
-    info.textContent = msg.length ? '✓ Leí del PDF: ' + msg.join(' · ') + '. Revisá y guardá.' : 'No pude sacar los datos del PDF: completalos a mano.';
+    if (dx.aseguradora && _rv.otraCia && !document.getElementById('rv-cia').value.trim()) document.getElementById('rv-cia').value = dx.aseguradora;
+    var cuo = dx.valor_cuota || (dx.premio && dx.mensual ? dx.premio : null);
+    if (cuo) { document.getElementById('rv-cuota').value = cuo; msg.push('cuota $' + Number(cuo).toLocaleString('es-AR')); }
+    var extra = ['suma_asegurada', 'producto', 'franquicia_desc', 'coberturas', 'personas', 'premio'].filter(function (k) { return dx[k]; }).length;
+    info.textContent = msg.length || extra ? '✓ Leí el PDF' + (msg.length ? ': ' + msg.join(' · ') : '') + '. Abajo tenés el antes y después: revisalo y guardá.' : 'No pude sacar los datos del PDF: completalos a mano.';
   } catch (e) { info.textContent = 'No pude leer el PDF (' + (e.message || e) + '): completá los datos a mano.'; }
+  _rvComparar();
+}
+// Arma la póliza nueva: lo que trae el PDF manda; lo que no trae, se copia de la anterior
+function _rvArmar() {
+  var p = _rv.pol, d = _rv.d || {}, v = function (id) { return document.getElementById(id).value.trim(); };
+  var drOld = p.datos_ramo; if (typeof drOld === 'string') { try { drOld = JSON.parse(drOld); } catch (e) { drOld = {}; } } drOld = drOld || {};
+  var dr = Object.assign({}, drOld); delete dr.verif_pdf; delete dr.renovacion; delete dr.anulacion; delete dr.ultima_factura;
+  ['marca', 'modelo', 'marca_modelo', 'anio', 'motor', 'chasis', 'uso', 'suma_asegurada', 'franquicia_desc', 'franquicia_monto', 'ajuste_automatico', 'producto'].forEach(function (k) { if (d[k]) dr[k] = d[k]; });
+  if (d.franquicia_desc && !d.franquicia_monto) delete dr.franquicia_monto;
+  if (d.personas && d.personas.length) dr.personas = d.personas;
+  if (d.patente) dr.patente = d.patente;
+  if (d.referencia && _numSinCeros(d.referencia) !== _numSinCeros(v('rv-num'))) dr.referencia = d.referencia; else if (d.numero_poliza) delete dr.referencia;
+  dr.renueva_a = p.numero_poliza;
+  var cuota = parseFloat(v('rv-cuota')) || null;
+  var premio = d.premio && (d.valor_cuota || !d.mensual) ? d.premio : null;
+  return {
+    pol: { productor_id: user.id, cliente_id: p.cliente_id, numero_poliza: v('rv-num'), aseguradora: v('rv-cia'), ramo: p.ramo, fecha_inicio: v('rv-ini'), fecha_vencimiento: v('rv-vto'),
+      valor_cuota: cuota, prima_anual: premio || (cuota && cuota !== Number(p.valor_cuota) ? null : p.prima_anual), forma_pago: d.forma_pago || p.forma_pago, medio_pago: p.medio_pago,
+      cantidad_cuotas: d.cuotas || p.cantidad_cuotas, periodo_meses: d.periodo_meses || p.periodo_meses, estado: 'activa', bien_asegurado: d.marca_modelo || p.bien_asegurado,
+      patente: d.patente || p.patente, cobertura: p.cobertura, datos_ramo: dr, cod_aseg_fedpat: v('rv-cia') === p.aseguradora ? p.cod_aseg_fedpat : null },
+    coberturas: d.coberturas && d.coberturas.length ? d.coberturas.map(function (c) { return { descripcion: c.descripcion, suma_asegurada: c.suma }; }) : (_rv.cobViejas || []),
+    drOld: drOld
+  };
+}
+function _rvNum(x) { var n = parseFloat(String(x == null ? '' : x).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return isNaN(n) ? null : n; }
+// Filas del "antes → después": [etiqueta, antes, después, tipo]
+function _rvFilas() {
+  var p = _rv.pol, a = _rvArmar(), n = a.pol, o = a.drOld, dn = n.datos_ramo;
+  var $ = function (x) { var k = _rvNum(x); return k === null ? '' : '$' + Math.round(k).toLocaleString('es-AR'); };
+  var vig = function (i, f) { return i ? fmtDate(i) + ' → ' + fmtDate(f) : ''; };
+  var cob = function (l) { return (l || []).map(function (c) { return c.descripcion; }).filter(Boolean).join(' · '); };
+  var pers = function (l) { return l && l.length ? l.length + (l.length === 1 ? ' persona' : ' personas') : ''; };
+  var pc = function (x) { return x ? String(x).replace(/%?$/, '%') : ''; };
+  var d = _rv.d || {}, src = { 'Plan / cobertura': 'producto', 'Suma asegurada': 'suma_asegurada', 'Premio': 'premio', 'Cuota': 'valor_cuota', 'Forma de pago': 'forma_pago', 'Franquicia': 'franquicia_desc', 'Ajuste automático': 'ajuste_automatico', 'Vehículo / bien': 'marca_modelo', 'Patente': 'patente', 'Uso': 'uso', 'Personas': 'personas', 'Coberturas': 'coberturas' };
+  var noPdf = function (r) { var k = src[r[0]]; if (k && !d[k] && !(k === 'valor_cuota' && d.premio && d.mensual)) r.noPdf = true; return r; };
+  return [
+    ['N° de póliza', p.numero_poliza, n.numero_poliza, 'txt'],
+    ['Compañía', p.aseguradora, n.aseguradora, 'txt'],
+    ['Vigencia', vig(p.fecha_inicio, p.fecha_vencimiento), vig(n.fecha_inicio, n.fecha_vencimiento), 'txt'],
+    ['Plan / cobertura', o.producto || p.cobertura || '', dn.producto || n.cobertura || '', 'txt'],
+    ['Suma asegurada', $(o.suma_asegurada), $(dn.suma_asegurada), '$', o.suma_asegurada, dn.suma_asegurada],
+    ['Premio', $(p.prima_anual), $(n.prima_anual), '$', p.prima_anual, n.prima_anual],
+    ['Cuota', $(p.valor_cuota), $(n.valor_cuota), '$', p.valor_cuota, n.valor_cuota],
+    ['Forma de pago', p.forma_pago || '', n.forma_pago || '', 'txt'],
+    ['Franquicia', [o.franquicia_desc, o.franquicia_monto ? $(o.franquicia_monto) : ''].filter(Boolean).join(' · '), [dn.franquicia_desc, dn.franquicia_monto ? $(dn.franquicia_monto) : ''].filter(Boolean).join(' · '), 'txt'],
+    ['Ajuste automático', pc(o.ajuste_automatico), pc(dn.ajuste_automatico), 'txt'],
+    ['Vehículo / bien', p.bien_asegurado || '', n.bien_asegurado || '', 'txt'],
+    ['Patente', p.patente || '', n.patente || '', 'txt'],
+    ['Uso', o.uso || '', dn.uso || '', 'txt'],
+    ['Personas', pers(o.personas), pers(dn.personas), 'txt'],
+    ['Coberturas', cob(_rv.cobViejas), cob(a.coberturas), 'txt']
+  ].filter(function (r) { return r[1] || r[2]; }).map(noPdf);
+}
+function _rvAvisos() {
+  var p = _rv.pol, d = _rv.d || {}, av = [], norm = function (s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  if (d.patente && p.patente && norm(d.patente) !== norm(p.patente)) av.push('La patente del PDF (' + d.patente + ') no es la de la póliza anterior (' + p.patente + ').');
+  if (d.asegurado && p.clientes) {
+    var cl = norm(nombreClienteLista(p.clientes)), pal = String(d.asegurado).toUpperCase().split(/[^A-ZÑ]+/).filter(function (w) { return w.length > 3; });
+    if (pal.length && !pal.some(function (w) { return cl.indexOf(norm(w)) >= 0; })) av.push('El asegurado del PDF es "' + d.asegurado + '": ¿es el PDF de este cliente?');
+  }
+  if (d.aseguradora && !_rv.otraCia && norm(d.aseguradora).slice(0, 6) !== norm(_rv.pol.aseguradora).slice(0, 6)) av.push('El PDF es de ' + d.aseguradora + ' y la póliza anterior de ' + p.aseguradora + '. Si cambió de compañía, volvé y elegí "Pasó a otra compañía".');
+  return av;
+}
+function _rvComparar() {
+  var box = document.getElementById('rv-comp'); if (!box || !_rv) return;
+  if (!_rv.d) { box.innerHTML = ''; return; }
+  var filas = _rvFilas(), cam = [], igual = [];
+  filas.forEach(function (r) { (String(r[1]) === String(r[2]) ? igual : cam).push(r); });
+  var dif = function (r) {
+    if (r[3] !== '$') return '';
+    var a = _rvNum(r[4]), b = _rvNum(r[5]); if (!a || !b || a === b) return '';
+    var pc = Math.round((b - a) / a * 100); return ' <span style="font-weight:600;color:' + (pc > 0 ? '#B45309' : '#166534') + '">(' + (pc > 0 ? '+' : '') + pc + '%)</span>';
+  };
+  var fila = function (r, c) {
+    return '<tr style="border-top:1px solid #F1F5F9"><td style="padding:5px 6px;color:#64748B;white-space:nowrap;vertical-align:top">' + esc(r[0]) + '</td>'
+      + '<td style="padding:5px 6px;vertical-align:top;' + (c ? 'color:#94A3B8;text-decoration:line-through' : '') + '">' + (esc(r[1]) || '<span style="color:#CBD5E1">—</span>') + '</td>'
+      + '<td style="padding:5px 6px;vertical-align:top;' + (c ? 'font-weight:600;color:#0F172A' : '') + '">' + (esc(r[2]) || '<span style="color:#CBD5E1">—</span>') + (c ? dif(r) : '') + (!c && r.noPdf ? ' <span style="color:#B45309;font-size:11px">· el PDF no lo trae, queda el de antes</span>' : '') + '</td></tr>';
+  };
+  var av = _rvAvisos();
+  box.innerHTML = '<div style="margin-top:10px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden">'
+    + '<div style="background:#F8FAFC;padding:8px 10px;font-weight:600;font-size:13px">Antes → Después</div>'
+    + (av.length ? '<div style="background:#FEF2F2;color:#991B1B;font-size:12px;padding:8px 10px">⚠ ' + av.map(esc).join('<br>⚠ ') + '</div>' : '')
+    + '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><tr style="font-size:11px;color:#94A3B8"><td style="padding:4px 6px"></td><td style="padding:4px 6px">Antes</td><td style="padding:4px 6px">Después</td></tr>'
+    + (cam.length ? cam.map(function (r) { return fila(r, true); }).join('') : '<tr><td colspan="3" style="padding:8px 6px;color:#64748B">No hay cambios de datos, solo la vigencia nueva.</td></tr>')
+    + '</table>'
+    + (igual.length ? '<details style="font-size:12.5px;border-top:1px solid #E2E8F0"><summary style="padding:7px 10px;cursor:pointer;color:#166534">✓ ' + igual.length + ' datos sin cambios</summary><table style="width:100%;border-collapse:collapse">' + igual.map(function (r) { return fila(r, false); }).join('') + '</table></details>' : '')
+    + '</div>';
 }
 async function guardarRenovacion() {
   var p = _rv.pol, num = document.getElementById('rv-num').value.trim(), cia = document.getElementById('rv-cia').value.trim();
-  var ini = document.getElementById('rv-ini').value, vto = document.getElementById('rv-vto').value, cuota = parseFloat(document.getElementById('rv-cuota').value) || null;
+  var ini = document.getElementById('rv-ini').value, vto = document.getElementById('rv-vto').value;
   if (!num) { alert('Falta el número de la póliza nueva.'); return; }
   if (!cia) { alert('Falta la compañía.'); return; }
+  var av = _rv.d ? _rvAvisos() : [];
+  if (av.length && !confirm('Ojo:\n• ' + av.join('\n• ') + '\n\n¿Guardo igual?')) return;
   var btn = document.getElementById('rv-ok'); btn.disabled = true; btn.textContent = 'Guardando…';
   try {
-    var dr = p.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } }
-    dr = Object.assign({}, dr || {}); delete dr.verif_pdf; dr.renueva_a = p.numero_poliza;
-    var nueva = { productor_id: user.id, cliente_id: p.cliente_id, numero_poliza: num, aseguradora: cia, ramo: p.ramo, fecha_inicio: ini, fecha_vencimiento: vto,
-      valor_cuota: cuota, prima_anual: cuota ? null : p.prima_anual, forma_pago: p.forma_pago, medio_pago: p.medio_pago, cantidad_cuotas: p.cantidad_cuotas,
-      periodo_meses: p.periodo_meses, estado: 'activa', bien_asegurado: p.bien_asegurado, patente: p.patente, cobertura: p.cobertura, datos_ramo: dr,
-      cod_aseg_fedpat: cia === p.aseguradora ? p.cod_aseg_fedpat : null };
+    var a = _rvArmar(), nueva = a.pol;
+    var cambios = _rv.d ? _rvFilas().filter(function (r) { return String(r[1]) !== String(r[2]) && r[0] !== 'N° de póliza' && r[0] !== 'Vigencia'; }).map(function (r) { return r[0] + ': ' + (r[1] || '—') + ' → ' + (r[2] || '—'); }) : [];
+    nueva.datos_ramo.renovacion = { de: p.numero_poliza, fecha: new Date().toISOString().slice(0, 10), cambios: cambios, desde_pdf: !!_rv.d };
+    if (_rv.file) nueva.datos_ramo.fuente = 'PDF de la renovación (' + _rv.file.name + ')';
     var ins = await sb.from('polizas').insert(nueva).select('*,clientes(nombre,apellido,razon_social,tipo_cliente)').single();
     if (ins.error) throw ins.error;
     var pn = ins.data;
+    if (a.coberturas.length) await sb.from('coberturas').insert(a.coberturas.map(function (c) { return { productor_id: user.id, poliza_id: pn.id, descripcion: c.descripcion, suma_asegurada: c.suma_asegurada }; }));
     if (_rv.file) {
       var path = 'polizas/' + pn.id + '/' + Date.now() + '_poliza_' + _rv.file.name.replace(/[^A-Za-z0-9._-]/g, '_');
       var up = await sb.storage.from('archivos').upload(path, _rv.file, { contentType: 'application/pdf' });
@@ -14096,11 +14197,13 @@ async function guardarRenovacion() {
     await sb.from('polizas').update({ estado: 'renovada', motivo_cancelacion: _rv.otraCia ? 'Pasó a ' + cia + ' (N° ' + num + ')' : null }).eq('id', p.id);
     await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Renovó: N° ' + num + (cia !== p.aseguradora ? ' en ' + cia : '') }).eq('poliza_id', p.id).neq('estado', 'cerrada');
     await sb.from('interacciones').insert({ productor_id: user.id, cliente_id: p.cliente_id, categoria: 'renovacion', tipo: 'sistema', poliza_id: pn.id, poliza_numero: num, poliza_ramo: p.ramo,
-      resumen: '🔄 Renovó ' + (p.ramo || '') + ' N° ' + p.numero_poliza + ' → N° ' + num + (cia !== p.aseguradora ? ' (pasó de ' + p.aseguradora + ' a ' + cia + ')' : '') + ' · ' + fmtDate(ini) + ' al ' + fmtDate(vto),
+      resumen: '🔄 Renovó ' + (p.ramo || '') + ' N° ' + p.numero_poliza + ' → N° ' + num + (cia !== p.aseguradora ? ' (pasó de ' + p.aseguradora + ' a ' + cia + ')' : '') + ' · ' + fmtDate(ini) + ' al ' + fmtDate(vto)
+        + (cambios.length ? '\nCambios: ' + cambios.join(' · ') : (_rv.d ? '\nSin cambios de datos' : '')),
       usuario_nombre: user.email, es_automatico: false });
     try { await sb.rpc('armar_paquetes'); } catch (e) {}
     if (typeof cargarPolizas === 'function') try { cargarPolizas(); } catch (e) {}
     if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
+    _rv.cambios = cambios;
     _ofOfrecerEnvio(pn);
   } catch (e) { btn.disabled = false; btn.textContent = 'Guardar renovación'; alert('No se pudo guardar: ' + (e.message || e)); }
 }
@@ -14108,7 +14211,9 @@ function _ofOfrecerEnvio(pn) {
   _rv.nueva = pn;
   document.getElementById('env-titulo').textContent = '✅ Renovación cargada';
   document.getElementById('env-cuerpo').innerHTML =
-    '<p style="font-size:13px;margin:0 0 12px">Quedó la póliza nueva <b>N° ' + esc(pn.numero_poliza) + '</b> (' + fmtDate(pn.fecha_inicio) + ' → ' + fmtDate(pn.fecha_vencimiento) + ') y la anterior pasó a renovada.<br><br><b>¿Se la mandamos al cliente?</b></p>'
+    '<p style="font-size:13px;margin:0 0 12px">Quedó la póliza nueva <b>N° ' + esc(pn.numero_poliza) + '</b> (' + fmtDate(pn.fecha_inicio) + ' → ' + fmtDate(pn.fecha_vencimiento) + ') y la anterior pasó a renovada.</p>'
+    + (_rv.cambios && _rv.cambios.length ? '<div style="font-size:12px;background:#F8FAFC;border-radius:8px;padding:8px 10px;margin-bottom:10px"><b>Qué cambió:</b><br>' + _rv.cambios.map(esc).join('<br>') + '</div>' : '')
+    + '<p style="font-size:13px;margin:0 0 12px"><b>¿Se la mandamos al cliente?</b></p>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + (pn.pdf_url ? '<button type="button" class="btn btn-p" onclick="abrirEnviarPoliza(\'' + pn.id + '\',\'renovacion\')">💬 Por WhatsApp (o Gmail) ahora</button>' : '<div style="font-size:12px;color:#92400E">Para mandarla por WhatsApp desde acá, primero subile el PDF.</div>')
     + '<button type="button" class="btn" onclick="renovacionPedirMail()">📧 Que el chat de Renovaciones arme el mail</button>'
