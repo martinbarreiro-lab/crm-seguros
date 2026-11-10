@@ -4050,7 +4050,29 @@ function requierePdf(p) {
 }
 // ══ BASE DE DATOS: personas que nos pasaron (nóminas, siniestros, mails) para futuras campañas ══
 var _bd = { data: [], cli: {} };
-var _BD_ORIG = { nomina: 'Nómina de póliza', siniestro: 'Siniestro', beneficiario: 'Beneficiario', mail: 'Mail / chat', manual: 'Cargado a mano' };
+var _BD_ORIG = { nomina: 'Nómina de póliza', siniestro: 'Siniestro', beneficiario: 'Beneficiario', cotizacion: 'Pidió cotización', mail: 'Mail / chat', manual: 'Cargado a mano' };
+// Beneficiarios escritos en texto → personas (descarta "tomador", "herederos legales", etc.)
+function _bdBeneficiarios(txt) {
+  return String(txt || '').split(/\n|;|\/(?=\s*[A-ZÁÉÍÓÚÑ])/).map(function (l) {
+    l = l.trim(); if (!l || /tomador|contratante|heredero|legales|seg[uú]n|clau|ley|c[oó]nyuge sup|la sucesi/i.test(l)) return null;
+    var dni = (l.match(/\b(\d{1,2}\.?\d{3}\.?\d{3})\b/) || [])[1];
+    var nom = l.split(/\s[-–(]|\d|,\s*(?:dni|hij|espos|madre|padre)/i)[0].replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ ,.]/g, '').trim();
+    if (nom.split(/\s+/).filter(function (w) { return w.length > 1; }).length < 2) return null;
+    return { nombre: nom, dni: dni ? dni.replace(/\D/g, '') : null };
+  }).filter(Boolean);
+}
+// Quien pidió una cotización y no tiene pólizas vigentes queda en la Base para volver a ofrecerle
+async function registrarCotizacionEnBase(cot) {
+  try {
+    if (!user || !cot || !cot.cliente_id) return;
+    var rp = await sb.from('polizas').select('id', { count: 'exact', head: true }).eq('cliente_id', cot.cliente_id).eq('estado', 'activa');
+    if (rp.count) return; // ya es cliente con pólizas: no va a la Base
+    var rc = await sb.from('clientes').select('*').eq('id', cot.cliente_id).single(); var c = rc.data; if (!c) return;
+    var etq = { auto: 'Auto', moto: 'Moto', hogar: 'Hogar', comercio: 'Comercio', art: 'ART', ap: 'Accidentes personales', rc: 'Responsabilidad civil', vida: 'Vida' };
+    var det = 'Pidió cotización de ' + (etq[cot.ramo] || cot.ramo || 'seguro') + ' el ' + fmtDate(String(cot.created_at || new Date().toISOString()).slice(0, 10)) + (cot.estado === 'rechazada' ? ' (no le interesó' + (cot.razon_rechazo ? ': ' + cot.razon_rechazo : '') + ')' : '');
+    await _bdUpsert({ nombre: nombreClienteLista(c), dni: c.dni || c.cuit, telefono: c.telefono_principal, email: c.email_principal, localidad: c.localidad, fecha_nacimiento: c.fecha_nacimiento, origen: 'cotizacion', det: det }, { cliente_origen_id: c.id });
+  } catch (e) { console.warn('base cotización', e); }
+}
 var _BD_EST = { nuevo: 'Nuevo', contactado: 'Contactado', interesado: 'Interesado', prospecto: 'Pasó a prospecto', no_interesa: 'No le interesa' };
 function _bdEdad(f) { if (!f) return null; var d = new Date(f + 'T12:00:00'), h = new Date(), e = h.getFullYear() - d.getFullYear(); if (h.getMonth() < d.getMonth() || (h.getMonth() === d.getMonth() && h.getDate() < d.getDate())) e--; return e; }
 async function cargarBase() {
@@ -4193,6 +4215,9 @@ async function registrarNominaEnBase(personas, pol, nomCliente) {
         if (!ors.some(function (y) { return y.detalle === det; })) await sb.from('base_contactos').update({ origenes: ors.concat([o]), fecha_nacimiento: x.fecha_nacimiento || p.nacimiento || null, updated_at: new Date().toISOString() }).eq('id', x.id);
       } else nuevos.push({ productor_id: user.id, nombre: String(p.nombre).toUpperCase(), dni: dni || null, fecha_nacimiento: p.nacimiento || null, origen: 'nomina', origen_detalle: det, origenes: [o], cliente_origen_id: pol.cliente_id || null, poliza_origen_id: pol.id || null });
     }
+    var bens = [];
+    personas.forEach(function (p) { _bdBeneficiarios(p.beneficiario).forEach(function (b) { b.de = p.nombre; bens.push(b); }); });
+    for (var j = 0; j < bens.length; j++) await _bdUpsert({ nombre: bens[j].nombre, dni: bens[j].dni, origen: 'beneficiario', det: 'Beneficiario de ' + (bens[j].de || '?') + ' en la nómina ' + (pol.ramo || '') + ' de ' + (nomCliente || '?') + ' (póliza ' + (pol.numero_poliza || '') + ')' }, { cliente_origen_id: pol.cliente_id || null, poliza_origen_id: pol.id || null }, hoy);
     if (nuevos.length) {
       var cl = await sb.from('clientes').select('id,dni').eq('productor_id', user.id).in('dni', nuevos.map(function (n) { return n.dni; }).filter(Boolean));
       var cpor = {}; (cl.data || []).forEach(function (c) { cpor[c.dni] = c.id; });
@@ -5371,7 +5396,7 @@ function renderSinEtapaPanel(s, etapa) {
         html.push(sinField('Vehículo', tercero.vehiculo||''));
         html.push(sinField('Compañía de seguro', tercero.compania||''));
         html.push(sinField('N° de póliza del tercero', tercero.poliza||''));
-        html.push('</div></div>');
+        html.push('</div><div style="margin-top:8px;text-align:right"><button type="button" class="btn btn-sm" onclick="event.stopPropagation();abrirEditarSiniestro(\''+s.id+'\')">✏ Cargar / editar datos del tercero</button></div></div>');
       }
     }
   }
@@ -6029,6 +6054,15 @@ function abrirEditarSiniestro(sinId) {
         var tipoSel = document.getElementById('fs-tipo');
         if (tipoSel && s.tipo_siniestro) tipoSel.value = s.tipo_siniestro;
         onSinTipoChange();
+        // Cargar los datos propios del ramo (antes se perdían al editar)
+        setTimeout(function () {
+          var sv = function (id, v) { var e = document.getElementById(id); if (e && v != null && v !== '') e.value = v; };
+          sv('fsd-lugar', s.lugar_hecho); sv('fs-taller', s.taller); sv('fsd-empleado', s.empleado_nombre); sv('fsd-empleado-dni', s.empleado_dni);
+          sv('fsd-lesion', s.tipo_lesion); sv('fsd-art', s.art_nombre); sv('fsd-sector', s.area_afectada); sv('fsd-tipo-dano', s.tipo_dano);
+          sv('fsd-monto-dano', s.monto_estimado_dano); sv('fsd-beneficiario', s.beneficiario_nombre); sv('fsd-causa', s.causa_siniestro);
+          sinTogSet('fsd-lesionados', s.hay_lesionados); sinTogSet('fsd-policia', s.interv_policia); sinTogSet('fsd-tercero', s.hay_tercero);
+          var td = s.tercero_datos || {}; _SIN_TER_KEYS.forEach(function (k) { sv('fsd-ter-' + k, td[k]); });
+        }, 120);
       }, 100);
       // Título
       var tit = document.getElementById('sin-modal-titulo');
@@ -6862,6 +6896,16 @@ function renderSinDynFields(ramo, tipo) {
     html.push(sinToggleHTML('fsd-policia','¿Intervino la policía?'));
     html.push(sinToggleHTML('fsd-tercero','¿Hay tercero involucrado?'));
     html.push('</div>');
+    html.push('<div id="fsd-ter-box" style="display:none;margin-top:10px;background:#F0F9FF;border:0.5px solid #BAE0FD;border-radius:8px;padding:10px 12px"><div style="font-size:10px;font-weight:600;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datos del tercero (se guardan también en la Base de datos)</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<div class="frow" style="margin-bottom:0"><label>Nombre / Razón social</label><input type="text" id="fsd-ter-nombre"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>DNI / CUIT</label><input type="text" id="fsd-ter-dni"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>Teléfono</label><input type="text" id="fsd-ter-telefono"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>Email</label><input type="text" id="fsd-ter-email"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>Patente</label><input type="text" id="fsd-ter-patente"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>Vehículo</label><input type="text" id="fsd-ter-vehiculo"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>Compañía de seguro</label><input type="text" id="fsd-ter-compania"></div>'
+      + '<div class="frow" style="margin-bottom:0"><label>N° de póliza del tercero</label><input type="text" id="fsd-ter-poliza"></div>'
+      + '</div></div>');
   } else if (ramo === 'hogar') {
     html.push('<div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🏠 Hogar</div>');
     html.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
@@ -6930,6 +6974,44 @@ function sinTogField(id, row) {
   tog.style.background = !isOn ? '#22C55E' : '#D1D5DB';
   tog.firstElementChild.style.left = !isOn ? '19px' : '3px';
   tog.dataset.on = !isOn ? '1' : '0';
+  if (id === 'fsd-tercero') { var bx = document.getElementById('fsd-ter-box'); if (bx) bx.style.display = !isOn ? 'block' : 'none'; }
+}
+// Prende/apaga un toggle del formulario de siniestro a un valor dado
+function sinTogSet(id, on) { var t = document.getElementById(id + '-tog'); if (!t) return; if ((t.dataset.on === '1') !== !!on) sinTogField(id); }
+var _SIN_TER_KEYS = ['nombre', 'dni', 'telefono', 'email', 'patente', 'vehiculo', 'compania', 'poliza'];
+// Registra en la Base de datos a las personas de un siniestro (tercero, empleado afectado, beneficiario)
+async function registrarSiniestroEnBase(sin, cliNombre) {
+  try {
+    if (!user || !sin) return;
+    var hoy = new Date().toISOString().slice(0, 10), ref = (sin.numero_expediente ? 'N° ' + sin.numero_expediente + ' ' : '') + 'de ' + (cliNombre || '?') + (sin.fecha_hecho ? ' (' + fmtDate(sin.fecha_hecho) + ')' : '');
+    var gente = [];
+    var t = sin.tercero_datos || {};
+    if (t.nombre) gente.push({ nombre: t.nombre, dni: t.dni, telefono: t.telefono, email: t.email, origen: 'siniestro', det: 'Tercero del siniestro ' + ref, notas: [t.vehiculo, t.patente ? 'patente ' + t.patente : '', t.compania ? 'asegurado en ' + t.compania : ''].filter(Boolean).join(' · ') });
+    if (sin.empleado_nombre) gente.push({ nombre: sin.empleado_nombre, dni: sin.empleado_dni, origen: 'siniestro', det: 'Afectado en el siniestro ' + ref });
+    if (sin.beneficiario_nombre) gente.push({ nombre: sin.beneficiario_nombre, origen: 'beneficiario', det: 'Beneficiario en el siniestro ' + ref });
+    for (var i = 0; i < gente.length; i++) await _bdUpsert(gente[i], { cliente_origen_id: sin.cliente_id || null, siniestro_origen_id: sin.id || null }, hoy);
+  } catch (e) { console.warn('base siniestro', e); }
+}
+// Alta o actualización en la Base: mismo DNI (o mismo nombre sin DNI) = misma persona; completa lo vacío y suma el origen
+async function _bdUpsert(g, extra, hoy) {
+  var dni = String(g.dni || '').replace(/\D/g, '') || null, nom = String(g.nombre || '').trim().toUpperCase(); if (!nom) return;
+  hoy = hoy || new Date().toISOString().slice(0, 10);
+  var q = sb.from('base_contactos').select('*').eq('productor_id', user.id);
+  var r = dni ? await q.eq('dni', dni).limit(1) : await q.is('dni', null).eq('nombre', nom).limit(1);
+  var o = { origen: g.origen, detalle: g.det, fecha: hoy };
+  var x = r.data && r.data[0];
+  if (x) {
+    var up = { updated_at: new Date().toISOString() };
+    ['telefono', 'email', 'localidad', 'fecha_nacimiento'].forEach(function (k) { if (!x[k] && g[k]) up[k] = g[k]; });
+    if (g.notas && String(x.notas || '').indexOf(g.notas) < 0) up.notas = (x.notas ? x.notas + '\n' : '') + g.notas;
+    if (!(x.origenes || []).some(function (y) { return y.detalle === g.det; })) up.origenes = (x.origenes || []).concat([o]);
+    await sb.from('base_contactos').update(up).eq('id', x.id);
+  } else {
+    var cli = null;
+    if (dni) { var rc = await sb.from('clientes').select('id').eq('productor_id', user.id).eq('dni', dni).limit(1); cli = rc.data && rc.data[0] ? rc.data[0].id : null; }
+    await sb.from('base_contactos').insert(Object.assign({ productor_id: user.id, nombre: nom, dni: dni, telefono: g.telefono || null, email: g.email ? String(g.email).toLowerCase() : null, localidad: g.localidad || null,
+      fecha_nacimiento: g.fecha_nacimiento || null, origen: g.origen, origen_detalle: g.det, origenes: [o], notas: g.notas || null, cliente_id: cli }, extra || {}));
+  }
 }
 
 function sinTogOrden() {
@@ -7037,6 +7119,10 @@ document.getElementById('btn-guardar-sin').onclick = async function() {
     beneficiario_nombre: gv('fsd-beneficiario'),
     causa_siniestro: gv('fsd-causa'),
   };
+  if (document.getElementById('fsd-ter-box')) {
+    var terD = {}; _SIN_TER_KEYS.forEach(function (k) { var v = gv('fsd-ter-' + k); if (v) terD[k] = v; });
+    if (!datos.hay_tercero) datos.tercero_datos = null; else if (Object.keys(terD).length) datos.tercero_datos = terD;
+  }
 
   // Objetos electrónicos
   if (tipo === 'Todo riesgo objetos electrónicos') {
@@ -7062,11 +7148,15 @@ document.getElementById('btn-guardar-sin').onclick = async function() {
     var { error } = await sb.from('siniestros').update(datos).eq('id', editId);
     if (error) { alert('Error: ' + error.message); return; }
     window._editSiniestroId = null;
+    var clE = allCl.find(function (x) { return x.id === datos.cliente_id; });
+    registrarSiniestroEnBase(Object.assign({ id: editId }, datos), clE ? nombreClienteLista(clE) : '');
     mostrarAlerta('✅ Siniestro actualizado');
   } else {
-    var { error } = await sb.from('siniestros').insert(datos);
+    var { data: sinNuevo, error } = await sb.from('siniestros').insert(datos).select('id').single();
     if (error) { alert('Error: ' + error.message); return; }
     mostrarAlerta('✅ Siniestro registrado');
+    var clN = allCl.find(function (x) { return x.id === datos.cliente_id; });
+    registrarSiniestroEnBase(Object.assign({ id: sinNuevo && sinNuevo.id }, datos), clN ? nombreClienteLista(clN) : '');
     // Tarea automática si está activada
     if (_cfg.auto_sin) {
       var cl = allCl.find(function(x){ return x.id===datos.cliente_id; });
@@ -8412,8 +8502,9 @@ function tarMailCot(cotId, que) {
 }
 async function cotNoInteresa(cotId) {
   var m = prompt('¿Por qué no le interesó? (precio, se queda en su compañía…)'); if (m === null) return;
-  var r = await sb.from('cotizaciones').update({ estado: 'rechazada', razon_rechazo: m || null }).eq('id', cotId);
+  var r = await sb.from('cotizaciones').update({ estado: 'rechazada', razon_rechazo: m || null }).eq('id', cotId).select('*').single();
   if (r.error) { alert('No se pudo: ' + r.error.message); return; }
+  registrarCotizacionEnBase(r.data);
   mostrarAlerta('Cotización marcada como no interesada'); cargarCotizaciones();
 }
 // Ramo del CRM → ramo de cotización
@@ -8653,6 +8744,7 @@ document.getElementById('btn-guardar-cotz').onclick = async function() {
   else if (ramo==='art') { datos_riesgo = {razon_social:gv('fc-art-rs'),cuit:gv('fc-art-cuit'),actividad:gv('fc-art-act'),empleados:gv('fc-art-emp'),masa_salarial:gv('fc-art-masa')}; }
   var { data: cotNueva, error } = await sb.from('cotizaciones').insert({productor_id:user.id,cliente_id:cid,ramo:ramo,notas:notas,datos_riesgo:datos_riesgo,estado:'pendiente',ofertas:[]}).select().single();
   if (error) { alert('Error al guardar cotización: '+error.message+'\n\nCódigo: '+error.code); return; }
+  registrarCotizacionEnBase(cotNueva);
   // Asegurar que allCl esté cargado
   if (!allCl.length) await cargarClientes();
   var cl = allCl.find(function(x){ return x.id===cid; });
