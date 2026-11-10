@@ -4080,31 +4080,91 @@ async function cargarBase() {
   if (!document.getElementById('bd-lista')) {
     var sel = function (id, ops) { return '<select id="' + id + '" onchange="bdRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white)">' + ops.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>'; };
     sec.innerHTML = '<div class="toprow" style="align-items:flex-start"><div><div style="font-size:18px;font-weight:500">Base de datos</div>'
-      + '<div style="font-size:12px;color:var(--muted);margin-top:2px">Personas que nos pasaron los clientes (nóminas, siniestros, mails) para futuras campañas. No son clientes.</div></div>'
-      + '<div style="display:flex;gap:8px"><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:2px">Todos tus clientes y las personas que nos pasaron (nóminas, siniestros, cotizaciones, chat), sin repetidos, para campañas.</div></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="bd-leer-btn" onclick="bdLeerNominas()" title="Lee la nómina de todas las pólizas de AP y vida que tienen PDF">🔄 Leer nóminas de todas las pólizas</button><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">'
       + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
       + sel('bd-orig', [['', 'Todos los orígenes']].concat(Object.keys(_BD_ORIG).map(function (k) { return [k, _BD_ORIG[k]]; })))
       + sel('bd-est', [['', 'Todos los estados']].concat(Object.keys(_BD_EST).map(function (k) { return [k, _BD_EST[k]]; })))
-      + sel('bd-cli', [['no', 'Que no son clientes'], ['', 'Clientes y no clientes'], ['si', 'Solo los que ya son clientes']])
+      + sel('bd-cli', [['', 'Clientes y terceros'], ['si', 'Solo clientes'], ['no', 'Solo terceros (no clientes)']])
+      + sel('bd-tiene', [['', 'Cualquier seguro'], ['si', 'Tiene'], ['no', 'No tiene']])
+      + sel('bd-ramo', [['', '(ramo)'], ['Automotor', 'Auto'], ['Motos', 'Moto'], ['Hogar', 'Hogar'], ['Combinado', 'Combinado familiar'], ['Comercio', 'Comercio'], ['Accidentes', 'Accidentes personales'], ['Vida', 'Vida'], ['ART', 'ART'], ['Responsabilidad', 'Resp. civil'], ['Caución', 'Caución']])
       + sel('bd-cont', [['', 'Con o sin contacto'], ['tel', 'Con teléfono'], ['mail', 'Con mail'], ['sin', 'Sin teléfono ni mail']])
       + '<span style="font-size:12px;color:var(--muted)">Edad</span><input id="bd-emin" type="number" placeholder="desde" oninput="bdRender()" style="width:64px;font-size:12px;padding:6px"><input id="bd-emax" type="number" placeholder="hasta" oninput="bdRender()" style="width:64px;font-size:12px;padding:6px">'
       + '</div><div id="bd-total" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div><div id="bd-lista"></div>';
   }
   document.getElementById('bd-lista').innerHTML = '<div style="color:var(--muted);padding:12px">Cargando…</div>';
-  var r = await sb.from('base_contactos').select('*').eq('productor_id', user.id).order('created_at', { ascending: false }).limit(5000);
-  _bd.data = r.data || [];
+  var rs = await Promise.all([
+    sb.from('base_contactos').select('*').eq('productor_id', user.id).order('created_at', { ascending: false }).limit(5000),
+    sb.from('clientes').select('id,nombre,apellido,razon_social,tipo_cliente,dni,cuit,fecha_nacimiento,telefono_principal,telefono_secundario,email_principal,email_secundario,direccion,calle,numero_dom,localidad,estado,profesion,actividad,created_at').eq('productor_id', user.id).limit(5000),
+    sb.from('polizas').select('cliente_id,ramo').eq('productor_id', user.id).eq('estado', 'activa').limit(10000)
+  ]);
+  var ramos = {}; (rs[2].data || []).forEach(function (p) { if (!p.cliente_id || !p.ramo) return; (ramos[p.cliente_id] = ramos[p.cliente_id] || []); if (ramos[p.cliente_id].indexOf(p.ramo) < 0) ramos[p.cliente_id].push(p.ramo); });
+  var dniCli = {}, filas = [];
+  (rs[1].data || []).forEach(function (c) {
+    var doc = String(c.dni || c.cuit || '').replace(/\D/g, '');
+    var f = { id: 'c:' + c.id, _tipo: 'cliente', cliente_id: c.id, nombre: nombreClienteLista(c), dni: doc || null, fecha_nacimiento: c.fecha_nacimiento,
+      telefono: [c.telefono_principal, c.telefono_secundario].filter(Boolean).join(' / ') || null, email: [c.email_principal, c.email_secundario].filter(Boolean).join(' / ') || null,
+      direccion: c.direccion || [c.calle, c.numero_dom].filter(Boolean).join(' ') || null, localidad: c.localidad, ocupacion: c.profesion || c.actividad,
+      origen: 'cliente', origen_detalle: (ramos[c.id] || []).length ? 'Cliente' : 'Cliente sin pólizas vigentes', origenes: [], estado: 'cliente', etiquetas: [], ramos: ramos[c.id] || [], created_at: c.created_at };
+    filas.push(f);
+    if (doc) dniCli[doc] = f; if (c.dni) dniCli[String(c.dni).replace(/\D/g, '')] = f;
+    if (c.cuit) { var cu = String(c.cuit).replace(/\D/g, ''); dniCli[cu] = f; if (cu.length === 11) dniCli[cu.slice(2, 10)] = f; }
+  });
+  var porCli = {}; filas.forEach(function (f) { porCli[f.cliente_id] = f; });
+  (rs[0].data || []).forEach(function (x) {
+    var cf = (x.cliente_id && porCli[x.cliente_id]) || (x.dni && dniCli[x.dni]);
+    if (cf) { cf.origenes = cf.origenes.concat(x.origenes || []); cf._bdId = x.id; return; } // ya es cliente: no se repite, se suma de dónde más apareció
+    filas.push(Object.assign({ _tipo: 'tercero', ramos: [] }, x));
+  });
+  _bd.data = filas;
   bdRender();
+}
+// Recorre las AP / Vida (no las de paquete) y lee la nómina de cada PDF: la guarda en la póliza y suma las personas a la Base
+async function bdLeerNominas() {
+  var btn = document.getElementById('bd-leer-btn'), tot = document.getElementById('bd-total');
+  if (!confirm('Voy a leer el PDF de todas las pólizas vigentes de Accidentes Personales y Vida para sacar las nóminas. Puede tardar unos minutos. ¿Sigo?')) return;
+  btn.disabled = true;
+  var r = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,cliente_id,pdf_url,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)')
+    .eq('productor_id', user.id).eq('estado', 'activa').is('paquete_de', null).or('ramo.ilike.%accident%,ramo.ilike.%vida%');
+  var pols = r.data || [], sinPdf = [], sinNom = [], leidas = 0, personas = 0;
+  for (var i = 0; i < pols.length; i++) {
+    var p = pols[i], nom = p.clientes ? nombreClienteLista(p.clientes) : '?', et = p.ramo + ' N° ' + p.numero_poliza + ' · ' + nom;
+    btn.textContent = '⏳ Leyendo ' + (i + 1) + ' de ' + pols.length + '…';
+    var dr = p.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } } dr = dr || {};
+    if (dr.personas && dr.personas.length) { await registrarNominaEnBase(dr.personas, p, nom); leidas++; personas += dr.personas.length; continue; }
+    if (!p.pdf_url) { sinPdf.push(et); continue; }
+    try {
+      var resp = await fetch(await linkArchivo(p.pdf_url, 120)); if (!resp.ok) throw 0;
+      var d = extraerDatosPoliza(await _textoPdf(await resp.blob()), 'poliza.pdf');
+      if (d.personas && d.personas.length) {
+        dr.personas = d.personas; await sb.from('polizas').update({ datos_ramo: dr }).eq('id', p.id);
+        await registrarNominaEnBase(d.personas, p, nom); leidas++; personas += d.personas.length;
+      } else sinNom.push(et);
+    } catch (e) { sinNom.push(et + ' (no se pudo abrir el PDF)'); }
+  }
+  btn.disabled = false; btn.textContent = '🔄 Leer nóminas de todas las pólizas';
+  await cargarBase();
+  var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '600px';
+  document.getElementById('env-titulo').textContent = 'Nóminas leídas';
+  var lista = function (t, l) { return l.length ? '<div style="margin-top:10px"><b>' + t + ' (' + l.length + ')</b><div style="font-size:12px;color:var(--muted);max-height:180px;overflow:auto;margin-top:4px">' + l.map(esc).join('<br>') + '</div></div>' : ''; };
+  document.getElementById('env-cuerpo').innerHTML = '<p style="font-size:13px;margin:0">✅ Revisé ' + pols.length + ' pólizas de AP y Vida. Con nómina: <b>' + leidas + '</b> · personas: <b>' + personas + '</b> (las que ya estaban no se repiten).</p>'
+    + lista('Sin PDF cargado — pedilo a la compañía o subilo', sinPdf)
+    + lista('El PDF no trae la nómina (suele venir aparte: subí la nómina como PDF de la póliza o pasámela)', sinNom)
+    + '<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\')">Listo</button></div>';
+  m.classList.add('open');
 }
 function _bdFiltrados() {
   var v = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
-  var q = v('bd-q').toUpperCase(), o = v('bd-orig'), e = v('bd-est'), c = v('bd-cli'), ct = v('bd-cont'), emin = parseInt(v('bd-emin')), emax = parseInt(v('bd-emax'));
+  var q = v('bd-q').toUpperCase(), o = v('bd-orig'), e = v('bd-est'), c = v('bd-cli'), ct = v('bd-cont'), emin = parseInt(v('bd-emin')), emax = parseInt(v('bd-emax')), ti = v('bd-tiene'), ra = v('bd-ramo').toUpperCase();
   return _bd.data.filter(function (x) {
-    if (q && [x.nombre, x.dni, x.localidad, x.origen_detalle, x.notas, x.ocupacion, (x.etiquetas || []).join(' ')].join(' ').toUpperCase().indexOf(q) < 0) return false;
-    if (o && x.origen !== o) return false;
+    if (q && [x.nombre, x.dni, x.localidad, x.direccion, x.telefono, x.email, x.origen_detalle, x.notas, x.ocupacion, (x.etiquetas || []).join(' '), (x.ramos || []).join(' ')].join(' ').toUpperCase().indexOf(q) < 0) return false;
+    if (o && x.origen !== o && !(x.origenes || []).some(function (y) { return y.origen === o; })) return false;
     if (e && x.estado !== e) return false;
-    if (c === 'no' && x.cliente_id) return false;
-    if (c === 'si' && !x.cliente_id) return false;
+    if (c === 'no' && x._tipo === 'cliente') return false;
+    if (c === 'si' && x._tipo !== 'cliente') return false;
+    if (ra) { var tieneR = (x.ramos || []).some(function (r) { return r.toUpperCase().indexOf(ra) >= 0; }); if (ti === 'si' && !tieneR) return false; if (ti === 'no' && tieneR) return false; if (!ti && !tieneR) return false; }
+    else if (ti === 'si' && !(x.ramos || []).length) return false; else if (ti === 'no' && (x.ramos || []).length) return false;
     if (ct === 'tel' && !x.telefono) return false;
     if (ct === 'mail' && !x.email) return false;
     if (ct === 'sin' && (x.telefono || x.email)) return false;
@@ -4121,17 +4181,20 @@ function bdRender() {
   if (!l.length) { box.innerHTML = '<div style="color:var(--muted);padding:16px;background:var(--white);border-radius:var(--r);border:0.5px solid var(--border)">' + (_bd.data.length ? 'Nadie con esos filtros.' : 'Todavía no hay personas. Se cargan solas cuando el CRM lee una nómina o un siniestro, o desde el chat.') + '</div>'; return; }
   var th = function (t) { return '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border)">' + t + '</th>'; };
   box.innerHTML = '<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
-    + th('Nombre') + th('DNI') + th('Edad') + th('Contacto') + th('Localidad') + th('De dónde salió') + th('Estado') + '</tr></thead><tbody>'
+    + th('Nombre') + th('Tipo') + th('DNI / CUIT') + th('Edad') + th('Teléfono') + th('Mail') + th('Dirección') + th('Seguros vigentes / de dónde salió') + '</tr></thead><tbody>'
     + l.slice(0, 500).map(function (x) {
       var ed = _bdEdad(x.fecha_nacimiento);
-      return '<tr class="row" style="cursor:pointer;border-top:0.5px solid var(--border)" onclick="bdEditar(\'' + x.id + '\')">'
-        + '<td style="padding:8px 10px;font-weight:500">' + esc(x.nombre) + (x.cliente_id ? ' <span style="font-size:10px;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:8px">ya es cliente</span>' : '') + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : '') + '</td>'
-        + '<td style="padding:8px 10px">' + esc(x.dni || '') + '</td>'
-        + '<td style="padding:8px 10px">' + (ed !== null ? ed : '') + '</td>'
-        + '<td style="padding:8px 10px">' + esc([x.telefono, x.email].filter(Boolean).join(' · ')) + '</td>'
-        + '<td style="padding:8px 10px">' + esc(x.localidad || '') + '</td>'
-        + '<td style="padding:8px 10px;font-size:12px;color:var(--muted)">' + esc(x.origen_detalle || _BD_ORIG[x.origen] || '') + ((x.origenes || []).length > 1 ? ' (+' + ((x.origenes || []).length - 1) + ')' : '') + '</td>'
-        + '<td style="padding:8px 10px;font-size:12px">' + esc(_BD_EST[x.estado] || x.estado) + '</td></tr>';
+      var esC = x._tipo === 'cliente', td = function (h, st) { return '<td style="padding:8px 10px;' + (st || '') + '">' + h + '</td>'; };
+      return '<tr class="row" style="cursor:pointer;border-top:0.5px solid var(--border)" onclick="' + (esC ? 'irAFichaCliente(\'' + x.cliente_id + '\')' : 'bdEditar(\'' + x.id + '\')') + '">'
+        + td(esc(x.nombre) + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : ''), 'font-weight:500')
+        + td(esC ? '<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:8px">Cliente</span>' : '<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 7px;border-radius:8px">Tercero</span>')
+        + td(esc(x.dni || ''))
+        + td(ed !== null ? ed : '')
+        + td(esc(x.telefono || ''), 'white-space:nowrap')
+        + td(esc(x.email || ''), 'font-size:12px')
+        + td(esc([x.direccion, x.localidad].filter(Boolean).join(', ')), 'font-size:12px')
+        + td(esc(esC ? ((x.ramos || []).join(' · ') || 'Sin pólizas vigentes') : ((x.origen_detalle || _BD_ORIG[x.origen] || '') + ((x.origenes || []).length > 1 ? ' (+' + ((x.origenes || []).length - 1) + ')' : '') + ' · ' + (_BD_EST[x.estado] || x.estado))), 'font-size:12px;color:var(--muted)')
+        + '</tr>';
     }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
 }
 function bdEditar(id) {
@@ -4145,7 +4208,8 @@ function bdEditar(id) {
     f('Nombre y apellido *', 'bd-f-nom', x.nombre)
     + '<div style="display:flex;gap:8px">' + f('DNI', 'bd-f-dni', x.dni) + f('Fecha de nacimiento', 'bd-f-nac', x.fecha_nacimiento, 'date') + '</div>'
     + '<div style="display:flex;gap:8px">' + f('Teléfono', 'bd-f-tel', x.telefono) + f('Mail', 'bd-f-mail', x.email) + '</div>'
-    + '<div style="display:flex;gap:8px">' + f('Localidad', 'bd-f-loc', x.localidad) + f('Ocupación / empresa', 'bd-f-ocu', x.ocupacion) + '</div>'
+    + '<div style="display:flex;gap:8px">' + f('Dirección', 'bd-f-dir', x.direccion) + f('Localidad', 'bd-f-loc', x.localidad) + '</div>'
+    + f('Ocupación / empresa', 'bd-f-ocu', x.ocupacion)
     + '<div style="display:flex;gap:8px"><div class="frow" style="flex:1"><label>Estado</label><select id="bd-f-est">' + Object.keys(_BD_EST).map(function (k) { return '<option value="' + k + '"' + ((x.estado || 'nuevo') === k ? ' selected' : '') + '>' + _BD_EST[k] + '</option>'; }).join('') + '</select></div>'
     + '<div class="frow" style="flex:1"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="bd-f-noc"' + (x.no_contactar ? ' checked' : '') + ' style="width:auto"> No contactar</label></div></div>'
     + f('Etiquetas (separadas por coma)', 'bd-f-etq', (x.etiquetas || []).join(', '))
@@ -4160,7 +4224,7 @@ function bdEditar(id) {
 function _bdForm() {
   var v = function (i) { return (document.getElementById(i).value || '').trim(); };
   return { nombre: v('bd-f-nom').toUpperCase(), dni: v('bd-f-dni').replace(/\D/g, '') || null, fecha_nacimiento: v('bd-f-nac') || null, telefono: v('bd-f-tel') || null, email: v('bd-f-mail').toLowerCase() || null,
-    localidad: v('bd-f-loc') || null, ocupacion: v('bd-f-ocu') || null, estado: v('bd-f-est'), no_contactar: document.getElementById('bd-f-noc').checked,
+    localidad: v('bd-f-loc') || null, direccion: v('bd-f-dir') || null, ocupacion: v('bd-f-ocu') || null, estado: v('bd-f-est'), no_contactar: document.getElementById('bd-f-noc').checked,
     etiquetas: v('bd-f-etq') ? v('bd-f-etq').split(',').map(function (t) { return t.trim(); }).filter(Boolean) : [], notas: v('bd-f-not') || null, updated_at: new Date().toISOString() };
 }
 async function bdGuardar() {
@@ -4183,12 +4247,13 @@ async function bdAProspecto() {
 }
 function bdExportar() {
   var l = _bdFiltrados(); if (!l.length) { alert('No hay nadie para exportar con esos filtros.'); return; }
-  var cols = [['Nombre', 'nombre'], ['DNI', 'dni'], ['Nacimiento', 'fecha_nacimiento'], ['Edad', null], ['Teléfono', 'telefono'], ['Mail', 'email'], ['Localidad', 'localidad'], ['Ocupación', 'ocupacion'], ['Origen', 'origen_detalle'], ['Estado', 'estado'], ['Ya es cliente', null], ['No contactar', null], ['Etiquetas', null], ['Notas', 'notas']];
+  var cols = [['Nombre', 'nombre'], ['Tipo', null], ['DNI / CUIT', 'dni'], ['Nacimiento', 'fecha_nacimiento'], ['Edad', null], ['Teléfono', 'telefono'], ['Mail', 'email'], ['Dirección', 'direccion'], ['Localidad', 'localidad'], ['Ocupación', 'ocupacion'], ['Seguros vigentes', null], ['De dónde salió', 'origen_detalle'], ['Estado', 'estado'], ['No contactar', null], ['Etiquetas', null], ['Notas', 'notas']];
   var q = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
   var rows = [cols.map(function (c) { return q(c[0]); }).join(';')].concat(l.map(function (x) {
     return cols.map(function (c) {
       if (c[0] === 'Edad') return q(_bdEdad(x.fecha_nacimiento));
-      if (c[0] === 'Ya es cliente') return q(x.cliente_id ? 'Sí' : 'No');
+      if (c[0] === 'Tipo') return q(x._tipo === 'cliente' ? 'Cliente' : 'Tercero');
+      if (c[0] === 'Seguros vigentes') return q((x.ramos || []).join(', '));
       if (c[0] === 'No contactar') return q(x.no_contactar ? 'Sí' : '');
       if (c[0] === 'Etiquetas') return q((x.etiquetas || []).join(', '));
       if (c[0] === 'Estado') return q(_BD_EST[x.estado] || x.estado);
@@ -4213,7 +4278,7 @@ async function registrarNominaEnBase(personas, pol, nomCliente) {
       if (dni && por[dni]) {
         var x = por[dni], ors = x.origenes || [];
         if (!ors.some(function (y) { return y.detalle === det; })) await sb.from('base_contactos').update({ origenes: ors.concat([o]), fecha_nacimiento: x.fecha_nacimiento || p.nacimiento || null, updated_at: new Date().toISOString() }).eq('id', x.id);
-      } else nuevos.push({ productor_id: user.id, nombre: String(p.nombre).toUpperCase(), dni: dni || null, fecha_nacimiento: p.nacimiento || null, origen: 'nomina', origen_detalle: det, origenes: [o], cliente_origen_id: pol.cliente_id || null, poliza_origen_id: pol.id || null });
+      } else if (!(p.nacimiento && _bdEdad(p.nacimiento) !== null && _bdEdad(p.nacimiento) < 18)) nuevos.push({ productor_id: user.id, nombre: String(p.nombre).toUpperCase(), dni: dni || null, fecha_nacimiento: p.nacimiento || null, origen: 'nomina', origen_detalle: det, origenes: [o], cliente_origen_id: pol.cliente_id || null, poliza_origen_id: pol.id || null });
     }
     var bens = [];
     personas.forEach(function (p) { _bdBeneficiarios(p.beneficiario).forEach(function (b) { b.de = p.nombre; bens.push(b); }); });
@@ -6996,6 +7061,7 @@ async function registrarSiniestroEnBase(sin, cliNombre) {
 async function _bdUpsert(g, extra, hoy) {
   var dni = String(g.dni || '').replace(/\D/g, '') || null, nom = String(g.nombre || '').trim().toUpperCase(); if (!nom) return;
   hoy = hoy || new Date().toISOString().slice(0, 10);
+  if (g.fecha_nacimiento && _bdEdad(g.fecha_nacimiento) !== null && _bdEdad(g.fecha_nacimiento) < 18) return; // menores: no van a la base de campañas
   var q = sb.from('base_contactos').select('*').eq('productor_id', user.id);
   var r = dni ? await q.eq('dni', dni).limit(1) : await q.is('dni', null).eq('nombre', nom).limit(1);
   var o = { origen: g.origen, detalle: g.det, fecha: hoy };
@@ -14414,6 +14480,9 @@ async function _leerPdfRenovacion(f) {
     }
     if (dx.aseguradora && _rv.otraCia && !document.getElementById('rv-cia').value.trim()) document.getElementById('rv-cia').value = dx.aseguradora;
     var cuo = dx.valor_cuota || (dx.premio && dx.mensual ? dx.premio : null);
+    // El PDF trae el premio pero no las cuotas: se divide por la cantidad de cuotas de la póliza anterior
+    var nCu = parseInt(_rv.pol.cantidad_cuotas) || 0;
+    if (!cuo && dx.premio && nCu > 1 && !dx.cuotas) { cuo = Math.round(dx.premio / nCu * 100) / 100; dx.cuota_calculada = nCu; }
     if (cuo) { document.getElementById('rv-cuota').value = cuo; msg.push('cuota $' + Number(cuo).toLocaleString('es-AR')); }
     var extra = ['suma_asegurada', 'producto', 'franquicia_desc', 'coberturas', 'personas', 'premio'].filter(function (k) { return dx[k]; }).length;
     await _rvVerExiste();
@@ -14453,7 +14522,7 @@ function _rvFilas() {
   var pers = function (l) { return l && l.length ? l.length + (l.length === 1 ? ' persona' : ' personas') : ''; };
   var pc = function (x) { return x ? String(x).replace(/%?$/, '%') : ''; };
   var d = _rv.d || {}, src = { 'Plan / cobertura': 'producto', 'Suma asegurada': 'suma_asegurada', 'Premio': 'premio', 'Cuota': 'valor_cuota', 'Forma de pago': 'forma_pago', 'Franquicia': 'franquicia_desc', 'Ajuste automático': 'ajuste_automatico', 'Vehículo / bien': 'marca_modelo', 'Patente': 'patente', 'Uso': 'uso', 'Personas': 'personas', 'Coberturas': 'coberturas' };
-  var noPdf = function (r) { var k = r.cob ? (/^👥/.test(r[0]) ? 'personas' : 'coberturas') : src[r[0]]; if (k && !d[k] && !(k === 'valor_cuota' && d.premio && d.mensual)) r.noPdf = true; return r; };
+  var noPdf = function (r) { if (r[0] === 'Cuota' && d.cuota_calculada) { r.calc = 'calculada: premio ÷ ' + d.cuota_calculada + ' cuotas'; return r; } var k = r.cob ? (/^👥/.test(r[0]) ? 'personas' : 'coberturas') : src[r[0]]; if (k && !d[k] && !(k === 'valor_cuota' && d.premio && d.mensual)) r.noPdf = true; return r; };
   return [
     ['N° de póliza', p.numero_poliza, n.numero_poliza, 'txt'],
     ['Compañía', p.aseguradora, n.aseguradora, 'txt'],
@@ -14525,7 +14594,7 @@ function _rvComparar() {
   var fila = function (r, c) {
     return '<tr style="border-top:1px solid #F1F5F9"><td style="padding:5px 6px;color:#64748B;white-space:nowrap;vertical-align:top">' + esc(r[0]) + '</td>'
       + '<td style="padding:5px 6px;vertical-align:top;' + (c ? 'color:#94A3B8;text-decoration:line-through' : '') + '">' + (esc(r[1]) || '<span style="color:#CBD5E1">—</span>') + '</td>'
-      + '<td style="padding:5px 6px;vertical-align:top;' + (c ? 'font-weight:600;color:#0F172A' : '') + '">' + (esc(r[2]) || '<span style="color:#CBD5E1">—</span>') + (c ? dif(r) : '') + (!c && r.noPdf ? ' <span style="color:#B45309;font-size:11px">· el PDF no lo trae, queda el de antes</span>' : '') + '</td></tr>';
+      + '<td style="padding:5px 6px;vertical-align:top;' + (c ? 'font-weight:600;color:#0F172A' : '') + '">' + (esc(r[2]) || '<span style="color:#CBD5E1">—</span>') + (c ? dif(r) : '') + (!c && r.noPdf ? ' <span style="color:#B45309;font-size:11px">· el PDF no lo trae, queda el de antes</span>' : '') + (r.calc ? ' <span style="color:#64748B;font-size:11px">(' + esc(r.calc) + ')</span>' : '') + '</td></tr>';
   };
   var av = _rvAvisos();
   var bok = document.getElementById('rv-ok'); if (bok && !bok.disabled) bok.textContent = _rv.existe ? 'Guardar (completar la que ya existe)' : 'Guardar renovación';
@@ -14882,6 +14951,13 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   // Patente y vehículo
   var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
   if (mpat) d.patente = mpat[1].replace(/\s/g, '');
+  // SMG (Swiss Medical): "INTEGRAL DE COMERCIO 189685-0 RENUEVA: 173341" → el número es el de antes de "RENUEVA"; el premio total va después de "REC. FINANCIERO x,xx"
+  if (/SWISS MEDICAL|\bSMG\b/.test(T)) {
+    var msm = T.match(/\b(\d{5,8}-\d)\s+(?:RENUEVA:\s*(\d+)|NUEVA|RENOVACION|EMISION)/);
+    if (msm) { d.numero_poliza = msm[1]; if (msm[2]) d.renueva = msm[2]; }
+    var mpr = T.match(/REC\. FINANCIERO\s+[\d,]+\.\d{2}\s+([\d,]+\.\d{2})/);
+    if (mpr && !d.premio) d.premio = _impUS(mpr[1]);
+  }
   // Plan de pago en cuotas ("CUOTA 1/12 VENCIMIENTO 10/11/2025 …"): la cuota es la primera del plan, no el premio total.
   // Con vigencia anual pagada en cuotas NO es "refacturación mensual".
   if (!d.cuotas) {
