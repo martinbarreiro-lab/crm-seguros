@@ -4086,7 +4086,7 @@ async function cargarBase() {
       + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
       + sel('bd-orig', [['', 'Todos los orígenes']].concat(Object.keys(_BD_ORIG).map(function (k) { return [k, _BD_ORIG[k]]; })))
       + sel('bd-est', [['', 'Todos los estados']].concat(Object.keys(_BD_EST).map(function (k) { return [k, _BD_EST[k]]; })))
-      + sel('bd-cli', [['', 'Clientes y terceros'], ['si', 'Solo clientes'], ['no', 'Solo terceros (no clientes)']])
+      + sel('bd-cli', [['', 'Clientes y terceros'], ['si', 'Solo clientes'], ['no', 'Solo terceros (no clientes)'], ['cia', 'Gente de compañías / brokers']])
       + sel('bd-tiene', [['', 'Cualquier seguro'], ['si', 'Tiene'], ['no', 'No tiene']])
       + sel('bd-ramo', [['', '(ramo)'], ['Automotor', 'Auto'], ['Motos', 'Moto'], ['Hogar', 'Hogar'], ['Combinado', 'Combinado familiar'], ['Comercio', 'Comercio'], ['Accidentes', 'Accidentes personales'], ['Vida', 'Vida'], ['ART', 'ART'], ['Responsabilidad', 'Resp. civil'], ['Caución', 'Caución']])
       + sel('bd-cont', [['', 'Con o sin contacto'], ['tel', 'Con teléfono'], ['mail', 'Con mail'], ['sin', 'Sin teléfono ni mail']])
@@ -4115,7 +4115,7 @@ async function cargarBase() {
   (rs[0].data || []).forEach(function (x) {
     var cf = (x.cliente_id && porCli[x.cliente_id]) || (x.dni && dniCli[x.dni]);
     if (cf) { cf.origenes = cf.origenes.concat(x.origenes || []); cf._bdId = x.id; return; } // ya es cliente: no se repite, se suma de dónde más apareció
-    filas.push(Object.assign({ _tipo: 'tercero', ramos: [] }, x));
+    filas.push(Object.assign({ _tipo: (x.etiquetas || []).indexOf('seguros') >= 0 ? 'compania' : 'tercero', ramos: [] }, x));
   });
   _bd.data = filas;
   _bdBotonCompletar();
@@ -4162,7 +4162,9 @@ function _bdFiltrados() {
     if (q && [x.nombre, x.dni, x.localidad, x.direccion, x.telefono, x.email, x.origen_detalle, x.notas, x.ocupacion, (x.etiquetas || []).join(' '), (x.ramos || []).join(' ')].join(' ').toUpperCase().indexOf(q) < 0) return false;
     if (o && x.origen !== o && !(x.origenes || []).some(function (y) { return y.origen === o; })) return false;
     if (e && x.estado !== e) return false;
-    if (c === 'no' && x._tipo === 'cliente') return false;
+    // La gente de compañías y brokers va aparte: solo aparece eligiendo ese filtro
+    if (c === 'cia') { if (x._tipo !== 'compania') return false; } else if (x._tipo === 'compania') return false;
+    if (c === 'no' && x._tipo !== 'tercero') return false;
     if (c === 'si' && x._tipo !== 'cliente') return false;
     if (ra) { var tieneR = (x.ramos || []).some(function (r) { return r.toUpperCase().indexOf(ra) >= 0; }); if (ti === 'si' && !tieneR) return false; if (ti === 'no' && tieneR) return false; if (!ti && !tieneR) return false; }
     else if (ti === 'si' && !(x.ramos || []).length) return false; else if (ti === 'no' && (x.ramos || []).length) return false;
@@ -4178,7 +4180,8 @@ function _bdFiltrados() {
 function bdRender() {
   var box = document.getElementById('bd-lista'); if (!box) return;
   var l = _bdFiltrados();
-  document.getElementById('bd-total').textContent = l.length + ' de ' + _bd.data.length + ' personas';
+  var nCia = _bd.data.filter(function (x) { return x._tipo === 'compania'; }).length;
+  document.getElementById('bd-total').textContent = l.length + ' de ' + (_bd.data.length - nCia) + ' personas' + (nCia ? ' · ' + nCia + ' de compañías y brokers aparte (filtro "Gente de compañías")' : '');
   if (!l.length) { box.innerHTML = '<div style="color:var(--muted);padding:16px;background:var(--white);border-radius:var(--r);border:0.5px solid var(--border)">' + (_bd.data.length ? 'Nadie con esos filtros.' : 'Todavía no hay personas. Se cargan solas cuando el CRM lee una nómina o un siniestro, o desde el chat.') + '</div>'; return; }
   var th = function (t) { return '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border)">' + t + '</th>'; };
   box.innerHTML = '<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
@@ -4188,7 +4191,7 @@ function bdRender() {
       var esC = x._tipo === 'cliente', td = function (h, st) { return '<td style="padding:8px 10px;' + (st || '') + '">' + h + '</td>'; };
       return '<tr class="row" style="cursor:pointer;border-top:0.5px solid var(--border)" onclick="' + (esC ? 'irAFichaCliente(\'' + x.cliente_id + '\')' : 'bdEditar(\'' + x.id + '\')') + '">'
         + td(esc(x.nombre) + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : ''), 'font-weight:500')
-        + td(esC ? '<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:8px">Cliente</span>' : '<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 7px;border-radius:8px">Tercero</span>')
+        + td(esC ? '<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:8px">Cliente</span>' : x._tipo === 'compania' ? '<span style="font-size:10px;background:#F1F5F9;color:#475569;padding:2px 7px;border-radius:8px">Compañía</span>' : '<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 7px;border-radius:8px">Tercero</span>')
         + td(esc(x.dni || ''))
         + td(ed !== null ? ed : '')
         + td(esc(x.telefono || ''), 'white-space:nowrap')
@@ -4309,7 +4312,7 @@ function bdExportar() {
   var rows = [cols.map(function (c) { return q(c[0]); }).join(';')].concat(l.map(function (x) {
     return cols.map(function (c) {
       if (c[0] === 'Edad') return q(_bdEdad(x.fecha_nacimiento));
-      if (c[0] === 'Tipo') return q(x._tipo === 'cliente' ? 'Cliente' : 'Tercero');
+      if (c[0] === 'Tipo') return q(x._tipo === 'cliente' ? 'Cliente' : x._tipo === 'compania' ? 'Compañía' : 'Tercero');
       if (c[0] === 'Seguros vigentes') return q((x.ramos || []).join(', '));
       if (c[0] === 'No contactar') return q(x.no_contactar ? 'Sí' : '');
       if (c[0] === 'Etiquetas') return q((x.etiquetas || []).join(', '));
