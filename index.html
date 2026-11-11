@@ -4181,7 +4181,7 @@ function bdRender() {
   if (!l.length) { box.innerHTML = '<div style="color:var(--muted);padding:16px;background:var(--white);border-radius:var(--r);border:0.5px solid var(--border)">' + (_bd.data.length ? 'Nadie con esos filtros.' : 'Todavía no hay personas. Se cargan solas cuando el CRM lee una nómina o un siniestro, o desde el chat.') + '</div>'; return; }
   var th = function (t) { return '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border)">' + t + '</th>'; };
   box.innerHTML = '<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
-    + th('Nombre') + th('Tipo') + th('DNI / CUIT') + th('Edad') + th('Teléfono') + th('Mail') + th('Dirección') + th('Seguros vigentes / de dónde salió') + '</tr></thead><tbody>'
+    + th('Nombre') + th('Tipo') + th('DNI / CUIT') + th('Edad') + th('Teléfono') + th('Mail') + th('Dirección') + th('Seguros vigentes / de dónde salió') + th('') + '</tr></thead><tbody>'
     + l.slice(0, 500).map(function (x) {
       var ed = _bdEdad(x.fecha_nacimiento);
       var esC = x._tipo === 'cliente', td = function (h, st) { return '<td style="padding:8px 10px;' + (st || '') + '">' + h + '</td>'; };
@@ -4194,8 +4194,18 @@ function bdRender() {
         + td(esc(x.email || ''), 'font-size:12px')
         + td(esc([x.direccion, x.localidad].filter(Boolean).join(', ')), 'font-size:12px')
         + td(esc(esC ? ((x.ramos || []).join(' · ') || 'Sin pólizas vigentes') : ((x.origen_detalle || _BD_ORIG[x.origen] || '') + ((x.origenes || []).length > 1 ? ' (+' + ((x.origenes || []).length - 1) + ')' : '') + ' · ' + (_BD_EST[x.estado] || x.estado))), 'font-size:12px;color:var(--muted)')
+        + td(esC ? '' : '<button type="button" title="Eliminar de la base" onclick="event.stopPropagation();bdBorrar(\'' + x.id + '\')" style="border:none;background:none;color:#DC2626;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1">✕</button>', 'text-align:right;width:32px')
         + '</tr>';
     }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
+}
+// Elimina un tercero de la base (los clientes no se borran desde acá)
+async function bdBorrar(id) {
+  var x = _bd.data.find(function (y) { return y.id === id; }); if (!x || x._tipo === 'cliente') return;
+  if (!confirm('¿Elimino a ' + x.nombre + ' de la base de datos? No se puede deshacer.')) return;
+  var r = await sb.from('base_contactos').delete().eq('id', id);
+  if (r.error) { alert('No se pudo eliminar: ' + r.error.message); return; }
+  _bd.data = _bd.data.filter(function (y) { return y.id !== id; });
+  bdRender();
 }
 function bdEditar(id) {
   var x = id ? _bd.data.find(function (y) { return y.id === id; }) : {};
