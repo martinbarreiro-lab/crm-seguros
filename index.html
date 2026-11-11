@@ -4050,7 +4050,7 @@ function requierePdf(p) {
 }
 // ══ BASE DE DATOS: personas que nos pasaron (nóminas, siniestros, mails) para futuras campañas ══
 var _bd = { data: [], cli: {} };
-var _BD_ORIG = { nomina: 'Nómina de póliza', siniestro: 'Siniestro', beneficiario: 'Beneficiario', cotizacion: 'Pidió cotización', mail: 'Mail / chat', manual: 'Cargado a mano' };
+var _BD_ORIG = { nomina: 'Nómina de póliza', siniestro: 'Siniestro', beneficiario: 'Beneficiario', cotizacion: 'Pidió cotización', agenda: 'Agenda del celular', mail: 'Mail / chat', manual: 'Cargado a mano' };
 // Beneficiarios escritos en texto → personas (descarta "tomador", "herederos legales", etc.)
 function _bdBeneficiarios(txt) {
   return String(txt || '').split(/\n|;|\/(?=\s*[A-ZÁÉÍÓÚÑ])/).map(function (l) {
