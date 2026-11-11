@@ -4082,11 +4082,14 @@ async function cargarBase() {
     sec.innerHTML = '<div class="toprow" style="align-items:flex-start"><div><div style="font-size:18px;font-weight:500">Base de datos</div>'
       + '<div style="font-size:12px;color:var(--muted);margin-top:2px">Todos tus clientes y las personas que nos pasaron (nóminas, siniestros, cotizaciones, chat), sin repetidos, para campañas.</div></div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="bd-leer-btn" onclick="bdLeerNominas()" title="Lee la nómina de todas las pólizas de AP y vida que tienen PDF">🔄 Leer nóminas de todas las pólizas</button><button type="button" class="btn" id="bd-compl-btn" style="display:none" onclick="bdCompletarNombres()">✍ Completar nombres</button><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
+      + '<div id="bd-tabs" style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-top:14px;overflow-x:auto">'
+      + [['', 'Todos'], ['si', 'Clientes'], ['no', 'Terceros'], ['cia', 'Compañías / Brokers']].map(function (t) { return '<button type="button" class="bd-tab" data-v="' + t[0] + '" onclick="bdTab(\'' + t[0] + '\')" style="border:none;background:none;padding:8px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;color:var(--muted)">' + t[1] + ' <span class="bd-tab-n" style="font-size:11px;opacity:.7"></span></button>'; }).join('')
+      + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">'
       + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
       + sel('bd-orig', [['', 'Todos los orígenes']].concat(Object.keys(_BD_ORIG).map(function (k) { return [k, _BD_ORIG[k]]; })))
       + sel('bd-est', [['', 'Todos los estados']].concat(Object.keys(_BD_EST).map(function (k) { return [k, _BD_EST[k]]; })))
-      + sel('bd-cli', [['', 'Clientes y terceros'], ['si', 'Solo clientes'], ['no', 'Solo terceros (no clientes)'], ['cia', 'Gente de compañías / brokers']])
+      + '<input type="hidden" id="bd-cli" value="">'
       + sel('bd-tiene', [['', 'Cualquier seguro'], ['si', 'Tiene'], ['no', 'No tiene']])
       + sel('bd-ramo', [['', '(ramo)'], ['Automotor', 'Auto'], ['Motos', 'Moto'], ['Hogar', 'Hogar'], ['Combinado', 'Combinado familiar'], ['Comercio', 'Comercio'], ['Accidentes', 'Accidentes personales'], ['Vida', 'Vida'], ['ART', 'ART'], ['Responsabilidad', 'Resp. civil'], ['Caución', 'Caución']])
       + sel('bd-cont', [['', 'Con o sin contacto'], ['tel', 'Con teléfono'], ['mail', 'Con mail'], ['sin', 'Sin teléfono ni mail']])
@@ -4180,8 +4183,8 @@ function _bdFiltrados() {
 function bdRender() {
   var box = document.getElementById('bd-lista'); if (!box) return;
   var l = _bdFiltrados();
-  var nCia = _bd.data.filter(function (x) { return x._tipo === 'compania'; }).length;
-  document.getElementById('bd-total').textContent = l.length + ' de ' + (_bd.data.length - nCia) + ' personas' + (nCia ? ' · ' + nCia + ' de compañías y brokers aparte (filtro "Gente de compañías")' : '');
+  _bdTabsPintar();
+  document.getElementById('bd-total').textContent = l.length + (l.length === 1 ? ' persona' : ' personas');
   if (!l.length) { box.innerHTML = '<div style="color:var(--muted);padding:16px;background:var(--white);border-radius:var(--r);border:0.5px solid var(--border)">' + (_bd.data.length ? 'Nadie con esos filtros.' : 'Todavía no hay personas. Se cargan solas cuando el CRM lee una nómina o un siniestro, o desde el chat.') + '</div>'; return; }
   var th = function (t) { return '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border)">' + t + '</th>'; };
   box.innerHTML = '<div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--r);overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
@@ -4201,6 +4204,15 @@ function bdRender() {
         + td(esC ? '' : '<button type="button" title="Eliminar de la base" onclick="event.stopPropagation();bdBorrar(\'' + x.id + '\')" style="border:none;background:none;color:#DC2626;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1">✕</button>', 'text-align:right;width:32px')
         + '</tr>';
     }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
+}
+function bdTab(v) { document.getElementById('bd-cli').value = v; bdRender(); }
+function _bdTabsPintar() {
+  var v = (document.getElementById('bd-cli') || {}).value || '', cnt = { '': 0, si: 0, no: 0, cia: 0 };
+  _bd.data.forEach(function (x) { if (x._tipo === 'compania') cnt.cia++; else { cnt['']++; cnt[x._tipo === 'cliente' ? 'si' : 'no']++; } });
+  document.querySelectorAll('.bd-tab').forEach(function (b) {
+    var on = b.dataset.v === v; b.style.borderBottomColor = on ? 'var(--accent, #2563EB)' : 'transparent'; b.style.color = on ? 'var(--text, #0F172A)' : 'var(--muted)'; b.style.fontWeight = on ? '600' : '400';
+    b.querySelector('.bd-tab-n').textContent = '(' + cnt[b.dataset.v] + ')';
+  });
 }
 function _bdPendNombre() { return _bd.data.filter(function (x) { return x._tipo !== 'cliente' && (x.etiquetas || []).indexOf('revisar') >= 0; }); }
 function _bdBotonCompletar() { var b = document.getElementById('bd-compl-btn'), n = _bdPendNombre().length; if (b) { b.style.display = n ? '' : 'none'; b.textContent = '✍ Completar nombres (' + n + ')'; } }
