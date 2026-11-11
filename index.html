@@ -4081,7 +4081,7 @@ async function cargarBase() {
     var sel = function (id, ops) { return '<select id="' + id + '" onchange="bdRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white)">' + ops.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>'; };
     sec.innerHTML = '<div class="toprow" style="align-items:flex-start"><div><div style="font-size:18px;font-weight:500">Base de datos</div>'
       + '<div style="font-size:12px;color:var(--muted);margin-top:2px">Todos tus clientes y las personas que nos pasaron (nóminas, siniestros, cotizaciones, chat), sin repetidos, para campañas.</div></div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="bd-leer-btn" onclick="bdLeerNominas()" title="Lee la nómina de todas las pólizas de AP y vida que tienen PDF">🔄 Leer nóminas de todas las pólizas</button><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="bd-leer-btn" onclick="bdLeerNominas()" title="Lee la nómina de todas las pólizas de AP y vida que tienen PDF">🔄 Leer nóminas de todas las pólizas</button><button type="button" class="btn" id="bd-compl-btn" style="display:none" onclick="bdCompletarNombres()">✍ Completar nombres</button><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">'
       + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
       + sel('bd-orig', [['', 'Todos los orígenes']].concat(Object.keys(_BD_ORIG).map(function (k) { return [k, _BD_ORIG[k]]; })))
@@ -4118,6 +4118,7 @@ async function cargarBase() {
     filas.push(Object.assign({ _tipo: 'tercero', ramos: [] }, x));
   });
   _bd.data = filas;
+  _bdBotonCompletar();
   bdRender();
 }
 // Recorre las AP / Vida (no las de paquete) y lee la nómina de cada PDF: la guarda en la póliza y suma las personas a la Base
@@ -4198,6 +4199,51 @@ function bdRender() {
         + '</tr>';
     }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
 }
+function _bdPendNombre() { return _bd.data.filter(function (x) { return x._tipo !== 'cliente' && (x.etiquetas || []).indexOf('revisar') >= 0; }); }
+function _bdBotonCompletar() { var b = document.getElementById('bd-compl-btn'), n = _bdPendNombre().length; if (b) { b.style.display = n ? '' : 'none'; b.textContent = '✍ Completar nombres (' + n + ')'; } }
+// Lista rápida para poner nombre y apellido a los contactos que están con apodo: escribís, Enter y pasa al siguiente
+function bdCompletarNombres() {
+  var l = _bdPendNombre(); if (!l.length) { alert('No quedan contactos con apodo para completar.'); return; }
+  var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '640px';
+  document.getElementById('env-titulo').textContent = '✍ Completar nombres (' + l.length + ')';
+  document.getElementById('env-cuerpo').innerHTML = '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Escribí nombre y apellido y apretá <b>Enter</b> (pasa al siguiente). El apodo queda guardado en notas. Si no lo querés, tocá ✕.</p>'
+    + '<div style="max-height:60vh;overflow:auto">' + l.map(function (x) {
+      return '<div id="bdc-' + x.id + '" style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:0.5px solid var(--border)">'
+        + '<div style="flex:0 0 38%;min-width:0"><div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.nombre) + '</div><div style="font-size:11px;color:var(--muted)">' + esc(x.telefono || x.email || '') + '</div></div>'
+        + '<input class="bdc-in" data-id="' + x.id + '" placeholder="Nombre y apellido" style="flex:1;min-width:0;font-size:13px;padding:6px 8px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();bdGuardarNombre(\'' + x.id + '\');}">'
+        + '<button type="button" class="btn btn-sm" title="Guardar" onclick="bdGuardarNombre(\'' + x.id + '\')">✓</button>'
+        + '<button type="button" title="Eliminar" onclick="bdBorrarDesdeCompletar(\'' + x.id + '\')" style="border:none;background:none;color:#DC2626;font-size:16px;cursor:pointer">✕</button></div>';
+    }).join('') + '</div><div style="text-align:right;margin-top:10px"><button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\');bdRender()">Listo</button></div>';
+  m.classList.add('open');
+  var f = document.querySelector('.bdc-in'); if (f) f.focus();
+}
+function _bdcSiguiente(id) {
+  var ins = [].slice.call(document.querySelectorAll('.bdc-in')), i = ins.findIndex(function (e) { return e.dataset.id === id; });
+  var row = document.getElementById('bdc-' + id); if (row) row.remove();
+  var rest = [].slice.call(document.querySelectorAll('.bdc-in'));
+  if (rest.length) (rest[Math.min(Math.max(i, 0), rest.length - 1)]).focus();
+  document.getElementById('env-titulo').textContent = '✍ Completar nombres (' + rest.length + ')';
+  _bdBotonCompletar();
+}
+async function bdGuardarNombre(id) {
+  var inp = document.querySelector('.bdc-in[data-id="' + id + '"]'), v = (inp && inp.value || '').trim().toUpperCase();
+  if (!v) { if (inp) inp.focus(); return; }
+  var x = _bd.data.find(function (y) { return y.id === id; }); if (!x) return;
+  var et = (x.etiquetas || []).filter(function (t) { return t !== 'revisar'; }); if (et.indexOf('conocido') < 0) et.push('conocido');
+  var notas = (x.notas ? x.notas + '\n' : '') + 'Le dicen: ' + x.nombre;
+  var r = await sb.from('base_contactos').update({ nombre: v, etiquetas: et, notas: notas, updated_at: new Date().toISOString() }).eq('id', id);
+  if (r.error) { alert('No se pudo guardar: ' + r.error.message); return; }
+  x.nombre = v; x.etiquetas = et; x.notas = notas;
+  _bdcSiguiente(id);
+}
+async function bdBorrarDesdeCompletar(id) {
+  var x = _bd.data.find(function (y) { return y.id === id; }); if (!x) return;
+  if (!confirm('¿Elimino a ' + x.nombre + ' de la base de datos? No se puede deshacer.')) return;
+  var r = await sb.from('base_contactos').delete().eq('id', id);
+  if (r.error) { alert('No se pudo eliminar: ' + r.error.message); return; }
+  _bd.data = _bd.data.filter(function (y) { return y.id !== id; });
+  _bdcSiguiente(id);
+}
 // Elimina un tercero de la base (los clientes no se borran desde acá)
 async function bdBorrar(id) {
   var x = _bd.data.find(function (y) { return y.id === id; }); if (!x || x._tipo === 'cliente') return;
@@ -4205,6 +4251,7 @@ async function bdBorrar(id) {
   var r = await sb.from('base_contactos').delete().eq('id', id);
   if (r.error) { alert('No se pudo eliminar: ' + r.error.message); return; }
   _bd.data = _bd.data.filter(function (y) { return y.id !== id; });
+  _bdBotonCompletar();
   bdRender();
 }
 function bdEditar(id) {
