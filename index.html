@@ -4084,6 +4084,9 @@ async function cargarBase() {
       + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="bd-leer-btn" onclick="bdLeerNominas()" title="Lee la nómina de todas las pólizas de AP y vida que tienen PDF">🔄 Leer nóminas de todas las pólizas</button><button type="button" class="btn" id="bd-compl-btn" style="display:none" onclick="bdCompletarNombres()">✍ Completar nombres</button><button type="button" class="btn" onclick="bdExportar()">⬇ Exportar Excel</button><button type="button" class="btn btn-p" onclick="bdEditar()">+ Agregar</button></div></div>'
       + '<div id="bd-tabs" style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-top:14px;overflow-x:auto">'
       + [['', 'Todos'], ['si', 'Clientes'], ['no', 'Terceros'], ['cia', 'Compañías / Brokers']].map(function (t) { return '<button type="button" class="bd-tab" data-v="' + t[0] + '" onclick="bdTab(\'' + t[0] + '\')" style="border:none;background:none;padding:8px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;color:var(--muted)">' + t[1] + ' <span class="bd-tab-n" style="font-size:11px;opacity:.7"></span></button>'; }).join('')
+      + '<div style="flex:1"></div><div id="bd-clases" style="display:flex;gap:2px;align-self:center;background:#F1F5F9;border-radius:8px;padding:2px">'
+      + [['', 'Ambos'], ['persona', '👤 Personas'], ['empresa', '🏢 Empresas']].map(function (t) { return '<button type="button" class="bd-clase" data-v="' + t[0] + '" onclick="bdClase(\'' + t[0] + '\')" style="border:none;padding:5px 10px;font-size:12px;border-radius:6px;cursor:pointer;white-space:nowrap;background:none">' + t[1] + '</button>'; }).join('')
+      + '</div><input type="hidden" id="bd-clase" value="">'
       + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">'
       + '<input id="bd-q" placeholder="Buscar nombre, DNI, localidad, empresa…" oninput="bdRender()" style="flex:1;min-width:200px;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--rsm)">'
@@ -4106,7 +4109,8 @@ async function cargarBase() {
   var dniCli = {}, filas = [];
   (rs[1].data || []).forEach(function (c) {
     var doc = String(c.dni || c.cuit || '').replace(/\D/g, '');
-    var f = { id: 'c:' + c.id, _tipo: 'cliente', cliente_id: c.id, nombre: nombreClienteLista(c), dni: doc || null, fecha_nacimiento: c.fecha_nacimiento,
+    var cuitN = String(c.cuit || '').replace(/\D/g, '');
+    var f = { id: 'c:' + c.id, _tipo: 'cliente', _emp: c.tipo_cliente === 'empresa' || /^3[034]/.test(cuitN), cliente_id: c.id, nombre: nombreClienteLista(c), dni: doc || null, fecha_nacimiento: c.fecha_nacimiento,
       telefono: [c.telefono_principal, c.telefono_secundario].filter(Boolean).join(' / ') || null, email: [c.email_principal, c.email_secundario].filter(Boolean).join(' / ') || null,
       direccion: c.direccion || [c.calle, c.numero_dom].filter(Boolean).join(' ') || null, localidad: c.localidad, ocupacion: c.profesion || c.actividad,
       origen: 'cliente', origen_detalle: (ramos[c.id] || []).length ? 'Cliente' : 'Cliente sin pólizas vigentes', origenes: [], estado: 'cliente', etiquetas: [], ramos: ramos[c.id] || [], created_at: c.created_at };
@@ -4160,7 +4164,7 @@ async function bdLeerNominas() {
 }
 function _bdFiltrados() {
   var v = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
-  var q = v('bd-q').toUpperCase(), o = v('bd-orig'), e = v('bd-est'), c = v('bd-cli'), ct = v('bd-cont'), emin = parseInt(v('bd-emin')), emax = parseInt(v('bd-emax')), ti = v('bd-tiene'), ra = v('bd-ramo').toUpperCase();
+  var q = v('bd-q').toUpperCase(), o = v('bd-orig'), e = v('bd-est'), c = v('bd-cli'), ct = v('bd-cont'), emin = parseInt(v('bd-emin')), emax = parseInt(v('bd-emax')), ti = v('bd-tiene'), ra = v('bd-ramo').toUpperCase(), cla = v('bd-clase');
   return _bd.data.filter(function (x) {
     if (q && [x.nombre, x.dni, x.localidad, x.direccion, x.telefono, x.email, x.origen_detalle, x.notas, x.ocupacion, (x.etiquetas || []).join(' '), (x.ramos || []).join(' ')].join(' ').toUpperCase().indexOf(q) < 0) return false;
     if (o && x.origen !== o && !(x.origenes || []).some(function (y) { return y.origen === o; })) return false;
@@ -4169,6 +4173,7 @@ function _bdFiltrados() {
     if (c === 'cia') { if (x._tipo !== 'compania') return false; } else if (x._tipo === 'compania') return false;
     if (c === 'no' && x._tipo !== 'tercero') return false;
     if (c === 'si' && x._tipo !== 'cliente') return false;
+    if (cla && _bdClaseDe(x) !== cla) return false;
     if (ra) { var tieneR = (x.ramos || []).some(function (r) { return r.toUpperCase().indexOf(ra) >= 0; }); if (ti === 'si' && !tieneR) return false; if (ti === 'no' && tieneR) return false; if (!ti && !tieneR) return false; }
     else if (ti === 'si' && !(x.ramos || []).length) return false; else if (ti === 'no' && (x.ramos || []).length) return false;
     if (ct === 'tel' && !x.telefono) return false;
@@ -4193,7 +4198,7 @@ function bdRender() {
       var ed = _bdEdad(x.fecha_nacimiento);
       var esC = x._tipo === 'cliente', td = function (h, st) { return '<td style="padding:8px 10px;' + (st || '') + '">' + h + '</td>'; };
       return '<tr class="row" style="cursor:pointer;border-top:0.5px solid var(--border)" onclick="' + (esC ? 'irAFichaCliente(\'' + x.cliente_id + '\')' : 'bdEditar(\'' + x.id + '\')') + '">'
-        + td(esc(x.nombre) + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : ''), 'font-weight:500')
+        + td((_bdClaseDe(x) === 'empresa' ? '🏢 ' : '') + esc(x.nombre) + (x.no_contactar ? ' <span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:8px">no contactar</span>' : ''), 'font-weight:500')
         + td(esC ? '<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:8px">Cliente</span>' : x._tipo === 'compania' ? '<span style="font-size:10px;background:#F1F5F9;color:#475569;padding:2px 7px;border-radius:8px">Compañía</span>' : '<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 7px;border-radius:8px">Tercero</span>')
         + td(esc(x.dni || ''))
         + td(ed !== null ? ed : '')
@@ -4205,6 +4210,17 @@ function bdRender() {
         + '</tr>';
     }).join('') + '</tbody></table></div>' + (l.length > 500 ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Se muestran 500; exportá para verlos todos.</div>' : '');
 }
+// ¿Persona o empresa? Clientes: según su ficha. Terceros: la etiqueta manda; si no, se deduce del nombre / mail
+var _BD_EMP_RE = /\b(S\.?\s?R\.?\s?L\.?|S\.?\s?A\.?|S\.?\s?A\.?\s?S\.?|SH|COOPERATIVA|COOP|ESTUDIO|INMOBILIARIA|TALLER|GOMERIA|GOMERÍA|PINTURERIA|PINTURERÍA|FARMACIA|SANATORIO|CLINICA|CLÍNICA|HOSPITAL|HOTEL|DISTRIBUIDORA|DIST|LOGISTICA|LOGÍSTICA|EXPRESS|REPUESTOS|ABERTURAS|MUEBLES|PANADERIA|PANADERÍA|PANIFICADORA|FUNDICION|FUNDICIÓN|CONSULTORA|CONSULTORES|CONSULTORIOS|ASOCIADOS|EMPRESA|FIDEICOMISO|ADMINISTRACION|ADMINISTRACIÓN|CATERING|INDUSTRIAS|COMERCIAL|SERVICIOS|CORRUGADOS|ELECTRICIDAD|MUNICIPALIDAD|PADEL CENTER)\b/;
+function _bdClaseDe(x) {
+  if (x._tipo === 'cliente') return x._emp ? 'empresa' : 'persona';
+  var et = x.etiquetas || [];
+  if (et.indexOf('empresa') >= 0) return 'empresa'; if (et.indexOf('persona') >= 0) return 'persona';
+  if (_BD_EMP_RE.test(String(x.nombre || '').toUpperCase())) return 'empresa';
+  if (/^(info|contacto|ventas|administracion|admin|facturacion|cobranzas|recepcion|gerencia|soporte|consultas)\b/i.test(String(x.email || ''))) return 'empresa';
+  return 'persona';
+}
+function bdClase(v) { document.getElementById('bd-clase').value = v; bdRender(); }
 function bdTab(v) { document.getElementById('bd-cli').value = v; bdRender(); }
 function _bdTabsPintar() {
   var v = (document.getElementById('bd-cli') || {}).value || '', cnt = { '': 0, si: 0, no: 0, cia: 0 };
@@ -4213,6 +4229,8 @@ function _bdTabsPintar() {
     var on = b.dataset.v === v; b.style.borderBottomColor = on ? 'var(--accent, #2563EB)' : 'transparent'; b.style.color = on ? 'var(--text, #0F172A)' : 'var(--muted)'; b.style.fontWeight = on ? '600' : '400';
     b.querySelector('.bd-tab-n').textContent = '(' + cnt[b.dataset.v] + ')';
   });
+  var cv = (document.getElementById('bd-clase') || {}).value || '';
+  document.querySelectorAll('.bd-clase').forEach(function (b) { var on = b.dataset.v === cv; b.style.background = on ? '#fff' : 'none'; b.style.boxShadow = on ? '0 1px 2px rgba(0,0,0,.1)' : 'none'; b.style.fontWeight = on ? '600' : '400'; });
 }
 function _bdPendNombre() { return _bd.data.filter(function (x) { return x._tipo !== 'cliente' && (x.etiquetas || []).indexOf('revisar') >= 0; }); }
 function _bdBotonCompletar() { var b = document.getElementById('bd-compl-btn'), n = _bdPendNombre().length; if (b) { b.style.display = n ? '' : 'none'; b.textContent = '✍ Completar nombres (' + n + ')'; } }
@@ -4283,6 +4301,7 @@ function bdEditar(id) {
     + '<div style="display:flex;gap:8px">' + f('Dirección', 'bd-f-dir', x.direccion) + f('Localidad', 'bd-f-loc', x.localidad) + '</div>'
     + f('Ocupación / empresa', 'bd-f-ocu', x.ocupacion)
     + '<div style="display:flex;gap:8px"><div class="frow" style="flex:1"><label>Estado</label><select id="bd-f-est">' + Object.keys(_BD_EST).map(function (k) { return '<option value="' + k + '"' + ((x.estado || 'nuevo') === k ? ' selected' : '') + '>' + _BD_EST[k] + '</option>'; }).join('') + '</select></div>'
+    + '<div class="frow" style="flex:1"><label>Es</label><select id="bd-f-cla"><option value="persona"' + (_bdClaseDe(x) === 'persona' ? ' selected' : '') + '>👤 Persona</option><option value="empresa"' + (_bdClaseDe(x) === 'empresa' ? ' selected' : '') + '>🏢 Empresa</option></select></div>'
     + '<div class="frow" style="flex:1"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="bd-f-noc"' + (x.no_contactar ? ' checked' : '') + ' style="width:auto"> No contactar</label></div></div>'
     + f('Etiquetas (separadas por coma)', 'bd-f-etq', (x.etiquetas || []).join(', '))
     + '<div class="frow"><label>Notas</label><textarea id="bd-f-not" rows="3">' + esc(x.notas || '') + '</textarea></div>'
@@ -4297,7 +4316,7 @@ function _bdForm() {
   var v = function (i) { return (document.getElementById(i).value || '').trim(); };
   return { nombre: v('bd-f-nom').toUpperCase(), dni: v('bd-f-dni').replace(/\D/g, '') || null, fecha_nacimiento: v('bd-f-nac') || null, telefono: v('bd-f-tel') || null, email: v('bd-f-mail').toLowerCase() || null,
     localidad: v('bd-f-loc') || null, direccion: v('bd-f-dir') || null, ocupacion: v('bd-f-ocu') || null, estado: v('bd-f-est'), no_contactar: document.getElementById('bd-f-noc').checked,
-    etiquetas: v('bd-f-etq') ? v('bd-f-etq').split(',').map(function (t) { return t.trim(); }).filter(Boolean) : [], notas: v('bd-f-not') || null, updated_at: new Date().toISOString() };
+    etiquetas: (v('bd-f-etq') ? v('bd-f-etq').split(',').map(function (t) { return t.trim(); }).filter(Boolean) : []).filter(function (t) { return t !== 'persona' && t !== 'empresa'; }).concat([document.getElementById('bd-f-cla').value]), notas: v('bd-f-not') || null, updated_at: new Date().toISOString() };
 }
 async function bdGuardar() {
   var d = _bdForm(), x = _bd.edit || {};
@@ -4319,13 +4338,14 @@ async function bdAProspecto() {
 }
 function bdExportar() {
   var l = _bdFiltrados(); if (!l.length) { alert('No hay nadie para exportar con esos filtros.'); return; }
-  var cols = [['Nombre', 'nombre'], ['Tipo', null], ['DNI / CUIT', 'dni'], ['Nacimiento', 'fecha_nacimiento'], ['Edad', null], ['Teléfono', 'telefono'], ['Mail', 'email'], ['Dirección', 'direccion'], ['Localidad', 'localidad'], ['Ocupación', 'ocupacion'], ['Seguros vigentes', null], ['De dónde salió', 'origen_detalle'], ['Estado', 'estado'], ['No contactar', null], ['Etiquetas', null], ['Notas', 'notas']];
+  var cols = [['Nombre', 'nombre'], ['Tipo', null], ['Persona / Empresa', null], ['DNI / CUIT', 'dni'], ['Nacimiento', 'fecha_nacimiento'], ['Edad', null], ['Teléfono', 'telefono'], ['Mail', 'email'], ['Dirección', 'direccion'], ['Localidad', 'localidad'], ['Ocupación', 'ocupacion'], ['Seguros vigentes', null], ['De dónde salió', 'origen_detalle'], ['Estado', 'estado'], ['No contactar', null], ['Etiquetas', null], ['Notas', 'notas']];
   var q = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
   var rows = [cols.map(function (c) { return q(c[0]); }).join(';')].concat(l.map(function (x) {
     return cols.map(function (c) {
       if (c[0] === 'Edad') return q(_bdEdad(x.fecha_nacimiento));
       if (c[0] === 'Tipo') return q(x._tipo === 'cliente' ? 'Cliente' : x._tipo === 'compania' ? 'Compañía' : 'Tercero');
       if (c[0] === 'Seguros vigentes') return q((x.ramos || []).join(', '));
+      if (c[0] === 'Persona / Empresa') return q(_bdClaseDe(x) === 'empresa' ? 'Empresa' : 'Persona');
       if (c[0] === 'No contactar') return q(x.no_contactar ? 'Sí' : '');
       if (c[0] === 'Etiquetas') return q((x.etiquetas || []).join(', '));
       if (c[0] === 'Estado') return q(_BD_EST[x.estado] || x.estado);
