@@ -4394,15 +4394,27 @@ function polDireccion(p) {
   if (!x && p && p.bien_asegurado && /·/.test(p.bien_asegurado)) x = p.bien_asegurado.split('·').slice(1).join('·');
   return String(x).replace(/\s*-\s*CP\s*\d+/i, '').trim();
 }
-async function editarAliasPol(polId) {
-  var r = await sb.from('polizas').select('datos_ramo').eq('id', polId).single(); if (r.error) { alert(r.error.message); return; }
-  var dr = _drObj(r.data), v = prompt('Nombre para identificar esta póliza (ej: Clínica, Bar, Casa de la costa). Dejalo vacío para sacarlo:', dr.alias || '');
-  if (v === null) return;
-  v = v.trim(); if (v) dr.alias = v; else delete dr.alias;
-  var u = await sb.from('polizas').update({ datos_ramo: dr }).eq('id', polId); if (u.error) { alert(u.error.message); return; }
+// Nombre propio de la póliza: campo dentro de la misma ventana (sin la cajita del navegador, que algunos bloquean)
+function editarAliasPol(polId) {
+  var box = document.getElementById('mpd-alias-box'); if (!box) return;
+  var actual = box.dataset.alias || '';
+  box.innerHTML = '<input id="mpd-alias-in" value="' + esc(actual) + '" placeholder="Ej: Clínica, Bar, Local Entre Ríos" style="font-size:12px;padding:4px 8px;width:220px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();guardarAliasPol(\'' + polId + '\');}if(event.key===\'Escape\'){abrirDetallePol(\'' + polId + '\');}">'
+    + ' <button type="button" class="btn btn-sm btn-p" onclick="guardarAliasPol(\'' + polId + '\')">Guardar</button>';
+  var i = document.getElementById('mpd-alias-in'); if (i) { i.focus(); i.select(); }
+}
+async function guardarAliasPol(polId) {
+  var i = document.getElementById('mpd-alias-in'), v = i ? i.value.trim() : '';
+  var r = await sb.from('polizas').select('datos_ramo').eq('id', polId).single(); if (r.error) { alert('No se pudo guardar: ' + r.error.message); return; }
+  var dr = _drObj(r.data); if (v) dr.alias = v; else delete dr.alias;
+  var u = await sb.from('polizas').update({ datos_ramo: dr }).eq('id', polId); if (u.error) { alert('No se pudo guardar: ' + u.error.message); return; }
   if (typeof _allPolizas !== 'undefined' && _allPolizas) _allPolizas.forEach(function (x) { if (x.id === polId) x.datos_ramo = dr; });
+  // Si había una tarea "Ponerle nombre" de esta póliza, se cierra sola
+  if (v) await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Nombre puesto: ' + v }).eq('poliza_id', polId).ilike('titulo', 'Ponerle nombre%').neq('estado', 'cerrada');
+  mostrarAlerta(v ? '✅ Nombre guardado: ' + v : 'Nombre quitado');
   abrirDetallePol(polId);
   try { if (typeof fichaId !== 'undefined' && fichaId) renderFicha(fichaId); } catch (e) {}
+  try { if (typeof cargarTareas === 'function' && document.getElementById('sec-tareas') && document.getElementById('sec-tareas').classList.contains('active')) cargarTareas(); } catch (e) {}
+  try { var sd = document.getElementById('sec-dashboard'); if (sd && sd.classList.contains('active') && typeof cargarDashboard === 'function') cargarDashboard(); } catch (e) {}
 }
 function sufPolTarea(p) { if (!p || !p.numero_poliza) return ''; var al = polAlias(p) || (esComercio(p) ? polDireccion(p) : ''); return ' · ' + [p.ramo, p.aseguradora].filter(Boolean).join(' ') + ' N° ' + p.numero_poliza + (al ? ' · ' + al : ''); }
 function faltaPdf(p) { return requierePdf(p) && !p.pdf_url; }
@@ -9933,6 +9945,8 @@ async function tarAccion(estado, comentario, extra) {
   if (upd.titulo) { document.getElementById('tar-det-titulo').textContent = upd.titulo; var st = document.getElementById('tar-edit-titulo'); if (st) st.value = upd.titulo; }
   renderTareaVista(t); cargarComentariosTarea(t.id);
   if (typeof cargarTareas === 'function') try { cargarTareas(); } catch (e) {}
+  // Si se cerró desde el Dashboard, que desaparezca de "Hoy y mañana" sin recargar
+  try { var sd = document.getElementById('sec-dashboard'); if (sd && sd.classList.contains('active') && typeof cargarDashboard === 'function') cargarDashboard(); } catch (e) {}
   if (estado === 'cerrada') mostrarAlerta('Tarea hecha');
 }
 function tarPosponer() {
@@ -12101,7 +12115,7 @@ function renderDetallePol() {
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
             '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero_poliza||'—')+'</span>'+
             '<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;background:'+badgeBg+';color:'+badgeColor+'">'+badgeText+'</span>'+
-            (polAlias(p) ? '<span onclick="editarAliasPol(\''+p.id+'\')" title="Cambiar nombre" style="cursor:pointer;font-size:12px;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#92400E;font-weight:600">🏷 '+esc(polAlias(p))+' ✏</span>' : '<span onclick="editarAliasPol(\''+p.id+'\')" style="cursor:pointer;font-size:11px;color:#2563EB">🏷 Ponerle un nombre</span>')+
+            '<span id="mpd-alias-box" data-alias="'+esc(polAlias(p))+'">'+(polAlias(p) ? '<span onclick="editarAliasPol(\''+p.id+'\')" title="Cambiar nombre" style="cursor:pointer;font-size:12px;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#92400E;font-weight:600">🏷 '+esc(polAlias(p))+' ✏</span>' : '<span onclick="editarAliasPol(\''+p.id+'\')" style="cursor:pointer;font-size:11px;color:#2563EB">🏷 Ponerle un nombre</span>')+'</span>'+
           '</div>'+
           '<div style="font-size:13px;color:#6B7280">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+(esComercio(p) && polDireccion(p) ? ' · 📍 <b style="color:#374151">'+esc(polDireccion(p))+'</b>' : '')+'</div>'+
         '</div>'+
