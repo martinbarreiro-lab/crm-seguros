@@ -4384,7 +4384,27 @@ async function registrarNominaEnBase(personas, pol, nomCliente) {
   } catch (e) { console.warn('base contactos', e); }
 }
 // " · Comercio Zurich N° 52000329853": para que las tareas del mismo cliente no se confundan
-function sufPolTarea(p) { if (!p || !p.numero_poliza) return ''; return ' · ' + [p.ramo, p.aseguradora].filter(Boolean).join(' ') + ' N° ' + p.numero_poliza; }
+function _drObj(p) { var d = p && p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = {}; } } return d || {}; }
+// Nombre que le pone el productor a la póliza ("Clínica", "Bar")
+function polAlias(p) { return String(_drObj(p).alias || '').trim(); }
+function esComercio(p) { var d = _drObj(p); return /comercio|integral/i.test((p && p.ramo || '') + ' ' + (d.producto || '') + ' ' + (d.ramo_compania || '')); }
+// Dirección del riesgo (comercio / hogar)
+function polDireccion(p) {
+  var d = _drObj(p), x = d.ubicacion || d.direccion_riesgo || d.direccion || '';
+  if (!x && p && p.bien_asegurado && /·/.test(p.bien_asegurado)) x = p.bien_asegurado.split('·').slice(1).join('·');
+  return String(x).replace(/\s*-\s*CP\s*\d+/i, '').trim();
+}
+async function editarAliasPol(polId) {
+  var r = await sb.from('polizas').select('datos_ramo').eq('id', polId).single(); if (r.error) { alert(r.error.message); return; }
+  var dr = _drObj(r.data), v = prompt('Nombre para identificar esta póliza (ej: Clínica, Bar, Casa de la costa). Dejalo vacío para sacarlo:', dr.alias || '');
+  if (v === null) return;
+  v = v.trim(); if (v) dr.alias = v; else delete dr.alias;
+  var u = await sb.from('polizas').update({ datos_ramo: dr }).eq('id', polId); if (u.error) { alert(u.error.message); return; }
+  if (typeof _allPolizas !== 'undefined' && _allPolizas) _allPolizas.forEach(function (x) { if (x.id === polId) x.datos_ramo = dr; });
+  abrirDetallePol(polId);
+  try { if (typeof fichaId !== 'undefined' && fichaId) renderFicha(fichaId); } catch (e) {}
+}
+function sufPolTarea(p) { if (!p || !p.numero_poliza) return ''; var al = polAlias(p) || (esComercio(p) ? polDireccion(p) : ''); return ' · ' + [p.ramo, p.aseguradora].filter(Boolean).join(' ') + ' N° ' + p.numero_poliza + (al ? ' · ' + al : ''); }
 function faltaPdf(p) { return requierePdf(p) && !p.pdf_url; }
 // Paquete del auto plegado (▸ / ▾)
 var _pqAbiertos = {};
@@ -5211,6 +5231,17 @@ async function fichaPolizas(c) {
         if (drC.poliza_provincia) cobPartes.push('Póliza ' + drC.poliza_provincia);
         if (drC.gestor_cobranza) cobPartes.push('Cobranza: ' + String(drC.gestor_cobranza).replace(/\b\w/g, function (m) { return m.toUpperCase(); }).replace(/@PROVART\.COM\.AR/i, '@provart.com.ar'));
         if (drC.actividad) cobPartes.push('<span style="color:#9CA3AF">' + drC.actividad + '</span>');
+      } else if (esComercio(p)) {
+        // Integral de comercio: dónde está el riesgo, a qué se dedica y las coberturas principales
+        var dirCom = polDireccion(p);
+        if (dirCom) cobPartes.push('📍 <b style="color:#374151">' + esc(dirCom) + '</b>');
+        if (drC.actividad || drC.rubro) cobPartes.push(esc(drC.actividad || drC.rubro));
+        var vistas = {};
+        cobsPoliza.forEach(function (cb) {
+          var dsc = String(cb.descripcion || '').toUpperCase(), k = /INCENDIO EDIFICIO/.test(dsc) ? 'ie' : /INCENDIO (CONTENIDO|MERCAD)/.test(dsc) ? 'ic' : /^ROBO (CONTENIDO|Y\/O HURTO)|ROBO CONTENIDO/.test(dsc) ? 'ro' : /^RESPONSABILIDAD CIVIL( COMPRENSIVA)?$|^RC COMPRENSIVA/.test(dsc) ? 'rc' : null;
+          if (k && !vistas[k] && cb.suma_asegurada) { vistas[k] = 1; cobPartes.push(cb.descripcion + ': ' + fmtMoney(cb.suma_asegurada)); }
+        });
+        if (!Object.keys(vistas).length) cobPartes.push('<span style="color:#B45309">Coberturas sin cargar · subí o leé el PDF</span>');
       } else {
         // Genérico — suma asegurada
         if (p.suma_asegurada) cobPartes.push('Suma: ' + fmtMoney(p.suma_asegurada));
@@ -5224,6 +5255,7 @@ async function fichaPolizas(c) {
       html.push('<div class="poliza-row' + (p.paquete_de ? ' pq-hijo' : '') + pa.cls + '"' + pa.attr + ' onclick="abrirDetallePol(\'' + p.id + '\')" style="' + (esUltimo ? '' : 'margin-bottom:8px;') + 'display:flex;align-items:center;gap:0;padding:12px;background:#F9FAFB;border-radius:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'none\'">'
            +    '<div style="flex-shrink:0;width:200px;overflow:hidden">'
            +      '<div style="font-size:14px;font-weight:600;color:#111827">' + flechaPaquete(p, hijosDe(p, polActivas)) + (p.numero_poliza || '—') + '</div>'
+           +      (polAlias(p) ? '<div style="font-size:12px;font-weight:600;color:#92400E;margin-top:2px">🏷 ' + esc(polAlias(p)) + '</div>' : '')
            +      '<div style="font-size:12px;color:#6B7280;margin-top:2px">' + ramoConProducto(p, 'Sin ramo') + ' · ' + (p.aseguradora || '—') + '</div>'
            +      chipPdf(p) + lineaPaquete(p, polActivas)
            +    '</div>'
@@ -7690,7 +7722,7 @@ function filtrarPolizasPanel() {
     var totPq = hs.length ? getMensualNum(p) + hs.reduce(function(a,h){ return a + getMensualNum(h); }, 0) : 0;
     return '<div class="pol-row '+pa.cls.trim()+'"'+pa.attr+' style="display:grid;grid-template-columns:2fr 1.2fr 0.8fr 0.8fr 0.8fr 80px;padding:11px 16px;align-items:center;cursor:pointer;'+(p.paquete_de && pa.attr ? 'background:#FAFAFF;' : '')+border+'" onclick="abrirDetallePol(\''+p.id+'\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
       +'<div'+(p.paquete_de?' style="padding-left:18px;border-left:2px solid #DDD6FE"':'')+'><div style="font-size:13px;font-weight:500;color:var(--text)">'+(p.paquete_de?'<span style="color:var(--muted);font-weight:400">'+nombre+'</span>':nombre)+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+flechaPaquete(p, hs)+(p.numero_poliza||'Sin N°')+(p.paquete_de?' <span class="pq-chip">📦 en paquete</span>':(hs.length?' <span class="pq-chip" style="cursor:pointer" onclick="togglePaquete(\''+p.id+'\', event)">📦 +'+hs.length+'</span>':''))+(faltaPdf(p)?(esRamoAuto(p.ramo)?' <span style="font-size:10px;font-weight:700;color:#B91C1C">🔴 Sin PDF</span>':' <span style="font-size:10px;font-weight:600;color:#92400E">⚠ Sin PDF</span>'):'')+'</div></div>'
-      +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+(polAlias(p) ? '<div style="font-weight:600;color:#92400E">🏷 '+esc(polAlias(p))+'</div>' : (esComercio(p) && polDireccion(p) ? '<div>📍 '+esc(polDireccion(p))+'</div>' : ''))+'</div>'
       +'<div><div style="font-size:12px;font-weight:600;color:var(--green)">'+(p.valor_cuota||p.prima_anual?fmtCuota(p):'—')+'</div>'+(totPq?'<div style="font-size:10.5px;color:#5B21B6;margin-top:1px">Paquete $'+Math.round(totPq).toLocaleString('es-AR')+'/mes</div>':'')+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+fmtDate(p.fecha_vencimiento)+'</div>'
       +'<div><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+diasBg+';color:'+diasColor+'">'+diasTxt+'</span></div>'
@@ -12069,8 +12101,9 @@ function renderDetallePol() {
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
             '<span style="font-size:18px;font-weight:600;color:#111827">N° '+(p.numero_poliza||'—')+'</span>'+
             '<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;background:'+badgeBg+';color:'+badgeColor+'">'+badgeText+'</span>'+
+            (polAlias(p) ? '<span onclick="editarAliasPol(\''+p.id+'\')" title="Cambiar nombre" style="cursor:pointer;font-size:12px;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#92400E;font-weight:600">🏷 '+esc(polAlias(p))+' ✏</span>' : '<span onclick="editarAliasPol(\''+p.id+'\')" style="cursor:pointer;font-size:11px;color:#2563EB">🏷 Ponerle un nombre</span>')+
           '</div>'+
-          '<div style="font-size:13px;color:#6B7280">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+'</div>'+
+          '<div style="font-size:13px;color:#6B7280">'+ramoConProducto(p)+' · '+(p.aseguradora||'—')+(p.cobertura?' · '+p.cobertura:'')+(esComercio(p) && polDireccion(p) ? ' · 📍 <b style="color:#374151">'+esc(polDireccion(p))+'</b>' : '')+'</div>'+
         '</div>'+
         '<button type="button" onclick="cerrarModal(\'modal-pol-det\')" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;padding:4px;line-height:1">✕</button>'+
         '<button type="button" id="mpd-expand-btn" onclick="toggleMpdExpand()" title="Ampliar modal" style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:4px;line-height:1;margin-right:4px">'+
@@ -15043,6 +15076,29 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   // Patente y vehículo
   var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
   if (mpat) d.patente = mpat[1].replace(/\s/g, '');
+  // Zurich Integral de Comercio: "POLIZA DE INTEGRAL DE COMERCIO NUMERO: 52000329853 ES RENOVACION DE : …", ubicación, actividad y coberturas con su límite
+  var mzn = T.match(/POLIZA DE [A-Z ]{3,40}NUMERO:\s*(\d{8,})/);
+  if (mzn && /ZURICH/.test(T)) {
+    d.numero_poliza = mzn[1];
+    var mzr = T.match(/ES RENOVACION DE\s*:\s*(\d+)/); if (mzr) d.renueva = mzr[1].replace(/00$/, '');
+    var mzu = T.match(/UBICACION:\s*(.+?)\s*-\s*ARGENTINA/);
+    if (mzu) d.ubicacion = mzu[1].replace(/\s*,\s*/g, ', ').replace(/^(.+?), (\d+) /, '$1 $2, ').replace(/, SANTA FE$/, '').replace(/\b([A-ZÑ])([A-ZÑ]+)\b/g, function (m, a, b) { return a + b.toLowerCase(); });
+    var mza = T.match(/ACTIVIDADES DEL CONTRATANTE:\s*(.+?)\s+UBICACION:/); if (mza) d.actividad = mza[1].charAt(0) + mza[1].slice(1).toLowerCase();
+    var seg = (T.match(/COBERTURAS LIMITE EN \$\s*([\s\S]+?)(?:\.\.\.CONTINUA|\$\s+\d)/) || [])[1];
+    var nums = (T.match(/\$ ((?:\d{1,3}(?:\.\d{3})+ )+)\$ \$/) || [])[1];
+    if (seg) {
+      var partes = seg.split('CLAUSULAS:'), noms = [];
+      for (var zi = 0; zi < partes.length; zi++) {
+        var pz = partes[zi].trim(), cut = -1, rx = /(\S*\d\S*|ASEGURADA|EVENTO|LIMITE|INFORMADO)\s/g, mm;
+        while ((mm = rx.exec(pz + ' '))) cut = mm.index + mm[0].length;
+        var nom = (cut >= 0 ? pz.slice(cut) : pz).trim();
+        if (nom && (zi < partes.length - 1 || /^[A-ZÑ .]+$/.test(nom))) noms.push(nom); // la última parte solo si es un nombre suelto (antes de "…CONTINUA EN ANEXO")
+      }
+      var vals = nums ? nums.trim().split(/\s+/).map(function (x) { return parseFloat(x.replace(/\./g, '')); }) : [];
+      if (vals.length && noms.length === vals.length + 1) noms.pop();
+      if (noms.length) d.coberturas = noms.map(function (n, k) { return { descripcion: (n.charAt(0) + n.slice(1).toLowerCase()).replace(/H\.v\.c\.t\./i, 'HVCT').replace(/T\.riesgo/i, 'Todo riesgo'), suma: vals.length === noms.length ? vals[k] : null }; });
+    }
+  }
   // SMG (Swiss Medical): "INTEGRAL DE COMERCIO 189685-0 RENUEVA: 173341" → el número es el de antes de "RENUEVA"; el premio total va después de "REC. FINANCIERO x,xx"
   if (/SWISS MEDICAL|\bSMG\b/.test(T)) {
     var msm = T.match(/\b(\d{5,8}-\d)\s+(?:RENUEVA:\s*(\d+)|NUEVA|RENOVACION|EMISION)/);
