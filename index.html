@@ -2101,13 +2101,29 @@ function _cargarPdfJs() {
   });
   return _pdfjsP;
 }
+// Une los pedazos de texto del PDF. Algunos PDF (ej. La Segunda) guardan cada letra con acento como un pedazo suelto
+// ("P" "Ó" "LIZA"): si están pegados en el mismo renglón, se unen sin espacio para que quede "PÓLIZA".
+function _unirItemsPdf(items) {
+  var out = '', prev = null;
+  items.forEach(function (x) {
+    if (prev) {
+      var fz = Math.abs(prev.transform[0]) || 8, mismaLinea = Math.abs(x.transform[5] - prev.transform[5]) < fz * 0.3;
+      var gap = x.transform[4] - (prev.transform[4] + (prev.width || 0));
+      var suelta = /^[A-Za-zÀ-ÿ°º]$/.test(String(x.str).trim()) || /^[A-Za-zÀ-ÿ°º]$/.test(String(prev.str).trim()) || /[À-ÿ]$/.test(prev.str) || /^[À-ÿ]/.test(x.str);
+      var pegado = mismaLinea && gap > -fz * 0.3 && gap < fz * 0.12 && /\S$/.test(prev.str) && /^\S/.test(x.str) && suelta;
+      out += pegado ? '' : ' ';
+    }
+    out += x.str; prev = x;
+  });
+  return out;
+}
 async function _textoPdf(archivo) {
   var lib = await _cargarPdfJs();
   var doc = await lib.getDocument({ data: new Uint8Array(await archivo.arrayBuffer()) }).promise;
   var t = [];
   for (var i = 1; i <= Math.min(doc.numPages, 4); i++) {
     var pg = await doc.getPage(i), tc = await pg.getTextContent();
-    t.push(tc.items.map(function (x) { return x.str; }).join(' '));
+    t.push(_unirItemsPdf(tc.items));
   }
   // La nómina de asegurados (AP, vida colectiva) suele estar al final: se suman solo esas páginas
   for (var k = 5; k <= Math.min(doc.numPages, 60); k++) {
