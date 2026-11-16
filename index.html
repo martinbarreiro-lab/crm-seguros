@@ -15150,7 +15150,7 @@ function extraerDatosPoliza(texto, nombreArchivo) {
     if (lst.length) d.coberturas = lst;
   }
   // Patente y vehículo
-  var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
+  var mpat = T.match(/(?:PATENTE|DOMINIO|PAT\.)\s*:?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3}|[A-Z]\d{3}[A-Z]{3}|\d{3}[A-Z]{3})\b/) || T.match(/\b([A-Z]{2}\d{3}[A-Z]{2})\b/);
   if (mpat) d.patente = mpat[1].replace(/\s/g, '');
   // Zurich Integral de Comercio: "POLIZA DE INTEGRAL DE COMERCIO NUMERO: 52000329853 ES RENOVACION DE : …", ubicación, actividad y coberturas con su límite
   var mzn = T.match(/POLIZA DE [A-Z ]{3,40}NUMERO:\s*(\d{8,})/);
@@ -15177,8 +15177,30 @@ function extraerDatosPoliza(texto, nombreArchivo) {
   }
   // SMG (Swiss Medical): "INTEGRAL DE COMERCIO 189685-0 RENUEVA: 173341" → el número es el de antes de "RENUEVA"; el premio total va después de "REC. FINANCIERO x,xx"
   if (/SWISS MEDICAL|\bSMG\b/.test(T)) {
-    var msm = T.match(/\b(\d{5,8}-\d)\s+(?:RENUEVA:\s*(\d+)|NUEVA|RENOVACION|EMISION)/);
+    var msm = T.match(/\b(\d{5,8}-\d)\s+(?:RENUEVA:\s*(\d+)|NUEVA|RENOVACION|EMISION|REFACTURACION)/);
     if (msm) { d.numero_poliza = msm[1]; if (msm[2]) d.renueva = msm[2]; }
+    // Autos y motos SMG: "MOTOS 154409-2 REFACTURACION AUTOMATICA BUENOS AIRES 14/11/2026 BUENOS AIRES EL 04/11/2026 14/03/2027 RAPOSO JUAN MANUEL …"
+    var mav = T.match(/\b\d{5,8}-\d\s+[A-Z ]{3,40}?\s(\d{2}\/\d{2}\/\d{4})\s+[A-Z ]{0,40}?\bEL \d{2}\/\d{2}\/\d{4}\s+(\d{2}\/\d{2}\/\d{4})\s+([\s\S]{0,200})/);
+    if (mav && /VEHICULO:/.test(T)) {
+      var _iso = function (x) { var p = x.split('/'); return p[2] + '-' + p[1] + '-' + p[0]; };
+      d.fecha_inicio = _iso(mav[1]); d.fecha_vencimiento = _iso(mav[2]);
+      var mper = T.match(/\b(MENSUAL|BIMESTRAL|TRIMESTRAL|CUATRIMESTRAL|SEMESTRAL|ANUAL)\b(?=[\s\S]{0,40}PLAN|\s*,?\s*PRORROGABLE)/) || T.match(/VIGENCIA (MENSUAL|BIMESTRAL|TRIMESTRAL|CUATRIMESTRAL|SEMESTRAL|ANUAL)/);
+      var mesesPer = { MENSUAL: 1, BIMESTRAL: 2, TRIMESTRAL: 3, CUATRIMESTRAL: 4, SEMESTRAL: 6, ANUAL: 12 };
+      if (mper) d.periodo_meses = mesesPer[mper[1]];
+      else { var a1 = new Date(d.fecha_inicio), a2 = new Date(d.fecha_vencimiento); d.periodo_meses = Math.round((a2 - a1) / 2629800000); }
+      if (d.periodo_meses < 12) d.prorroga = true;
+      var mcond = T.match(/CONDUCTOR PRINCIPAL:\s*([A-ZÑ]+),\s*([A-ZÑ ]+?)\s+ZONA/);
+      if (mcond) { var nomC = mcond[1] + ' ' + mcond[2]; if (mav[3].indexOf(nomC) === 0) d.asegurado = nomC; }
+      var mct = T.match(/(?:CONSUMIDOR FINAL|RESPONSABLE INSCRIPTO|MONOTRIBUTO|EXENTO)\s+(\d{2})-(\d{8})-(\d)\b/);
+      if (mct) { d.cuit = mct[1] + mct[2] + mct[3]; d.dni = String(+mct[2]); }
+      var mveh = T.match(/VEHICULO:\s+(.+?)\s+PATENTE:\s*([A-Z0-9]{6,7})\b[\s\S]{0,60}?ANO:\s*(\d{4})\s+MOTOR\/CHASIS:\s*(\S+)\s*\/\s*(\S+)/);
+      if (mveh) { d.marca_modelo = mveh[1].trim(); d.marca = d.marca_modelo.split(' ')[0]; d.modelo = d.marca_modelo.split(' ').slice(1).join(' '); d.patente = mveh[2]; d.anio = mveh[3]; d.motor = mveh[4]; d.chasis = mveh[5]; }
+      var muso = T.match(/USO DEL VEHICULO:\s*([A-Z]+)/); if (muso) d.uso = _capi(muso[1]);
+      var mplan = T.match(/PLAN DE COBERTURA:\s*(.+?)\s+CLAUSULAS/); if (mplan) d.producto = mplan[1].trim();
+      var mcas = T.match(/SUMA ASEGURADA CASCO:\s*\$\s*([\d.,]+)/); if (mcas) d.suma_asegurada = +mcas[1].replace(/[.,]/g, '');
+      var majs = T.match(/CLAUSULA DE AJUSTE:\s*(\d+%)/); if (majs) d.ajuste_automatico = majs[1];
+      var mprv = T.match(/BONIFICACION\s+[\d,]+\.\d{2}\s+([\d,]+\.\d{2})/); if (mprv) d.premio = _impUS(mprv[1]);
+    }
     var mpr = T.match(/REC\. FINANCIERO\s+[\d,]+\.\d{2}\s+([\d,]+\.\d{2})/);
     if (mpr && !d.premio) d.premio = _impUS(mpr[1]);
   }
