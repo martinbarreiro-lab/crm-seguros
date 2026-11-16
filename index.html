@@ -2944,7 +2944,33 @@ function dashActualizarPeriodo() {
   return {desde: desde.toISOString().split('T')[0], hasta: hoy.toISOString().split('T')[0]};
 }
 
+// Cuotas con débito automático o tarjeta: cuando vencen se dan por pagas (la compañía las cobra sola).
+// Se corre una vez por sesión. Si después llega un rechazo, se vuelve a poner pendiente a mano.
+var _autoPagoHecho = false;
+async function autoPagarDebitos() {
+  if (_autoPagoHecho) return 0; _autoPagoHecho = true;
+  try {
+    var uid = (await sb.auth.getUser()).data.user.id, hoy = new Date().toISOString().slice(0, 10);
+    var r = await sb.from('cobranzas').select('id,fecha_vencimiento,medio_pago,notas,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id', uid).eq('estado', 'pendiente').lt('fecha_vencimiento', hoy).gt('monto', 0).limit(2000);
+    if (r.error) throw r.error;
+    var lista = (r.data || []).filter(function (c) {
+      var p = c.polizas || {};
+      if (/anulad|baja|cancel/i.test(p.estado || '') || /vida obligatori/i.test(p.ramo || '')) return false;
+      return /visa|master|amex|american|cabal|naranja|tarjeta|d[eé]bito|cbu/i.test([p.medio_pago, p.forma_pago, c.medio_pago].join(' '));
+    });
+    for (var i = 0; i < lista.length; i++) {
+      var c = lista[i], p = c.polizas || {}, txt = [p.medio_pago, c.medio_pago].join(' ');
+      var medio = c.medio_pago || (/visa|master|amex|american|cabal|naranja|tarjeta/i.test(txt) ? 'Tarjeta' : 'Débito');
+      await sb.from('cobranzas').update({ estado: 'pagada', fecha_pago: c.fecha_vencimiento, medio_pago: medio,
+        notas: ((c.notas ? c.notas + ' · ' : '') + 'Pagada automáticamente por ' + medio.toLowerCase() + ' al vencer') }).eq('id', c.id);
+    }
+    if (lista.length) console.log('Débitos/tarjeta dados por pagos:', lista.length);
+    return lista.length;
+  } catch (e) { console.warn('autoPagarDebitos:', e); return 0; }
+}
+
 async function cargarDashboard() {
+  await autoPagarDebitos();
   var uid = user.id;
   var hoyD = new Date();
   var iso = function(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); };
@@ -9499,6 +9525,7 @@ function cobRender() {
 }
 
 async function cargarCobranzas() {
+  await autoPagarDebitos();
   // Forzar recarga de clientes con campos de contacto
   // Clientes con teléfono (columnas reales); si falla, se usan los que ya estaban cargados
   var res = await sb.from('clientes').select('id,nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario').eq('productor_id', user.id).order('apellido');
