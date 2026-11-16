@@ -4054,6 +4054,8 @@ function ramoConProducto(p, vacio) {
   var pr = productoPoliza(p);
   return esc(p.ramo || (vacio == null ? '—' : vacio)) + (pr ? ' · <span style="color:var(--text);font-weight:500">' + esc(pr) + '</span>' : '');
 }
+// Texto del vehículo (marca, modelo, año) sin repetir la marca si el modelo ya la trae ("ZANELLA ZANELLA MOTOS MOD 150")
+function vehTexto(dr) { dr = dr || {}; var ma = dr.marca || '', mo = dr.modelo || ''; if (ma && mo && mo.toUpperCase().indexOf(ma.toUpperCase()) === 0) ma = ''; return [ma, mo, dr.anio].filter(Boolean).join(' '); }
 function esRamoAuto(r) { return /^(automotor|motos?|motoveh[ií]culos?)$/i.test(String(r || '').trim()); }
 // Qué pólizas tienen que tener el PDF: autos (obligatorio) y el resto; NO las que van en paquete (con el auto o el integral), ni AP, ni vida obligatorio, ni ART
 function requierePdf(p) {
@@ -4611,11 +4613,11 @@ async function fichaResumen(c) {
   if (polsActivas.length) {
     ordenarPorPaquete(polsActivas).forEach(function(p){
       var dr = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
-      var sub2 = p.ramo==='Automotor' && dr.marca ? (dr.marca+' '+( dr.modelo||'')+' · '+(dr.patente||p.patente||'')) : '';
+      var sub2 = esRamoAuto(p.ramo) && (dr.marca || dr.modelo) ? (vehTexto({marca:dr.marca,modelo:dr.modelo})+' · '+(dr.patente||p.patente||'')) : '';
       var pa = pqAttr(p, polsActivas);
       html.push('<div class="'+(p.paquete_de?'pq-hijo':'')+pa.cls+'"'+pa.attr+' style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="abrirModalPoliza(\''+p.id+'\')">');
       html.push('<div><div style="font-size:13px;font-weight:600;color:#111827">'+flechaPaquete(p, hijosDe(p, polsActivas))+p.numero_poliza+'</div>'+chipPdf(p)+lineaPaquete(p, polsActivas));
-      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+ramoConProducto(p)+' · '+p.aseguradora+(p.cobertura && p.ramo==='Automotor' ?' · '+p.cobertura:'')+'</div>');
+      html.push('<div style="font-size:12px;color:#6B7280;margin-top:2px">'+ramoConProducto(p)+' · '+p.aseguradora+(p.cobertura && esRamoAuto(p.ramo) ?' · '+p.cobertura:'')+'</div>');
       if(sub2) html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">'+sub2+'</div>');
       html.push('<div style="font-size:11px;color:#9CA3AF;margin-top:1px">Vto. '+fmtDate(p.fecha_vencimiento)+'</div></div>');
       html.push('<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#166534">'+fmtCuota(p)+'</div></div></div>');
@@ -5139,7 +5141,7 @@ async function fichaPolizas(c) {
   function dataVehiculoOrInfo(p) {
     if (p.datos_ramo) {
       const dr = p.datos_ramo;
-      if (p.ramo === 'Automotor') {
+      if (esRamoAuto(p.ramo)) {
         const partes = [];
         if (dr.marca) partes.push(dr.marca);
         if (dr.modelo) partes.push(dr.modelo);
@@ -5210,18 +5212,18 @@ async function fichaPolizas(c) {
       const info = dataVehiculoOrInfo(p);
       // Cobertura por ramo
       const cobPartes = [];
-      if (p.cobertura && p.ramo === 'Automotor') cobPartes.push(p.cobertura);
+      if (p.cobertura && esRamoAuto(p.ramo)) cobPartes.push(p.cobertura);
       const drC = (typeof p.datos_ramo === 'string' ? JSON.parse(p.datos_ramo || '{}') : p.datos_ramo) || {};
       const cobsPoliza = cobsPorPolId[p.id] || [];
 
-      if (p.ramo === 'Automotor') {
-        if (p.cobertura) cobPartes.push(p.cobertura);
-        var vehStr = [drC.marca, drC.modelo, drC.anio].filter(Boolean).join(' ');
+      if (esRamoAuto(p.ramo)) {
+        if (p.cobertura && cobPartes.indexOf(p.cobertura) < 0) cobPartes.push(p.cobertura);
+        var vehStr = vehTexto(drC);
         if (vehStr) cobPartes.push(vehStr);
         if (drC.patente || p.patente) cobPartes.push('Patente: ' + (drC.patente || p.patente));
         var sumaC = drC.suma_asegurada || p.suma_asegurada;
         if (sumaC) cobPartes.push('Suma: ' + fmtMoney(sumaC));
-        if (drC.franquicia_desc) {
+        if (drC.franquicia_desc && p.ramo === 'Automotor') {
           var pctM = drC.franquicia_desc.match(/(\d+(?:\.\d+)?)\s*%/);
           if (pctM && sumaC) cobPartes.push('Franquicia ' + pctM[1] + '% = ' + fmtMoney(parseFloat(sumaC) * parseFloat(pctM[1]) / 100));
           else cobPartes.push(drC.franquicia_desc.trim());
@@ -5345,7 +5347,7 @@ async function fichaPolizas(c) {
   // Acordeones históricos — dentro de la columna izquierda
   function polHistCard2(p, badgeStyle, badgeTxt) {
     var dr2 = (typeof p.datos_ramo==='string'?JSON.parse(p.datos_ramo||'{}'):p.datos_ramo)||{};
-    var sub2 = p.ramo==='Automotor' && (dr2.patente||p.patente) ? (dr2.marca||'')+' '+(dr2.modelo||'')+' · '+(dr2.patente||p.patente) : '';
+    var sub2 = esRamoAuto(p.ramo) && (dr2.patente||p.patente) ? vehTexto({marca:dr2.marca,modelo:dr2.modelo})+' · '+(dr2.patente||p.patente) : '';
     var sumaFranq2 = '';
     if (dr2.franquicia_desc && (dr2.suma_asegurada||p.suma_asegurada)) {
       var pctM2 = dr2.franquicia_desc.match(/(\d+(?:\.\d+)?)\s*%/);
@@ -7619,7 +7621,7 @@ function getTotalPremioMensual(polizas) {
 
 function getDataClavePoliza(p) {
   const dr = p.datos_ramo || {};
-  if (p.ramo === 'Automotor') {
+  if (esRamoAuto(p.ramo)) {
     const partes = [];
     if (dr.marca) partes.push(dr.marca);
     if (dr.modelo) partes.push(dr.modelo);
@@ -12344,8 +12346,8 @@ async function renderMpdCobertura(p) {
       : '';
     rows.unshift(['Vigencia', fmtD(p.fecha_inicio) + ' → ' + fmtD(p.fecha_vencimiento) + '&nbsp;&nbsp;' + vigBadge]);
   }
-  if (p.ramo==='Automotor') {
-    var veh=[dr.marca,dr.modelo,dr.anio].filter(Boolean).join(' ');
+  if (esRamoAuto(p.ramo)) {
+    var veh=vehTexto(dr);
     if(veh) rows.push(['Vehículo','<strong style="color:#111827">'+veh+'</strong>']);
     if(dr.patente||p.patente) rows.push(['Dominio','<span style="background:#E6F1FB;color:#0C447C;padding:2px 9px;border-radius:4px;font-weight:700;letter-spacing:.05em">'+(dr.patente||p.patente)+'</span>']);
     if(dr.chasis) rows.push(['N° de chasis',dr.chasis]);
@@ -12358,7 +12360,7 @@ async function renderMpdCobertura(p) {
     var sumaVal = dr.suma_asegurada || p.suma_asegurada;
     if(sumaVal) rows.push(['Suma asegurada','<strong style="color:#166534">'+fmtM(sumaVal)+'</strong>']);
     if(dr.ajuste_automatico) rows.push(['Ajuste automático de suma', dr.ajuste_automatico]);
-    if(dr.franquicia_desc || dr.franquicia_monto) {
+    if(p.ramo!=='Automotor') { /* motos: sin franquicia */ } else if(dr.franquicia_desc || dr.franquicia_monto) {
       var franTxt = dr.franquicia_desc ? dr.franquicia_desc.trim() : '';
       // Calcular valor real de franquicia
       var sumaFranq = parseFloat(dr.suma_asegurada || p.suma_asegurada || 0);
