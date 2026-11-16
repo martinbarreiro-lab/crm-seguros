@@ -2130,10 +2130,12 @@ async function _textoPdf(archivo) {
     var pk = await doc.getPage(k), it = (await pk.getTextContent()).items, tk = it.map(function (x) { return x.str; }).join(' ');
     if (!/N[OÓ]MINA (ACTIVA|DE ASEGURADOS)/i.test(tk)) continue;
     // Se arma renglón por renglón (por posición), porque la tabla viene por columnas
-    var filas = {};
-    it.forEach(function (x) { if (!String(x.str).trim()) return; var y = Math.round(x.transform[5] / 3); (filas[y] = filas[y] || []).push(x); });
-    t.push(Object.keys(filas).sort(function (a, b) { return b - a; }).map(function (y) {
-      return filas[y].sort(function (a, b) { return a.transform[4] - b.transform[4]; }).map(function (x) { return x.str; }).join(' ');
+    // Las celdas de un mismo renglón pueden estar 1-2 puntos más arriba o más abajo: se agrupan por cercanía
+    var its = it.filter(function (x) { return String(x.str).trim(); }).sort(function (a, b) { return b.transform[5] - a.transform[5]; });
+    var filas = [], fy = null;
+    its.forEach(function (x) { var y = x.transform[5]; if (fy === null || Math.abs(fy - y) > 2.5) { filas.push([]); fy = y; } filas[filas.length - 1].push(x); });
+    t.push(filas.map(function (f) {
+      return f.sort(function (a, b) { return a.transform[4] - b.transform[4]; }).map(function (x) { return x.str; }).join(' ');
     }).join(' ¶ '));
   }
   return t.join(' \n ');
@@ -15008,7 +15010,11 @@ function _extraerAutoPdf(T, d) {
 function _extraerNomina(T, d) {
   var i = T.search(/N[OÓ]MINA ACTIVA|N[OÓ]MINA DE ASEGURADOS/); if (i < 0) return;
   var per = [], vistos = {};
+  var ult = null;
   T.slice(i).split('¶').forEach(function (r) {
+    // Nombre largo que sigue en el renglón de abajo ("NOVILLO DAVID HERNAN" / "WALDEMAR")
+    if (ult && /^[A-ZÑ]+(?: [A-ZÑ]+){0,2}$/.test(r.trim()) && r.trim().length <= 30 && !/^(SELF|PAGINA|HOJA|FIN|TOTAL|NOMINA)\b/.test(r.trim())) { ult.nombre += ' ' + r.trim(); ult = null; return; }
+    ult = null;
     var m = r.trim().match(/^(\d{1,5})\s+(DNI|LE|LC|CI|PAS|CUIL|CUIT|DU)\s+(\d{6,11})\s+(.+?)\s+(\d{2})[-\/](\d{2})[-\/](\d{4})(?:\s+(.*))?$/);
     if (!m || vistos[m[3]]) return; vistos[m[3]] = 1;
     var x = { cert: m[1], doc: m[2], dni: m[3], nombre: m[4].trim().replace(/\.\s+/, ', ').replace(/\.$/, ''), nacimiento: m[7] + '-' + m[6] + '-' + m[5] }, resto = (m[8] || '').trim(), q;
@@ -15017,7 +15023,7 @@ function _extraerNomina(T, d) {
       x.suma = _impUS(q[1]); if (q[2]) x.sueldo = _impUS(q[2]); if (q[3]) x.ingreso = q[5] + '-' + q[4] + '-' + q[3]; resto = q[6];
     }
     x.beneficiario = resto ? _capi(resto) : null;
-    per.push(x);
+    per.push(x); ult = x;
   });
   if (per.length) d.personas = per;
 }
