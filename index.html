@@ -2258,7 +2258,7 @@ async function _guardarFactura(it) {
   if (ex.data && ex.data.length) { var r0 = await sb.from('cobranzas').update(fila).eq('id', ex.data[0].id); if (r0.error) throw r0.error; }
   else { fila.estado = 'pendiente'; var r1 = await sb.from('cobranzas').insert(fila); if (r1.error) throw r1.error; }
   // 3) si es la factura más nueva, pasa a ser la cuota vigente de la póliza
-  var dr = Object.assign({}, pol.datos_ramo || {}), ult = dr.ultima_factura || {};
+  var dr = Object.assign({}, _drObj(pol)), ult = dr.ultima_factura || {};
   if (!ult.desde || fx.desde >= ult.desde) {
     dr.ultima_factura = { numero: fx.numero, desde: fx.desde, hasta: fx.hasta, total: fx.total, endoso: fx.endoso || null };
     var upd = { datos_ramo: dr }; if (fx.total) { upd.valor_cuota = fx.total; it.cuotaActualizada = true; }
@@ -4430,7 +4430,24 @@ async function registrarNominaEnBase(personas, pol, nomCliente) {
   } catch (e) { console.warn('base contactos', e); }
 }
 // " · Comercio Zurich N° 52000329853": para que las tareas del mismo cliente no se confundan
-function _drObj(p) { var d = p && p.datos_ramo; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = {}; } } return d || {}; }
+// Datos del ramo como objeto. Repara los que quedaron guardados como texto o "desarmados" letra por letra ({"0":"{","1":"\"",…})
+function _drNorm(d) {
+  for (var i = 0; i < 15; i++) {
+    if (d == null) return {};
+    if (typeof d === 'string') { try { d = JSON.parse(d); continue; } catch (e) { return {}; } }
+    if (typeof d === 'object' && !Array.isArray(d) && Object.prototype.hasOwnProperty.call(d, '0')) {
+      var nums = Object.keys(d).filter(function (k) { return /^\d+$/.test(k); }).sort(function (a, b) { return a - b; });
+      var txt = nums.map(function (k) { return String(d[k]); }).join(''), resto = {};
+      Object.keys(d).forEach(function (k) { if (!/^\d+$/.test(k)) resto[k] = d[k]; });
+      var adentro = _drNorm(txt);
+      d = Object.assign({}, (adentro && typeof adentro === 'object' && !Array.isArray(adentro)) ? adentro : {}, resto);
+      continue;
+    }
+    return (typeof d === 'object' && !Array.isArray(d)) ? d : {};
+  }
+  return {};
+}
+function _drObj(p) { return _drNorm(p && p.datos_ramo); }
 // Nombre que le pone el productor a la póliza ("Clínica", "Bar")
 function polAlias(p) { return String(_drObj(p).alias || '').trim(); }
 function esComercio(p) { var d = _drObj(p); return /comercio|integral/i.test((p && p.ramo || '') + ' ' + (d.producto || '') + ' ' + (d.ramo_compania || '')); }
@@ -5272,6 +5289,11 @@ async function fichaPolizas(c) {
           }
         });
       } else if (p.ramo === 'Accidentes Personales') {
+        var _perAP = _drObj(p).personas || [];
+        if (_perAP.length && !p.paquete_de) {
+          var _tc = function (x) { return String(x || '').toLowerCase().replace(/(^|[\s'-])([a-zñáéíóú])/g, function (m, a, b) { return a + b.toUpperCase(); }); };
+          cobPartes.push('👥 ' + _perAP.length + (_perAP.length === 1 ? ' persona: ' : ' personas: ') + _perAP.slice(0, 4).map(function (x) { return _tc(String(x.nombre || '').replace(',', '')); }).join(', ') + (_perAP.length > 4 ? ' y ' + (_perAP.length - 4) + ' más' : ''));
+        }
         // Cantidad de personas y coberturas principales
         var cantPersonas = cobsPoliza.length ? cobsPoliza[0].suma_asegurada : null;
         cobsPoliza.forEach(function(cb){
@@ -12096,8 +12118,8 @@ async function confirmarBaja() {
   // Cambiar estado póliza
   var drA = (await sb.from('polizas').select('datos_ramo').eq('id', polId).single()).data || {};
   var res = await sb.from('polizas').update({ estado: 'baja', motivo_cancelacion: motivoFinal + (detalle ? ' — ' + detalle : ''),
-    datos_ramo: Object.assign({}, drA.datos_ramo || {}, { anulacion: { motivo: motivo, detalle: (esOtro ? otroTxt : detalle) || null, reemplazada_por: reemp ? reemp.numero_poliza : null, fecha: new Date().toISOString().slice(0, 10) } }) }).eq('id', polId);
-  if (!res.error && reemp) await sb.from('polizas').update({ datos_ramo: Object.assign({}, reemp.datos_ramo || {}, { reemplaza_a: (window._bajaDatos || {}).numero || null }) }).eq('id', reemp.id);
+    datos_ramo: Object.assign({}, _drObj(drA), { anulacion: { motivo: motivo, detalle: (esOtro ? otroTxt : detalle) || null, reemplazada_por: reemp ? reemp.numero_poliza : null, fecha: new Date().toISOString().slice(0, 10) } }) }).eq('id', polId);
+  if (!res.error && reemp) await sb.from('polizas').update({ datos_ramo: Object.assign({}, _drObj(reemp), { reemplaza_a: (window._bajaDatos || {}).numero || null }) }).eq('id', reemp.id);
   if (res.error) { alert('Error: ' + res.error.message); return; }
   // Registrar en historial
   await registrarHistorial({
@@ -12192,7 +12214,7 @@ function renderDetallePol() {
   if (boxEl) { boxEl.style.maxWidth = '720px'; boxEl.style.width = ''; }
   var vtoColor = e.key==='vencida'?'#A32D2D':e.key==='urgente'?'#854F0B':'#111827';
   var tabs = [{id:'cobertura',label:'Cobertura'},{id:'pagos',label:'Datos de pago'},{id:'documentos',label:'Documentos'},{id:'historial',label:'Historial'}];
-  var _drP = (typeof p.datos_ramo === 'string' ? (function(){ try { return JSON.parse(p.datos_ramo); } catch(e) { return {}; } })() : p.datos_ramo) || {};
+  var _drP = _drObj(p);
   // Solo AP / vida colectiva sueltas: las AP que acompañan al auto (paquete, pasajeros/transportados) no interesan
   var _apDeAuto = !!p.paquete_de || /pasajeros|transportados/i.test((p.ramo || '') + ' ' + (_drP.producto || '') + ' ' + (_drP.ramo_compania || ''));
   if (!_apDeAuto && ((_drP.personas && _drP.personas.length) || /accidentes personales|vida colectiv/i.test(p.ramo || '')))
@@ -12285,7 +12307,7 @@ function renderMpdTabContent(p,tab) {
 }
 
 function renderMpdPersonas(p) {
-  var dr = (typeof p.datos_ramo === 'string' ? (function(){ try { return JSON.parse(p.datos_ramo); } catch(e) { return {}; } })() : p.datos_ramo) || {};
+  var dr = _drObj(p);
   var per = dr.personas || [];
   var tit = function (x) { return String(x || '').toLowerCase().replace(/(^|[\s'-])([a-zñáéíóú])/g, function (m, a, b) { return a + b.toUpperCase(); }); };
   if (!per.length && p.pdf_url && !p._nominaLeida) {
@@ -13460,7 +13482,7 @@ function parseCSV(text) {
 // Pólizas de corto plazo (menos de 28 días, ej. AP para un trabajo puntual): no generan tareas de renovación
 function esCortoPlazo(p) {
   if (!p) return false;
-  if (p.datos_ramo && (p.datos_ramo.corto_plazo === true || p.datos_ramo.corto_plazo === 'true')) return true;
+  if (_drObj(p).corto_plazo === true || _drObj(p).corto_plazo === 'true') return true;
   if (!p.fecha_inicio || !p.fecha_vencimiento) return false;
   return (new Date(p.fecha_vencimiento + 'T12:00:00') - new Date(p.fecha_inicio + 'T12:00:00')) / 864e5 < 28;
 }
@@ -13644,7 +13666,7 @@ async function normalizarYSincronizar(parsed, filename) {
           cod_aseg_fedpat: p._codCliente || null,
           patente:         p.patente || null,
           bien_asegurado:  p.bien_asegurado || null,
-          datos_ramo:      p.datos_ramo || null,
+          datos_ramo:      p.datos_ramo ? _drNorm(p.datos_ramo) : null,
         });
       } else {
         var cambios = {};
@@ -13663,15 +13685,15 @@ async function normalizarYSincronizar(parsed, filename) {
         var AUTOS = ['Automotor','Motos','Motovehículos'];
         if (p.ramo && p.ramo !== existe.ramo && !(AUTOS.indexOf(p.ramo) >= 0 && AUTOS.indexOf(existe.ramo) >= 0)) {
           cambios.ramo = p.ramo;
-          var prodTxt = ''; try { prodTxt = JSON.parse(p.datos_ramo || '{}').producto || ''; } catch(e) {}
+          var prodTxt = _drNorm(p.datos_ramo).producto || '';
           var clTxt = existe.clientes ? (existe.clientes.razon_social || ((existe.clientes.apellido || '') + ' ' + (existe.clientes.nombre || '')).trim()) : '';
           correccionesRamo.push('N° ' + nro + (clTxt ? ' (' + clTxt + ')' : '') + ': ' + (existe.ramo || 'sin ramo') + ' → ' + p.ramo + (prodTxt ? ' · ' + prodTxt : ''));
         }
         // Datos del ramo: sumar lo que trae la compañía sin borrar lo cargado a mano
         if (p.datos_ramo) {
-          var drViejo = existe.datos_ramo; try { if (typeof drViejo === 'string') drViejo = JSON.parse(drViejo); } catch(e) { drViejo = {}; }
-          var drNuevo = Object.assign({}, drViejo || {}, JSON.parse(p.datos_ramo));
-          if (JSON.stringify(drNuevo) !== JSON.stringify(drViejo || {})) cambios.datos_ramo = JSON.stringify(drNuevo);
+          var drViejo = _drNorm(existe.datos_ramo);
+          var drNuevo = Object.assign({}, drViejo, _drNorm(p.datos_ramo));
+          if (JSON.stringify(drNuevo) !== JSON.stringify(existe.datos_ramo)) cambios.datos_ramo = drNuevo;
         }
         if (Object.keys(cambios).length) polActualizar.push({ id:existe.id, cambios:cambios });
         else stats.skip++;
@@ -15378,7 +15400,7 @@ async function _crearPolizaNueva(it) {
 async function _planCompletarPoliza(polId, d) {
   var rp = await sb.from('polizas').select('*, clientes(*)').eq('id', polId).single(); if (rp.error) throw rp.error;
   var p = rp.data, cl = p.clientes || {};
-  var dr = Object.assign({}, p.datos_ramo || {}), cambios = [], upP = {}, upC = {}, cambioDr = false;
+  var dr = Object.assign({}, _drObj(p)), cambios = [], upP = {}, upC = {}, cambioDr = false;
   var ETQ = { marca: 'marca', modelo: 'modelo', marca_modelo: 'vehículo', anio: 'año', motor: 'motor', chasis: 'chasis', uso: 'uso', suma_asegurada: 'suma asegurada', franquicia_desc: 'franquicia', franquicia_monto: 'monto de franquicia', ajuste_automatico: 'ajuste automático', producto: 'plan/cobertura' };
   // Franquicia mal leída antes (se tomaba el ajuste automático): se corrige con el PDF
   if (d.franquicia_desc && /\(porcentual\)$/.test(dr.franquicia_desc || '') && dr.franquicia_desc !== d.franquicia_desc) { delete dr.franquicia_desc; delete dr.franquicia_monto; }
