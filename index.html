@@ -4185,8 +4185,10 @@ async function bdLeerNominas() {
   for (var i = 0; i < pols.length; i++) {
     var p = pols[i], nom = p.clientes ? nombreClienteLista(p.clientes) : '?', et = p.ramo + ' N° ' + p.numero_poliza + ' · ' + nom;
     btn.textContent = '⏳ Leyendo ' + (i + 1) + ' de ' + pols.length + '…';
-    var dr = p.datos_ramo; if (typeof dr === 'string') { try { dr = JSON.parse(dr); } catch (e) { dr = {}; } } dr = dr || {};
-    if (dr.personas && dr.personas.length) { await registrarNominaEnBase(dr.personas, p, nom); leidas++; personas += dr.personas.length; continue; }
+    var dr = _drObj(p);
+    // Si ya tiene la nómina completa (las mismas personas que informa la compañía) no se vuelve a leer el PDF
+    var _vig = Number(dr.cant_certificados_vigentes) || 0;
+    if (dr.personas && dr.personas.length && dr.personas.length >= _vig) { await registrarNominaEnBase(dr.personas, p, nom); leidas++; personas += dr.personas.length; continue; }
     if (!p.pdf_url) { sinPdf.push(et); continue; }
     try {
       var resp = await fetch(await linkArchivo(p.pdf_url, 120)); if (!resp.ok) throw 0;
