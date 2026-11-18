@@ -9715,7 +9715,7 @@ async function cobCompletarMedio() {
     .eq('productor_id', user.id).eq('estado', 'activa').limit(2000);
   var todas = r.data || [];
   var hijos = {}; todas.forEach(function (p) { if (p.paquete_de) (hijos[p.paquete_de] = hijos[p.paquete_de] || []).push(p); });
-  _cmpPols = todas.filter(function (p) { return !p.paquete_de && !p.medio_pago && !/vida obligatori/i.test(p.ramo || ''); });
+  _cmpPols = todas.filter(function (p) { return !p.paquete_de && !p.medio_pago && !/vida obligatori|^art\b|riesgos? del trabajo/i.test(p.ramo || ''); });
   _cmpPols.forEach(function (p) { p._hijos = hijos[p.id] || []; p._cli = p.clientes ? nombreClienteLista(p.clientes) : '—'; });
   _cmpPols.sort(function (a, b) { return a._cli.localeCompare(b._cli); });
   var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '760px';
@@ -13565,6 +13565,8 @@ function esCortoPlazo(p) {
 function esPagoAutomatico(pol, cob) {
   // Vida obligatorio se paga por ARCA junto con las cargas sociales: no se ve ni se reclama
   if (/vida obligatori/i.test((pol || {}).ramo || '')) return true;
+  // ART se paga siempre con el F.931 de ARCA: la deuda se controla con el saldo que informa la ART
+  if (/^art\b|riesgos? del trabajo/i.test((pol || {}).ramo || '')) return true;
   // Póliza anulada o dada de baja: las cuotas que quedaron sin pagar no se reclaman
   if (/anulad|baja|cancel/i.test((pol || {}).estado || '')) return true;
   // Débito o tarjeta que rebotó: hay que reclamarla
