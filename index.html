@@ -601,6 +601,7 @@
             <option value="31">31-60 días</option>
             <option value="61">+60 días</option>
           </select>
+          <button type="button" class="btn btn-sm" onclick="cobCompletarMedio()" title="Cargá cómo paga cada póliza para que el CRM sepa cuáles se cobran solas" style="font-size:12px">💳 Completar medio de pago</button>
           <label id="cob-ver-auto-lbl" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="cob-ver-auto" onchange="cobRender()"> <span id="cob-ver-auto-txt">Ver también las que se cobran solas</span></label>
           <span id="cob-fil-cli"></span>
           <div style="flex:1"></div>
@@ -2952,12 +2953,14 @@ var _autoPagoHecho = false;
 async function autoPagarDebitos() {
   if (_autoPagoHecho) return 0; _autoPagoHecho = true;
   try {
-    var uid = (await sb.auth.getUser()).data.user.id, hoy = new Date().toISOString().slice(0, 10);
-    var r = await sb.from('cobranzas').select('id,fecha_vencimiento,medio_pago,notas,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id', uid).eq('estado', 'pendiente').lt('fecha_vencimiento', hoy).gt('monto', 0).limit(2000);
+    // Se espera 7 días después del vencimiento: si la compañía avisa un rechazo en ese tiempo, la cuota no se da por paga
+    var uid = (await sb.auth.getUser()).data.user.id, lim = new Date(); lim.setDate(lim.getDate() - 7); var hoy = lim.toISOString().slice(0, 10);
+    var r = await sb.from('cobranzas').select('id,fecha_vencimiento,medio_pago,notas,rechazada,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id', uid).eq('estado', 'pendiente').eq('rechazada', false).lt('fecha_vencimiento', hoy).gt('monto', 0).limit(2000);
     if (r.error) throw r.error;
     var lista = (r.data || []).filter(function (c) {
       var p = c.polizas || {};
       if (/anulad|baja|cancel/i.test(p.estado || '') || /vida obligatori/i.test(p.ramo || '')) return false;
+      if (c.rechazada || /a confirmar/i.test([p.medio_pago, c.medio_pago].join(' '))) return false;
       return /visa|master|amex|american|cabal|naranja|tarjeta|d[eé]bito|cbu/i.test([p.medio_pago, p.forma_pago, c.medio_pago].join(' '));
     });
     for (var i = 0; i < lista.length; i++) {
@@ -3000,8 +3003,8 @@ async function cargarDashboard() {
     sb.from('siniestros').select('id,created_at').eq('productor_id',uid).neq('estado','cerrado'),
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
-    sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
-    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,poliza_id,numero_cuota,medio_pago,polizas(forma_pago,medio_pago,ramo,estado,numero_poliza,aseguradora,cliente_id,paquete_de),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
+    sb.from('cobranzas').select('id,medio_pago,rechazada,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
+    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,poliza_id,numero_cuota,medio_pago,rechazada,polizas(forma_pago,medio_pago,ramo,estado,numero_poliza,aseguradora,cliente_id,paquete_de),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
@@ -9472,7 +9475,7 @@ function cobRender() {
 
   // Ordenar: pendientes por mora desc, cobrados por fecha cobro desc
   if (_cobTab === 'pendiente') {
-    rows.sort(function(a,b){ return (b._dias_mora||0) - (a._dias_mora||0); });
+    rows.sort(function(a,b){ return ((b.rechazada?1:0) - (a.rechazada?1:0)) || ((b._dias_mora||0) - (a._dias_mora||0)); });
   } else {
     rows.sort(function(a,b){ return (b.fecha_pago||'') > (a.fecha_pago||'') ? 1 : -1; });
   }
@@ -9512,13 +9515,15 @@ function cobRender() {
         col6 = /anulad|baja|cancel/i.test(c._pol_estado || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">Póliza anulada</span>'
           : /vida obligatori/i.test(c._ramo || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Vida obligatorio se paga por ARCA con las cargas sociales">Se paga por ARCA</span>'
           : '<span style="background:#EFF6FF;color:#1D4ED8;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Se cobra con tarjeta o débito: si rebota, la compañía avisa por mail">💳 Automático</span>';
-        col7 = '<span style="font-size:11px;color:var(--lt)">No hace falta avisar</span>';
+        col7 = /anulad|baja|cancel/i.test(c._pol_estado || '') || /vida obligatori/i.test(c._ramo || '') ? '<span style="font-size:11px;color:var(--lt)">No hace falta avisar</span>'
+          : '<button type="button" class="btn btn-sm" title="La compañía avisó que no se pudo cobrar" onclick="cobMarcarRechazo(\'' + c.id + '\')" style="font-size:11px;color:#B91C1C;border-color:#FCA5A5">💳 Rebotó</button>';
       } else if (_cobTab === 'pendiente') {
         var dias = c._dias_mora || 0;
         var moraBg = dias > 60 ? '#FCEBEB' : dias > 30 ? '#FAEEDA' : '#FEF9C3';
         var moraColor = dias > 60 ? '#A32D2D' : dias > 30 ? '#854F0B' : '#713F12';
         var moraLabel = dias > 60 ? '+60 días' : dias > 30 ? '31-60 días' : dias + ' días';
         col6 = '<span style="background:'+moraBg+';color:'+moraColor+';font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">'+moraLabel+'</span>';
+        if (c.rechazada) col6 = '<span style="background:#DC2626;color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="' + esc(c.rechazo_detalle || '') + '">💳 Débito rechazado</span> ' + col6;
         var tm = _cobMoras[c._cliente_id];
         if (tm) col6 += '<div style="font-size:11px;color:#1E40AF;margin-top:3px">' + esc(String(tm.titulo).split(' — ')[0]) + (tm.fecha_limite ? ' · reclamar ' + fmtDate(tm.fecha_limite).slice(0, 5) : '') + '</div>';
         var its = c._items || [c];
@@ -9683,6 +9688,58 @@ async function cargarCobranzas() {
   }
 
   cobRender();
+}
+
+// Débito o tarjeta que rebotó: la cuota vuelve a "para reclamar" y se crea la tarea de avisarle al cliente
+async function cobMarcarRechazo(id) {
+  var c = (_cobData || []).find(function (x) { return x.id === id; }) || {};
+  // Si es un paquete, rebotan todas las cuotas del mismo vencimiento
+  var its = (_cobData || []).filter(function (x) { return x._pq === c._pq && x.fecha_vencimiento === c.fecha_vencimiento && x.estado === c.estado; });
+  if (!its.length) its = [c];
+  if (!confirm('¿Marco como RECHAZADO el cobro de ' + (c._cliente || 'este cliente') + ' (' + (c._numero_poliza || '') + ')? Pasa a "para reclamar" y te creo la tarea de avisarle.')) return;
+  for (var i = 0; i < its.length; i++) {
+    await sb.from('cobranzas').update({ estado: 'pendiente', fecha_pago: null, rechazada: true, rechazo_fecha: new Date().toISOString().slice(0, 10), rechazo_detalle: 'Marcado a mano desde Cobranzas' }).eq('id', its[i].id);
+  }
+  await sb.from('tareas').insert({ productor_id: user.id, titulo: 'Débito rechazado — ' + (c._cliente || '') + ' · ' + (c._ramo || '') + ' N° ' + (c._numero_poliza || ''),
+    descripcion: 'No se pudo cobrar la cuota del ' + fmtDate(c.fecha_vencimiento) + ' ($' + Math.round(parseFloat(c.monto) || 0).toLocaleString('es-AR') + '). Avisar al cliente para que pague y no quede sin cobertura.',
+    tipo: 'Débito rechazado', estado: 'pendiente', prioridad: 'alta', tablero: 'cobranzas', categoria: 'cobranza', cliente_id: c._cliente_id || null, poliza_id: c.poliza_id || null,
+    fecha_limite: new Date().toISOString().slice(0, 10), auto_generada: true });
+  mostrarAlerta('Marcado como rechazado');
+  cargarCobranzas();
+}
+
+// Pantalla para cargar el medio de pago de las pólizas que no lo tienen (sin eso el CRM no sabe si se cobran solas)
+var _cmpPols = [];
+async function cobCompletarMedio() {
+  var r = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,paquete_de,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)')
+    .eq('productor_id', user.id).eq('estado', 'activa').limit(2000);
+  var todas = r.data || [];
+  var hijos = {}; todas.forEach(function (p) { if (p.paquete_de) (hijos[p.paquete_de] = hijos[p.paquete_de] || []).push(p); });
+  _cmpPols = todas.filter(function (p) { return !p.paquete_de && !p.medio_pago && !/vida obligatori/i.test(p.ramo || ''); });
+  _cmpPols.forEach(function (p) { p._hijos = hijos[p.id] || []; p._cli = p.clientes ? nombreClienteLista(p.clientes) : '—'; });
+  _cmpPols.sort(function (a, b) { return a._cli.localeCompare(b._cli); });
+  var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '760px';
+  document.getElementById('env-titulo').textContent = '💳 Completar medio de pago (' + _cmpPols.length + ')';
+  var BTN = [['Débito', 'Débito / CBU'], ['Tarjeta', 'Tarjeta'], ['Tarjeta a confirmar', 'Tarjeta a confirmar'], ['Efectivo', 'Efectivo / cupón'], ['Transferencia', 'Transferencia']];
+  document.getElementById('env-cuerpo').innerHTML = !_cmpPols.length ? '<p style="font-size:13px">✓ Todas las pólizas tienen el medio de pago cargado.</p>'
+    : '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Débito y tarjeta se dan por pagos solos 7 días después del vencimiento (si no avisan un rechazo). Efectivo y transferencia quedan para reclamar. "Tarjeta a confirmar" se reclama hasta que la compañía la apruebe. En los paquetes se aplica a todas sus pólizas.</p>'
+    + '<div style="max-height:62vh;overflow:auto">' + _cmpPols.map(function (p) {
+      return '<div id="cmp-' + p.id + '" style="padding:8px 0;border-top:0.5px solid var(--border)">'
+        + '<div style="font-size:13px;font-weight:500">' + esc(p._cli) + '</div>'
+        + '<div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">' + esc((p.ramo || '') + ' N° ' + p.numero_poliza + ' · ' + (p.aseguradora || '')) + (p._hijos.length ? ' · 📦 + ' + esc(p._hijos.map(function (h) { return h.ramo; }).join(' + ')) : '') + (p.forma_pago ? ' · ' + esc(p.forma_pago) : '') + '</div>'
+        + '<div style="display:flex;gap:5px;flex-wrap:wrap">' + BTN.map(function (b) { return '<button type="button" class="btn btn-sm" style="font-size:11px" onclick="cobGuardarMedio(\'' + p.id + '\',\'' + b[0] + '\')">' + b[1] + '</button>'; }).join('') + '</div></div>';
+    }).join('') + '</div>';
+  document.getElementById('env-cuerpo').innerHTML += '<div style="text-align:right;margin-top:10px"><button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\');cargarCobranzas()">Listo</button></div>';
+  m.classList.add('open');
+}
+async function cobGuardarMedio(id, medio) {
+  var p = _cmpPols.find(function (x) { return x.id === id; }); if (!p) return;
+  var ids = [p.id].concat(p._hijos.map(function (h) { return h.id; }));
+  var r = await sb.from('polizas').update({ medio_pago: medio }).in('id', ids);
+  if (r.error) { alert('No se pudo guardar: ' + r.error.message); return; }
+  var el = document.getElementById('cmp-' + id);
+  if (el) el.innerHTML = '<div style="font-size:12.5px;color:#15803D">✓ ' + esc(p._cli) + ' · ' + esc((p.ramo || '') + ' N° ' + p.numero_poliza) + ' → <b>' + esc(medio) + '</b></div>';
+  var t = document.getElementById('env-titulo'); _cmpPols = _cmpPols.filter(function (x) { return x.id !== id; }); if (t) t.textContent = '💳 Completar medio de pago (' + _cmpPols.length + ')';
 }
 
 async function marcarPagada(id) {
@@ -13510,7 +13567,11 @@ function esPagoAutomatico(pol, cob) {
   if (/vida obligatori/i.test((pol || {}).ramo || '')) return true;
   // Póliza anulada o dada de baja: las cuotas que quedaron sin pagar no se reclaman
   if (/anulad|baja|cancel/i.test((pol || {}).estado || '')) return true;
+  // Débito o tarjeta que rebotó: hay que reclamarla
+  if ((cob || {}).rechazada) return false;
   var t = [(pol || {}).medio_pago, (pol || {}).forma_pago, (cob || {}).medio_pago].join(' ');
+  // Tarjeta pendiente de aprobación (ej. recién cargada): se sigue reclamando hasta confirmar
+  if (/a confirmar/i.test(t)) return false;
   return /visa|master|amex|american|cabal|naranja|tarjeta|d[eé]bito|cbu/i.test(t);
 }
 async function _todo(armar) {
