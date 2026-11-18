@@ -3001,7 +3001,7 @@ async function cargarDashboard() {
     sb.from('cotizaciones').select('id,cliente_id,estado,fecha_envio,created_at').eq('productor_id',uid).not('estado','in','("aceptada","rechazada")'),
     sb.from('tareas').select('id,titulo,tipo,tablero,fecha_limite,estado,poliza_id,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente),polizas(numero_poliza,ramo,aseguradora)').eq('productor_id',uid).not('estado','in','("cerrada","cancelada","completada")'),
     sb.from('cobranzas').select('id,medio_pago,polizas(forma_pago,medio_pago,ramo,estado)').eq('productor_id',uid).eq('estado','pendiente').lt('fecha_vencimiento',hoy).limit(1000),
-    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,poliza_id,numero_cuota,medio_pago,polizas(forma_pago,medio_pago,ramo,estado,numero_poliza,aseguradora,cliente_id),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
+    sb.from('cobranzas').select('id,fecha_vencimiento,monto,cliente_id,poliza_id,numero_cuota,medio_pago,polizas(forma_pago,medio_pago,ramo,estado,numero_poliza,aseguradora,cliente_id,paquete_de),clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','pendiente').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',manana),
     sb.from('interacciones').select('id,categoria,tipo,resumen,created_at,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).gte('created_at',ayerD.toISOString()).order('created_at',{ascending:false}).limit(8),
     sb.from('polizas').select('id,cliente_id,numero_poliza,ramo,aseguradora,fecha_vencimiento,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id',uid).eq('estado','activa').gte('fecha_vencimiento',hoy).lte('fecha_vencimiento',iso(en60)).order('fecha_vencimiento').limit(7)
   ]);
@@ -3075,9 +3075,26 @@ async function cargarDashboard() {
     var cl = (venc.find(function(v){ return v.id === p.id; })||{}).clientes;
     items.push({ o: p.fecha_vencimiento, h: '<div class="dz-item am" onclick="abrirDetallePol(\''+p.id+'\')"><span class="w">'+fmtD(p.fecha_vencimiento)+'</span><div class="t"><b>Vence</b> '+esc_(p.ramo||'')+' '+esc_(p.numero_poliza||'')+(cl ? ' · '+esc_(nomCl(cl)) : '')+'</div><span class="r">Ver póliza →</span></div>' });
   });
+  // Las cuotas de un mismo paquete (ej. Robo + RC + Vida de la bici) que vencen el mismo día van en una sola línea
+  var _grpC = {}, _ordC = [];
   cuotasHoy.forEach(function(c){
-    var pc = c.polizas || {}, cidC = c.cliente_id || pc.cliente_id || '', nC = c.clientes ? nomCl(c.clientes) : '';
-    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irACobranzasCliente(\''+cidC+'\',\'\',\''+c.fecha_vencimiento+'\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota'+(c.numero_cuota ? ' '+c.numero_cuota : '')+'</b> '+$(c.monto)+(nC ? ' · '+esc_(nC) : '')+(pc.numero_poliza ? esc_(sufPolTarea(pc)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
+    var pc = c.polizas || {}, k = (pc.paquete_de || c.poliza_id || c.id) + '|' + c.fecha_vencimiento;
+    if (!_grpC[k]) { _grpC[k] = []; _ordC.push(k); }
+    _grpC[k].push(c);
+  });
+  _ordC.forEach(function(k){
+    var cs = _grpC[k], c = cs[0];
+    if (cs.length === 1) {
+      var pc = c.polizas || {}, cidC = c.cliente_id || pc.cliente_id || '', nC = c.clientes ? nomCl(c.clientes) : '';
+      items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irACobranzasCliente(\''+cidC+'\',\'\',\''+c.fecha_vencimiento+'\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>Vence cuota'+(c.numero_cuota ? ' '+c.numero_cuota : '')+'</b> '+$(c.monto)+(nC ? ' · '+esc_(nC) : '')+(pc.numero_poliza ? esc_(sufPolTarea(pc)) : '')+'</div><span class="r">Cobranzas →</span></div>' });
+      return;
+    }
+    // Paquete: la principal primero (la que no tiene paquete_de)
+    cs.sort(function(a,b){ return ((a.polizas||{}).paquete_de ? 1 : 0) - ((b.polizas||{}).paquete_de ? 1 : 0); });
+    var p0 = cs[0].polizas || {}, cidP = cs[0].cliente_id || p0.cliente_id || '', nP = cs[0].clientes ? nomCl(cs[0].clientes) : '';
+    var tot = cs.reduce(function(s, x){ return s + (Number(x.monto) || 0); }, 0);
+    var otros = cs.slice(1).map(function(x){ var r = (x.polizas||{}).ramo || ''; return /responsabilidad civil/i.test(r) ? 'RC' : /^vida/i.test(r) ? 'Vida' : /accidentes personales/i.test(r) ? 'AP' : r; }).join(' + ');
+    items.push({ o: c.fecha_vencimiento, h: '<div class="dz-item" onclick="irACobranzasCliente(\''+cidP+'\',\'\',\''+c.fecha_vencimiento+'\')"><span class="w">'+fmtD(c.fecha_vencimiento)+'</span><div class="t"><b>📦 Vence cuota del paquete</b> '+$(tot)+(nP ? ' · '+esc_(nP) : '')+' · '+esc_((p0.ramo||'')+' N° '+(p0.numero_poliza||''))+(otros ? ' + '+esc_(otros) : '')+'</div><span class="r">Cobranzas →</span></div>' });
   });
   items.sort(function(a,b){ return a.o < b.o ? -1 : a.o > b.o ? 1 : 0; });
   var tdHtml = items.slice(0, 7).map(function(x){ return x.h; }).join('');
