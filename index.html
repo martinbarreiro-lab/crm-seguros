@@ -1762,7 +1762,16 @@
 
     <div class="fg2">
       <div class="frow"><label>Día de débito</label><input type="number" id="fp-dia-debito" min="1" max="31" placeholder="Ej: 10"></div>
-      <div class="frow"></div>
+      <div class="frow"><label>Refacturación <span style="color:#6B7280;font-weight:400">(si paga en efectivo / cupón)</span></label>
+        <select id="fp-refact">
+          <option value="">—</option>
+          <option value="1">Mensual (cupón todos los meses)</option>
+          <option value="3">Trimestral (cupones en la póliza)</option>
+          <option value="4">Cuatrimestral (cupones en la póliza)</option>
+          <option value="6">Semestral (cupones en la póliza)</option>
+          <option value="12">Anual (cupones en la póliza)</option>
+        </select>
+      </div>
     </div>
 
     <!-- ===== SECCIÓN DINÁMICA POR RAMO ===== -->
@@ -2951,7 +2960,7 @@ function _cupClientes(pols, clIdx) {
   var cup = {};
   (pols || []).forEach(function (p) {
     if (p.estado !== 'activa' || p.paquete_de) return;
-    if (_medioCat(p).k !== 'efectivo' || !/mensual/i.test(p.forma_pago || '')) return;
+    if (_medioCat(p).k !== 'efectivo' || _refactMeses(p) !== 1) return;
     var cl = (clIdx || {})[p.cliente_id] || p.clientes || {};
     var g = cup[p.cliente_id] = cup[p.cliente_id] || { cid: p.cliente_id, nom: cl.apellido || cl.razon_social ? nombreClienteLista(cl) : '—', nombre: cl.nombre || '', tel: cl.telefono_principal || cl.telefono_secundario || '', pols: [] };
     g.pols.push(p);
@@ -2961,14 +2970,30 @@ function _cupClientes(pols, clIdx) {
 var _cupGenerado = false;
 async function generarTareasCupon() {
   if (_cupGenerado) return; _cupGenerado = true;
-  if (new Date().getDate() > 10) return; // pasado el día 10 ya no se crean las del mes
   try {
-    var mes = _cupMes();
+    var mes = _cupMes(), hoyD = new Date(); hoyD.setHours(0, 0, 0, 0);
     var r = await Promise.all([
-      sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado,paquete_de,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', user.id).eq('estado', 'activa').limit(2000),
-      sb.from('tareas').select('id,cliente_id').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').eq('vencimiento', mes)
+      sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado,paquete_de,cliente_id,fecha_inicio,periodo_meses,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', user.id).eq('estado', 'activa').limit(2000),
+      sb.from('tareas').select('id,cliente_id,poliza_id,vencimiento').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').gte('vencimiento', _sumarMeses(mes, -12))
     ]);
-    var ya = {}; (r[1].data || []).forEach(function (t) { ya[t.cliente_id] = 1; });
+    var ya = {}, yaP = {}; (r[1].data || []).forEach(function (t) { if (t.vencimiento === mes) ya[t.cliente_id] = 1; yaP[t.poliza_id + '|' + t.vencimiento] = 1; });
+    // Refacturación trimestral, semestral, etc.: tarea solo cuando empieza cada período (los cupones vienen en la póliza)
+    var otras = [];
+    (r[0].data || []).forEach(function (p) {
+      if (p.paquete_de || _medioCat(p).k !== 'efectivo' || !p.fecha_inicio) return;
+      var rm = _refactMeses(p); if (!rm || rm === 1) return;
+      var ini = p.fecha_inicio, k = 0;
+      while (_sumarMeses(p.fecha_inicio, (k + 1) * rm) <= hoyD.toISOString().slice(0, 10) && k < 200) k++;
+      ini = _sumarMeses(p.fecha_inicio, k * rm);
+      var dias = Math.round((hoyD - new Date(ini + 'T00:00:00')) / 864e5);
+      if (dias < 0 || dias > 10 || yaP[p.id + '|' + ini]) return;
+      var cl = p.clientes || {}, nom = nombreClienteLista(cl);
+      otras.push({ productor_id: user.id, titulo: 'Mandar los ' + rm + ' cupones del nuevo período — ' + nom, tipo: 'Mandar cupón', estado: 'pendiente', prioridad: 'media', tablero: 'cobranzas', categoria: 'cobranza',
+        cliente_id: p.cliente_id, poliza_id: p.id, vencimiento: ini, fecha_limite: (function () { var d = new Date(ini + 'T12:00:00'); d.setDate(d.getDate() + 5); return d.toISOString().slice(0, 10); })(), auto_generada: true,
+        descripcion: 'Paga con cupón y se refactura cada ' + rm + ' meses: empezó un período nuevo el ' + fmtDate(ini) + '. Mandarle los ' + rm + ' cupones de ' + p.ramo + ' N° ' + p.numero_poliza + ' (' + (p.aseguradora || '') + ').' });
+    });
+    if (otras.length) await sb.from('tareas').insert(otras);
+    if (new Date().getDate() > 10) return; // pasado el día 10 ya no se crean las del mes
     var nuevas = _cupClientes(r[0].data || [], {}).filter(function (g) { return g.cid && !ya[g.cid]; }).map(function (g) {
       return { productor_id: user.id, titulo: 'Mandar cupón de pago — ' + g.nom, tipo: 'Mandar cupón', estado: 'pendiente', prioridad: 'media', tablero: 'cobranzas', categoria: 'cobranza',
         cliente_id: g.cid, poliza_id: g.pols[0].id, vencimiento: mes, fecha_limite: mes.slice(0, 8) + '05', auto_generada: true,
@@ -6887,6 +6912,11 @@ document.getElementById('btn-guardar-pol') && (document.getElementById('btn-guar
 
   // Recolectar datos específicos del ramo
   const datosRamo = recolectarDatosRamo(ramo);
+  // Al editar, se conservan los datos que el formulario no muestra (personas, certificados, nombre, etc.)
+  if (window._editPolizaId && window._editPolizaDr) {
+    Object.keys(window._editPolizaDr).forEach(function (k) { var v = datosRamo[k]; if (v === undefined || v === null || v === '') datosRamo[k] = window._editPolizaDr[k]; });
+  }
+  (function () { var rf = parseInt((document.getElementById('fp-refact') || {}).value, 10); if (rf) datosRamo.refact_meses = rf; else delete datosRamo.refact_meses; })();
 
   // Construir payload póliza
   const poliza = {
@@ -9644,7 +9674,7 @@ function cobRenderSide() {
     return '<div class="cobx-bar"><div style="display:flex;justify-content:space-between"><span>' + MEDIOS[b[0]][1] + '</span><b>' + cuentas[b[0]] + '</b></div><div class="cobx-bar-t"><div style="width:' + Math.max(3, Math.round(cuentas[b[0]] / tot * 100)) + '%;background:' + b[1] + '"></div></div></div>';
   }).join('');
   var nb = document.getElementById('cob-sin-medio-n');
-  var nSin = pols.filter(function (p) { return _medioCat(p).k === 'sin'; }).length;
+  var nSin = pols.filter(function (p) { return !/vida obligatori|^art\b/i.test(p.ramo || '') && (_medioCat(p).k === 'sin' || (_medioCat(p).k === 'efectivo' && !_refactMeses(p))); }).length;
   if (nb) { nb.textContent = nSin; nb.style.display = nSin ? '' : 'none'; }
 }
 
@@ -9688,7 +9718,7 @@ async function cargarCobranzas() {
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
-    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de').eq('productor_id', user.id).limit(2000),
+    sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de,periodo_meses,datos_ramo').eq('productor_id', user.id).limit(2000),
     sb.from('tareas').select('id,titulo,fecha_limite,estado,cliente_id').eq('productor_id', user.id).eq('tipo', 'Gestionar mora').eq('estado', 'esperando'),
     sb.from('tareas').select('id,cliente_id,estado').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').eq('vencimiento', _cupMes())
   ]);
@@ -9793,6 +9823,14 @@ async function cobMarcarRechazo(id) {
   cargarCobranzas();
 }
 
+// Cada cuántos meses se refactura una póliza en efectivo / cupón (1 = cupón todos los meses; 3, 6… = los cupones vienen en la póliza)
+function _refactMeses(p) {
+  var dr = _drObj(p);
+  if (dr.refact_meses) return parseInt(dr.refact_meses, 10) || null;
+  if (dr.cupones_en_poliza && p.periodo_meses) return p.periodo_meses;
+  if (/ref(\.|acturaci[oó]n)? *mensual/i.test(p.forma_pago || '')) return 1;
+  return null;
+}
 // Medio de pago de una póliza en categorías simples
 var MEDIOS = { efectivo: ['💵', 'Efectivo / cupón'], debito: ['🏦', 'Débito / CBU'], tarjeta: ['💳', 'Tarjeta'], confirmar: ['⏳', 'Tarjeta a confirmar'], transferencia: ['🔁', 'Transferencia'], f931: ['🏛', 'F.931 (ARCA)'], sin: ['⚠️', 'Sin cargar'] };
 function _medioCat(pol, cob) {
@@ -9837,11 +9875,12 @@ async function cobMediosPorCliente() {
 // Pantalla para cargar el medio de pago de las pólizas que no lo tienen (sin eso el CRM no sabe si se cobran solas)
 var _cmpPols = [];
 async function cobCompletarMedio() {
-  var r = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,paquete_de,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)')
+  var r = await sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,paquete_de,cliente_id,periodo_meses,datos_ramo,clientes(nombre,apellido,razon_social,tipo_cliente)')
     .eq('productor_id', user.id).eq('estado', 'activa').limit(2000);
   var todas = r.data || [];
   var hijos = {}; todas.forEach(function (p) { if (p.paquete_de) (hijos[p.paquete_de] = hijos[p.paquete_de] || []).push(p); });
-  _cmpPols = todas.filter(function (p) { return !p.paquete_de && !p.medio_pago && !/vida obligatori|^art\b|riesgos? del trabajo/i.test(p.ramo || ''); });
+  // Sin medio de pago, o en efectivo sin saber cada cuánto se refactura
+  _cmpPols = todas.filter(function (p) { return !p.paquete_de && !/vida obligatori|^art\b|riesgos? del trabajo/i.test(p.ramo || '') && (!p.medio_pago || (_medioCat(p).k === 'efectivo' && !_refactMeses(p))); });
   _cmpPols.forEach(function (p) { p._hijos = hijos[p.id] || []; p._cli = p.clientes ? nombreClienteLista(p.clientes) : '—'; });
   _cmpPols.sort(function (a, b) { return a._cli.localeCompare(b._cli); });
   var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '760px';
@@ -9861,11 +9900,34 @@ async function cobCompletarMedio() {
 }
 async function cobGuardarMedio(id, medio) {
   var p = _cmpPols.find(function (x) { return x.id === id; }); if (!p) return;
+  // Efectivo / cupón: antes de guardar, preguntar cada cuánto se refactura
+  if (medio === 'Efectivo') {
+    var el0 = document.getElementById('cmp-' + id); if (!el0) return;
+    var box = el0.querySelector('.cmp-ref');
+    if (!box) { box = document.createElement('div'); box.className = 'cmp-ref'; el0.appendChild(box); }
+    box.innerHTML = '<div style="font-size:12.5px;font-weight:600;margin:10px 0 6px;color:#92400E">¿Cada cuánto se refactura?</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">'
+      + [[1, 'Mensual', 'cupón todos los meses'], [3, 'Trimestral', 'cupones en la póliza'], [4, 'Cuatrimestral', 'cupones en la póliza'], [6, 'Semestral', 'cupones en la póliza'], [12, 'Anual', 'cupones en la póliza']].map(function (o) {
+        return '<button type="button" class="cobx-a" style="min-height:52px;flex-direction:column;gap:0;color:#92400E" onclick="cobGuardarRefact(\'' + id + '\',' + o[0] + ')">' + o[1] + '<span style="font-size:10.5px;font-weight:400;color:#5B6472">' + o[2] + '</span></button>';
+      }).join('') + '</div>';
+    return;
+  }
   var ids = [p.id].concat(p._hijos.map(function (h) { return h.id; }));
   var r = await sb.from('polizas').update({ medio_pago: medio }).in('id', ids);
   if (r.error) { alert('No se pudo guardar: ' + r.error.message); return; }
   var el = document.getElementById('cmp-' + id);
   if (el) el.innerHTML = '<div style="font-size:12.5px;color:#15803D">✓ ' + esc(p._cli) + ' · ' + esc((p.ramo || '') + ' N° ' + p.numero_poliza) + ' → <b>' + esc(medio) + '</b></div>';
+  var t = document.getElementById('env-titulo'); _cmpPols = _cmpPols.filter(function (x) { return x.id !== id; }); if (t) t.textContent = '💳 Completar medio de pago (' + _cmpPols.length + ')';
+}
+
+async function cobGuardarRefact(id, meses) {
+  var p = _cmpPols.find(function (x) { return x.id === id; }); if (!p) return;
+  var ids = [p.id].concat(p._hijos.map(function (h) { return h.id; }));
+  var r = await sb.from('polizas').update({ medio_pago: 'Efectivo' }).in('id', ids);
+  if (!r.error) r = await sb.from('polizas').update({ datos_ramo: Object.assign({}, _drObj(p), { refact_meses: meses }) }).eq('id', p.id);
+  if (r.error) { alert('No se pudo guardar: ' + r.error.message); return; }
+  var txt = meses === 1 ? 'Efectivo · cupón todos los meses' : 'Efectivo · cada ' + meses + ' meses (cupones en la póliza)';
+  var el = document.getElementById('cmp-' + id);
+  if (el) el.innerHTML = '<div style="font-size:12.5px;color:#15803D">✓ ' + esc(p._cli) + ' · ' + esc((p.ramo || '') + ' N° ' + p.numero_poliza) + ' → <b>' + txt + '</b></div>';
   var t = document.getElementById('env-titulo'); _cmpPols = _cmpPols.filter(function (x) { return x.id !== id; }); if (t) t.textContent = '💳 Completar medio de pago (' + _cmpPols.length + ')';
 }
 
@@ -11949,7 +12011,7 @@ function resetModalPoliza() {
   // Reset all inputs and selects in modal-pol
   const modal = document.getElementById('modal-pol');
   if (!modal) return;
-  window._editPolizaId = null; window._fpPdf = null;
+  window._editPolizaId = null; window._fpPdf = null; window._editPolizaDr = null;
   modal.querySelectorAll('input,select').forEach(function (i) { i.style.background = ''; });
   modal.querySelectorAll('input').forEach(function(i) {
     if (i.type === 'file') i.value = '';
@@ -12070,7 +12132,10 @@ async function abrirEditarPoliza(polId) {
   sv('fp-pago', p.forma_pago);
   sv('fp-cuotas', p.cantidad_cuotas);
   sv('fp-valor-cuota', p.valor_cuota);
+  (function () { var sm = document.getElementById('fp-medio'); if (sm && p.medio_pago && ![].some.call(sm.options, function (o) { return o.value === p.medio_pago; })) { var o = document.createElement('option'); o.textContent = p.medio_pago; sm.appendChild(o); } })();
   sv('fp-medio', p.medio_pago);
+  window._editPolizaDr = _drObj(p);
+  sv('fp-refact', _refactMeses(p) || '');
   sv('fp-dia-debito', p.dia_debito);
   sv('fp-notas', p.notas);
   sv('fp-ramo', p.ramo);
