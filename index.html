@@ -536,102 +536,66 @@
       <!-- COBRANZAS -->
       <div id="sec-base" class="sec"></div>
       <div id="sec-cobranzas" class="sec">
-        <div class="toprow" style="align-items:flex-start">
+        <div class="cobx">
+        <div class="cobx-head">
           <div>
-            <div style="font-size:18px;font-weight:500;color:var(--text)">Cobranzas</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cob-periodo-label">—</div>
+            <div class="cobx-title">Cobranzas</div>
+            <div class="cobx-sub"><span id="cob-periodo-label">—</span> · lo que tenés que cobrar, lo que rebotó y lo que se cobra solo</div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="cob-mes-sel" onchange="cargarCobranzas()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)"></select>
-          </div>
-        </div>
-
-        <!-- Cards métricas -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
-          <div class="metric" style="border-top:3px solid var(--green)">
-            <div class="m-body">
-              <div class="lbl">Cobrado este mes</div>
-              <div class="val" id="cob-mes" style="font-size:18px;color:var(--green)">—</div>
-              <div class="sub" id="cob-mes-sub">— cuotas cobradas</div>
-            </div>
-          </div>
-          <div class="metric" style="border-top:3px solid var(--red)">
-            <div class="m-body">
-              <div class="lbl">Pendiente de cobro</div>
-              <div class="val" id="cob-pend" style="font-size:18px;color:var(--red)">—</div>
-              <div class="sub" id="cob-pend-sub">— cuotas impagas</div>
-            </div>
-          </div>
-          <div class="metric" style="border-top:3px solid var(--blue)">
-            <div class="m-body">
-              <div class="lbl">Comisión estimada</div>
-              <div class="val" id="cob-comision" style="font-size:18px;color:var(--blue)">—</div>
-              <div class="sub" id="cob-comision-sub">Configurar % en Ajustes</div>
-            </div>
-          </div>
-          <div class="metric" style="border-top:3px solid var(--amber)">
-            <div class="m-body">
-              <div class="lbl">Tasa de cobrabilidad</div>
-              <div class="val" id="cob-tasa" style="font-size:18px;color:var(--amber)">—</div>
-              <div class="sub" id="cob-tasa-sub">Cobrado vs emitido</div>
-            </div>
+          <div class="cobx-head-actions">
+            <label class="cobx-lbl">Mes <select id="cob-mes-sel" onchange="cargarCobranzas()" class="cobx-sel"></select></label>
+            <button type="button" class="cobx-btn" onclick="cobMediosPorCliente()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg>
+              Clientes por medio de pago</button>
+            <button type="button" class="cobx-btn cobx-btn-p" onclick="cobCompletarMedio()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/></svg>
+              Completar medio de pago <span id="cob-sin-medio-n" class="cobx-btn-badge" style="display:none">0</span></button>
           </div>
         </div>
 
-        <!-- Tabs -->
-        <div style="display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:14px">
-          <button type="button" id="cob-tab-pend" onclick="cobSetTab('pendiente')"
-            style="font-size:13px;padding:8px 18px;background:none;border:none;border-bottom:2px solid var(--text);margin-bottom:-0.5px;cursor:pointer;font-weight:500;color:var(--text)">
-            Pendientes <span id="cob-badge-pend" style="background:#FCEBEB;color:#A32D2D;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:600">0</span>
-          </button>
-          <button type="button" id="cob-tab-cob" onclick="cobSetTab('cobrado')"
-            style="font-size:13px;padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-0.5px;cursor:pointer;color:var(--muted)">
-            Cobrado <span id="cob-badge-cob" style="background:#EAF3DE;color:#3B6D11;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:600">0</span>
-          </button>
+        <div class="cobx-kpis">
+          <div class="cobx-kpi"><div class="cobx-kpi-l" style="color:#9A3412">Para reclamar</div><div class="cobx-kpi-v" id="cob-k-recl">—</div><div class="cobx-kpi-s" id="cob-k-recl-sub">—</div></div>
+          <div class="cobx-kpi" id="cob-k-rech-box"><div class="cobx-kpi-l" style="color:#B91C1C">Débitos rechazados</div><div class="cobx-kpi-v" id="cob-k-rech">—</div><div class="cobx-kpi-s" id="cob-k-rech-sub">—</div></div>
+          <div class="cobx-kpi"><div class="cobx-kpi-l" style="color:#1E5A8C">Se cobran solas</div><div class="cobx-kpi-v" id="cob-k-auto">—</div><div class="cobx-kpi-s" id="cob-k-auto-sub">—</div></div>
+          <div class="cobx-kpi"><div class="cobx-kpi-l" style="color:#166534">Cobrado del mes</div><div class="cobx-kpi-v" id="cob-k-cob">—</div><div class="cobx-kpi-s" id="cob-k-cob-sub">—</div></div>
         </div>
 
-        <!-- Filtros -->
-        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-          <select id="cob-fil-aseg" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
-            <option value="">Todas las compañías</option>
-          </select>
-          <select id="cob-fil-mora" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
-            <option value="">Todos los plazos</option>
-            <option value="1">1-30 días</option>
-            <option value="31">31-60 días</option>
-            <option value="61">+60 días</option>
-          </select>
-          <select id="cob-fil-medio" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
-            <option value="">Todos los medios</option><option value="efectivo">💵 Efectivo / cupón</option><option value="debito">🏦 Débito / CBU</option><option value="tarjeta">💳 Tarjeta</option><option value="confirmar">⏳ Tarjeta a confirmar</option><option value="sin">⚠️ Sin cargar</option>
-          </select>
-          <button type="button" class="btn btn-sm" onclick="cobMediosPorCliente()" title="Qué cliente paga con qué medio" style="font-size:12px">👥 Clientes por medio de pago</button>
-          <button type="button" class="btn btn-sm" onclick="cobCompletarMedio()" title="Cargá cómo paga cada póliza para que el CRM sepa cuáles se cobran solas" style="font-size:12px">💳 Completar medio de pago</button>
-          <label id="cob-ver-auto-lbl" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="cob-ver-auto" onchange="cobRender()"> <span id="cob-ver-auto-txt">Ver también las que se cobran solas</span></label>
-          <span id="cob-fil-cli"></span>
-          <div style="flex:1"></div>
-          <div id="cob-total-label" style="font-size:12px;color:var(--muted)"></div>
-        </div>
+        <div class="cobx-body">
+          <section class="cobx-main" aria-label="Cuotas">
+            <div class="cobx-tabs" role="tablist">
+              <button type="button" role="tab" id="cob-tab-pendiente" onclick="cobSetTab('pendiente')">Para reclamar <span class="cobx-tb" style="background:#FFEDD5;color:#9A3412" id="cob-badge-pendiente">0</span></button>
+              <button type="button" role="tab" id="cob-tab-rechazada" onclick="cobSetTab('rechazada')">Rechazadas <span class="cobx-tb" style="background:#DC2626;color:#fff" id="cob-badge-rechazada">0</span></button>
+              <button type="button" role="tab" id="cob-tab-auto" onclick="cobSetTab('auto')">Se cobran solas <span class="cobx-tb" style="background:#E0EDF8;color:#1E5A8C" id="cob-badge-auto">0</span></button>
+              <button type="button" role="tab" id="cob-tab-cobrado" onclick="cobSetTab('cobrado')">Cobrado <span class="cobx-tb" style="background:#DCFCE7;color:#166534" id="cob-badge-cobrado">0</span></button>
+            </div>
+            <div class="cobx-filters">
+              <label class="cobx-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input type="search" id="cob-buscar" placeholder="Buscar cliente o póliza" oninput="cobRender()" aria-label="Buscar cliente o póliza"></label>
+              <select id="cob-fil-aseg" onchange="cobRender()" class="cobx-sel" aria-label="Compañía"><option value="">Todas las compañías</option></select>
+              <select id="cob-fil-mora" onchange="cobRender()" class="cobx-sel" aria-label="Atraso">
+                <option value="">Cualquier atraso</option><option value="1">1-30 días</option><option value="31">31-60 días</option><option value="61">+60 días</option>
+              </select>
+              <span id="cob-fil-cli"></span>
+              <div id="cob-chips" class="cobx-chips" role="group" aria-label="Medio de pago"></div>
+            </div>
+            <div id="cob-list" class="cobx-list"></div>
+            <div class="cobx-foot"><span id="cob-footer-left"></span><span id="cob-footer-right" style="font-weight:600;color:var(--text)"></span></div>
+          </section>
 
-        <!-- Tabla -->
-        <div style="border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
-            <thead id="cob-thead">
-              <tr style="background:var(--bg)">
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:22%;border-bottom:0.5px solid var(--border)">Cliente</th>
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:14%;border-bottom:0.5px solid var(--border)">Póliza</th>
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:14%;border-bottom:0.5px solid var(--border)">Compañía</th>
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:12%;border-bottom:0.5px solid var(--border)">Vencimiento</th>
-                <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:12%;border-bottom:0.5px solid var(--border)">Importe</th>
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:11%;border-bottom:0.5px solid var(--border)" id="cob-col-mora">Mora</th>
-                <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:15%;border-bottom:0.5px solid var(--border)" id="cob-col-accion">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-cob"></tbody>
-          </table>
-          <div id="cob-footer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 10px;background:var(--bg);border-top:0.5px solid var(--border);font-size:12px;font-weight:500;color:var(--text)">
-            <span id="cob-footer-left" style="font-weight:400;color:var(--muted)"></span>
-            <span id="cob-footer-right"></span>
-          </div>
+          <aside class="cobx-side" aria-label="Este mes">
+            <div class="cobx-card">
+              <div class="cobx-card-t">Cupones a mandar</div>
+              <div class="cobx-card-s">Efectivo con refacturación mensual · del 1 al 5 de cada mes</div>
+              <div id="cob-cupones"></div>
+            </div>
+            <div class="cobx-card">
+              <div class="cobx-card-t">Cómo pagan tus clientes</div>
+              <div class="cobx-card-s">Pólizas vigentes por medio de pago</div>
+              <div id="cob-medios-bars"></div>
+              <button type="button" class="cobx-btn" style="width:100%;justify-content:center;margin-top:12px;color:#2E6DA4" onclick="cobMediosPorCliente()">Ver clientes por medio de pago</button>
+            </div>
+          </aside>
+        </div>
         </div>
       </div>
 
@@ -9429,161 +9393,200 @@ function irACobranzasCliente(cid, nom, fecha) {
 }
 function cobQuitarFiltroCli() { _cobCli = null; cobRender(); }
 
+var _cobMedio = '', _cobPols = [], _cobClIdx = {};
 function cobSetTab(tab) {
   _cobTab = tab;
-  var tabPend = document.getElementById('cob-tab-pend');
-  var tabCob  = document.getElementById('cob-tab-cob');
-  var moraTh  = document.getElementById('cob-col-mora');
-  var accionTh = document.getElementById('cob-col-accion');
+  ['pendiente', 'rechazada', 'auto', 'cobrado'].forEach(function (t) {
+    var b = document.getElementById('cob-tab-' + t); if (b) { b.classList.toggle('on', t === tab); b.setAttribute('aria-selected', t === tab ? 'true' : 'false'); }
+  });
   var filMora = document.getElementById('cob-fil-mora');
-  if (tabPend) {
-    tabPend.style.borderBottom = tab==='pendiente' ? '2px solid var(--text)' : '2px solid transparent';
-    tabPend.style.color = tab==='pendiente' ? 'var(--text)' : 'var(--muted)';
-    tabPend.style.fontWeight = tab==='pendiente' ? '500' : '400';
-  }
-  if (tabCob) {
-    tabCob.style.borderBottom = tab==='cobrado' ? '2px solid var(--text)' : '2px solid transparent';
-    tabCob.style.color = tab==='cobrado' ? 'var(--text)' : 'var(--muted)';
-    tabCob.style.fontWeight = tab==='cobrado' ? '500' : '400';
-  }
-  if (moraTh) moraTh.textContent = tab==='pendiente' ? 'Mora' : 'Fecha cobro';
-  if (accionTh) accionTh.textContent = tab==='pendiente' ? 'Acción' : 'Comisión est.';
-  if (filMora) filMora.style.display = tab==='pendiente' ? '' : 'none';
+  if (filMora) filMora.style.display = (tab === 'pendiente' || tab === 'rechazada') ? '' : 'none';
+  _cobMedio = '';
   cobRender();
+}
+function cobSetMedio(k) { _cobMedio = (_cobMedio === k ? '' : k); cobRender(); }
+
+var COB_PILL = { efectivo: ['#FEF3C7', '#92400E'], debito: ['#E0EDF8', '#1E5A8C'], tarjeta: ['#E0EDF8', '#1E5A8C'], confirmar: ['#EDE9FE', '#5B21B6'], transferencia: ['#F1F5F9', '#475569'], f931: ['#F1F5F9', '#475569'], sin: ['#FFFBEB', '#92400E'] };
+function _cobPill(txt, bg, fg, extra) { return '<span class="cobx-pill" style="background:' + bg + ';color:' + fg + (extra || '') + '">' + txt + '</span>'; }
+function _cob$(n) { return '$ ' + Math.round(parseFloat(n) || 0).toLocaleString('es-AR'); }
+
+// Cuotas de una tarjeta agrupada (paquete: todas las del mismo vencimiento)
+function _cobItemsDe(id) {
+  var c = (_cobData || []).find(function (x) { return x.id === id; }); if (!c) return [];
+  return (_cobData || []).filter(function (x) { return x._pq === c._pq && x.fecha_vencimiento === c.fecha_vencimiento && x.estado === c.estado; });
+}
+async function cobYaPago(id) {
+  var its = _cobItemsDe(id); if (!its.length) return;
+  var hoy = new Date().toISOString().slice(0, 10);
+  for (var i = 0; i < its.length; i++) await sb.from('cobranzas').update({ estado: 'pagada', fecha_pago: hoy }).eq('id', its[i].id);
+  // Si era un débito rechazado, se cierra la tarea de avisar
+  if (its.some(function (x) { return x.rechazada; })) {
+    var pids = its.map(function (x) { return x.poliza_id; }).filter(Boolean);
+    if (pids.length) await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Pagó la cuota rechazada', updated_at: new Date().toISOString() }).in('poliza_id', pids).eq('tipo', 'Débito rechazado').neq('estado', 'cerrada');
+  }
+  mostrarAlerta('Pago registrado');
+  cargarCobranzas();
+}
+// "Tarjeta a confirmar" → la compañía la aprobó: pasa a Tarjeta y desde ahí se cobra sola
+async function cobTarjetaAprobada(id) {
+  var its = _cobItemsDe(id); var pids = its.map(function (x) { return x.poliza_id; }).filter(Boolean);
+  if (!pids.length) return;
+  var hijos = (_cobPols || []).filter(function (p) { return p.paquete_de && pids.indexOf(p.paquete_de) >= 0; }).map(function (p) { return p.id; });
+  await sb.from('polizas').update({ medio_pago: 'Tarjeta' }).in('id', pids.concat(hijos));
+  mostrarAlerta('Listo: ahora figura con tarjeta');
+  cargarCobranzas();
+}
+function _cobWa(tel, texto) {
+  var n = tel ? normalizarTelefono(tel) : '';
+  return 'https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(texto);
 }
 
 function cobRender() {
-  var hoy = new Date();
-  var filAseg = (document.getElementById('cob-fil-aseg')||{}).value||'';
-  var filMora = (document.getElementById('cob-fil-mora')||{}).value||'';
-  var tbody = document.getElementById('tbody-cob');
-  if (!tbody) return;
-  var verAuto = !!(document.getElementById('cob-ver-auto')||{}).checked;
-  var filMedio = (document.getElementById('cob-fil-medio')||{}).value||'';
-  // Si se filtra por débito o tarjeta, se muestran aunque se cobren solas
-  if (filMedio === 'debito' || filMedio === 'tarjeta') verAuto = true;
-  var nAuto = _cobData.filter(function(c){ return (c.estado==='pendiente'||c.estado==='vencida') && c._auto; }).length;
-  var fc = document.getElementById('cob-fil-cli'); if (fc) fc.innerHTML = _cobCli ? '<button type="button" class="btn btn-sm" onclick="cobQuitarFiltroCli()" style="background:#EFF6FF;color:#1E40AF;border-color:#BFDBFE">Solo ' + esc(_cobCli.nom || ((_cobData.find(function (x) { return x._cliente_id === _cobCli.id; }) || {})._cliente) || 'este cliente') + ' ✕</button>' : '';
-  var lblA = document.getElementById('cob-ver-auto-lbl'); if (lblA) lblA.style.display = _cobTab === 'pendiente' && nAuto ? 'flex' : 'none';
-  var txA = document.getElementById('cob-ver-auto-txt'); if (txA) txA.textContent = 'Ver también las ' + nAuto + ' que se cobran solas (tarjeta, débito, ARCA, anuladas)';
+  var list = document.getElementById('cob-list');
+  if (!list) return;
+  var filAseg = (document.getElementById('cob-fil-aseg') || {}).value || '';
+  var filMora = (document.getElementById('cob-fil-mora') || {}).value || '';
+  var q = ((document.getElementById('cob-buscar') || {}).value || '').trim().toLowerCase();
+  var tab = _cobTab || 'pendiente';
+  var fc = document.getElementById('cob-fil-cli');
+  if (fc) fc.innerHTML = _cobCli ? '<button type="button" class="cobx-chip on" onclick="cobQuitarFiltroCli()">Solo ' + esc(_cobCli.nom || ((_cobData.find(function (x) { return x._cliente_id === _cobCli.id; }) || {})._cliente) || 'este cliente') + ' ✕</button>' : '';
 
-  var rows = _cobData.filter(function(c) {
-    if (_cobTab === 'pendiente') {
-      if (c.estado !== 'pendiente' && c.estado !== 'vencida') return false;
-      // Tarjeta / débito / CBU, vida obligatorio (ARCA) y pólizas anuladas: no son para reclamar, se ocultan salvo que se pidan
-      if (c._auto && !verAuto) return false;
-    } else {
-      if (c.estado !== 'pagada' && c.estado !== 'cancelado') return false;
-    }
+  var esPend = function (c) { return c.estado === 'pendiente' || c.estado === 'vencida'; };
+  var enTab = function (c) {
+    if (tab === 'pendiente') return esPend(c) && !c._auto;
+    if (tab === 'rechazada') return esPend(c) && c.rechazada;
+    if (tab === 'auto') return esPend(c) && c._auto;
+    return c.estado === 'pagada' || c.estado === 'cancelado';
+  };
+  var base = _cobData.filter(function (c) {
+    if (!enTab(c)) return false;
     if (filAseg && c._aseguradora !== filAseg) return false;
-    if (filMedio && (c._medio || {}).k !== filMedio) return false;
     if (_cobCli && c._cliente_id !== _cobCli.id) return false;
-    if (filMora && _cobTab === 'pendiente') {
-      var dias = c._dias_mora || 0;
-      if (filMora === '1' && (dias < 1 || dias > 30)) return false;
-      if (filMora === '31' && (dias < 31 || dias > 60)) return false;
-      if (filMora === '61' && dias < 61) return false;
+    if (q && (c._cliente + ' ' + c._numero_poliza + ' ' + (c._pq_num || '')).toLowerCase().indexOf(q) < 0) return false;
+    if (filMora && (tab === 'pendiente' || tab === 'rechazada')) {
+      var d = c._dias_mora || 0;
+      if (filMora === '1' && (d < 1 || d > 30)) return false;
+      if (filMora === '31' && (d < 31 || d > 60)) return false;
+      if (filMora === '61' && d < 61) return false;
     }
     return true;
   });
+  // Chips de medio de pago con su cantidad
+  var cnt = {}; base.forEach(function (c) { var k = (c._medio || {}).k || 'sin'; cnt[k] = (cnt[k] || 0) + 1; });
+  var chips = document.getElementById('cob-chips');
+  if (chips) chips.innerHTML = '<button type="button" class="cobx-chip' + (!_cobMedio ? ' on' : '') + '" onclick="cobSetMedio(\'\')">Todos</button>'
+    + ['efectivo', 'confirmar', 'debito', 'tarjeta', 'f931', 'sin'].filter(function (k) { return cnt[k]; }).map(function (k) {
+      return '<button type="button" class="cobx-chip' + (k === 'sin' ? ' warn' : '') + (_cobMedio === k ? ' on' : '') + '" onclick="cobSetMedio(\'' + k + '\')">' + MEDIOS[k][1] + ' · ' + cnt[k] + '</button>';
+    }).join('');
+  var rows = _cobMedio ? base.filter(function (c) { return ((c._medio || {}).k || 'sin') === _cobMedio; }) : base;
 
-  // Ordenar: pendientes por mora desc, cobrados por fecha cobro desc
-  if (_cobTab === 'pendiente') {
-    rows.sort(function(a,b){ return ((b.rechazada?1:0) - (a.rechazada?1:0)) || ((b._dias_mora||0) - (a._dias_mora||0)); });
-  } else {
-    rows.sort(function(a,b){ return (b.fecha_pago||'') > (a.fecha_pago||'') ? 1 : -1; });
-  }
-
-  // Paquetes (ej. robo de bicicleta + vida + RC): las cuotas del mismo vencimiento van en una sola fila con el total
+  // Paquetes: las cuotas del mismo vencimiento van juntas
   var grp = {}, rows2 = [];
   rows.forEach(function (c) {
     var k = c._pq + '|' + c.fecha_vencimiento + '|' + c.estado;
     if (!grp[k]) { grp[k] = Object.assign({}, c, { _items: [c] }); rows2.push(grp[k]); return; }
-    var g = grp[k]; g._items.push(c); g.monto = (parseFloat(g.monto) || 0) + (parseFloat(c.monto) || 0);
+    var g = grp[k]; g._items.push(c); g.monto = (parseFloat(g.monto) || 0) + (parseFloat(c.monto) || 0); if (c.rechazada) g.rechazada = true;
   });
   rows2.forEach(function (g) {
-    if (g._items.length < 2) return;
     var pr = g._items.find(function (c) { return !c._pq_num; }) || g._items[0];
-    g._ramo = '📦 Paquete: ' + g._items.map(function (c) { return c._ramo; }).join(' + ');
-    g._numero_poliza = (pr._numero_poliza || g._pq_num || '') + ' +' + (g._items.length - 1);
     g.id = pr.id; g.poliza_id = pr.poliza_id;
+    g._desc = g._items.length > 1
+      ? 'Paquete ' + (pr._aseguradora || '') + ': ' + pr._ramo + ' N° ' + (pr._numero_poliza || g._pq_num || '') + ' + ' + g._items.filter(function (c) { return c !== pr; }).map(function (c) { return /responsabilidad civil/i.test(c._ramo) ? 'RC' : c._ramo; }).join(' + ')
+      : g._ramo + ' · ' + g._aseguradora + ' N° ' + g._numero_poliza;
+    g._cuota = g._items.map(function (c) { return c.numero_cuota; }).filter(Boolean)[0];
   });
-  rows = rows2;
-  var totalImporte = rows.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); }, 0);
-  var cfg = _cfg || {};
-  var comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
+  if (tab === 'cobrado') rows2.sort(function (a, b) { return (b.fecha_pago || '') > (a.fecha_pago || '') ? 1 : -1; });
+  else rows2.sort(function (a, b) { return ((b.rechazada ? 1 : 0) - (a.rechazada ? 1 : 0)) || ((b._dias_mora || 0) - (a._dias_mora || 0)) || String(a.fecha_vencimiento).localeCompare(String(b.fecha_vencimiento)); });
 
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--lt);font-size:13px">'
-      + (_cobTab==='pendiente' ? '✓ Sin cuotas pendientes' : 'Sin cobros en este período') + '</td></tr>';
+  var cfg = _cfg || {}, comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
+  var total = rows2.reduce(function (s, c) { return s + (parseFloat(c.monto) || 0); }, 0);
+
+  var card = function (c) {
+    var m = c._medio || { k: 'sin', t: 'Sin cargar' }, pc = COB_PILL[m.k] || COB_PILL.sin;
+    var pills = [], acts = [], fechaTxt;
+    var hoyIso = new Date().toISOString().slice(0, 10);
+    var vto = fmtDate(c.fecha_vencimiento).slice(0, 5);
+    fechaTxt = tab === 'cobrado' ? 'cobrada ' + (c.fecha_pago ? fmtDate(c.fecha_pago).slice(0, 5) : '') : (c.fecha_vencimiento < hoyIso ? 'venció ' : 'vence ') + vto;
+    if (c.rechazada && tab !== 'cobrado') pills.push(_cobPill('Débito rechazado', '#DC2626', '#fff', ';font-weight:600'));
+    pills.push(_cobPill(m.t, pc[0], pc[1], m.k === 'sin' ? ';border:1px dashed #B45309' : ''));
+    var d = c._dias_mora || 0;
+    if ((tab === 'pendiente' || tab === 'rechazada') && d > 0) pills.push(_cobPill(d + ' día' + (d !== 1 ? 's' : '') + ' de atraso', d > 30 ? '#FEE2E2' : '#FFEDD5', d > 30 ? '#991B1B' : '#9A3412'));
+    if (c._cuota) pills.push(_cobPill('Cuota ' + c._cuota, '#F1F5F9', '#475569'));
+    var tm = _cobMoras[c._cliente_id];
+    if (tm && tab !== 'cobrado') pills.push(_cobPill('📝 ' + esc(String(tm.titulo).split(' — ')[0]) + (tm.fecha_limite ? ' · ' + fmtDate(tm.fecha_limite).slice(0, 5) : ''), '#EFF6FF', '#1E40AF'));
+    var monto = _cob$(c.monto);
+    var nom = c._nombre || '';
+    if (tab === 'cobrado') {
+      if (comPct) acts.push('<span style="font-size:12.5px;color:#2E6DA4;font-weight:600">Comisión ' + _cob$((parseFloat(c.monto) || 0) * comPct / 100) + '</span>');
+    } else if (tab === 'auto' && !c.rechazada) {
+      if (/anulad|baja|cancel/i.test(c._pol_estado || '')) acts.push('<span style="font-size:12px;color:#5B6472">Póliza anulada</span>');
+      else if (m.k === 'f931') acts.push('<span style="font-size:12px;color:#5B6472">Se paga por ARCA</span>');
+      else acts.push('<button type="button" class="cobx-a red" title="La compañía avisó que no se pudo cobrar" onclick="cobMarcarRechazo(\'' + c.id + '\')">Rebotó</button>');
+    } else {
+      if (c.rechazada) acts.push('<a class="cobx-a wa" target="_blank" rel="noopener" href="' + _cobWa(c._telefono, 'Hola ' + nom + ', te escribo de MB Seguros: la compañía nos avisó que no se pudo debitar la cuota de ' + monto + ' de tu póliza N° ' + c._numero_poliza + ' de ' + c._aseguradora + '. Para que no quedes sin cobertura, ¿la podés abonar por transferencia o cupón? Te paso los datos.') + '">WhatsApp</a>');
+      else if (m.k === 'efectivo') acts.push('<a class="cobx-a wa" target="_blank" rel="noopener" href="' + _cobWa(c._telefono, 'Hola ' + nom + ', te paso el cupón de pago de tu seguro (' + c._desc + ') por ' + monto + ', vence el ' + vto + '. Cualquier cosa avisame.') + '">Mandar cupón</a>');
+      else if (m.k === 'confirmar') acts.push('<button type="button" class="cobx-a vio" onclick="cobTarjetaAprobada(\'' + c.id + '\')">Tarjeta aprobada</button>');
+      else if (m.k === 'sin') acts.push('<button type="button" class="cobx-a warn" onclick="cobCompletarMedio()">Cargar medio</button>');
+      if (!c.rechazada && m.k !== 'efectivo') acts.push('<a class="cobx-a sm" target="_blank" rel="noopener" href="' + _cobWa(c._telefono, 'Hola ' + nom + ', te recordamos que tenés una cuota de ' + monto + ' de tu póliza N° ' + c._numero_poliza + ' de ' + c._aseguradora + '. Cualquier consulta estamos a disposición.') + '">WhatsApp</a>');
+      acts.push('<button type="button" class="cobx-a ok" onclick="cobYaPago(\'' + c.id + '\')">Ya pagó</button>');
+      var its = c._items || [c];
+      _cobEst['k:' + c.id] = { kind: 'cuota', tarea: tm || null, cuotas: its.map(function (z) { return { id: z.id, poliza_id: z.poliza_id, monto: z.monto, numero_cuota: z.numero_cuota, fecha_vencimiento: z.fecha_vencimiento }; }),
+        pol: { numero_poliza: c._numero_poliza, ramo: c._ramo, aseguradora: c._aseguradora, cliente_id: c._cliente_id, clientes: c._cl || {} } };
+      acts.push('<button type="button" class="cobx-a sm" title="Anotar en qué está el cobro" onclick="hoyEstado(\'k:' + c.id + '\')">En qué está</button>');
+    }
+    return '<article class="cobx-item' + (c.rechazada && tab !== 'cobrado' ? ' rech' : '') + '">'
+      + '<div class="cobx-item-info"><div class="cobx-item-n">' + esc(c._cliente || '—') + '</div><div class="cobx-item-d">' + esc(c._desc) + '</div><div class="cobx-pills">' + pills.join('') + '</div></div>'
+      + '<div class="cobx-amt"><b>' + monto + '</b><span>' + fechaTxt + '</span></div>'
+      + '<div class="cobx-acts">' + acts.join('') + '</div></article>';
+  };
+
+  var html = '';
+  if (!rows2.length) {
+    html = '<div class="cobx-empty">' + ({ pendiente: '✓ No hay nada para reclamar', rechazada: '✓ No hay débitos rechazados', auto: 'No hay cuotas automáticas en este mes', cobrado: 'Sin cobros en este período' }[tab]) + '</div>';
+  } else if (tab === 'pendiente') {
+    var hoyIso = new Date().toISOString().slice(0, 10);
+    var sec = [['Rebotó — avisar hoy', '#B91C1C', rows2.filter(function (c) { return c.rechazada; })],
+      ['Atrasadas', '#9A3412', rows2.filter(function (c) { return !c.rechazada && c.fecha_vencimiento < hoyIso; })],
+      ['Vencen este mes', '#5B6472', rows2.filter(function (c) { return !c.rechazada && c.fecha_vencimiento >= hoyIso; })]];
+    sec.forEach(function (s) { if (s[2].length) html += '<div class="cobx-sec" style="color:' + s[1] + '">' + s[0] + ' · ' + s[2].length + '</div>' + s[2].map(card).join(''); });
   } else {
-    tbody.innerHTML = rows.map(function(c, i) {
-      var border = i < rows.length-1 ? 'border-bottom:0.5px solid var(--border);' : '';
-      var cliente = c._cliente || '—';
-      var pol = c._numero_poliza || '—';
-      var aseg = c._aseguradora || '—';
-      var monto = '$' + Math.round(parseFloat(c.monto)||0).toLocaleString('es-AR');
-
-      var col6 = '', col7 = '';
-      if (_cobTab === 'pendiente' && c._auto) {
-        col6 = /anulad|baja|cancel/i.test(c._pol_estado || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">Póliza anulada</span>'
-          : /vida obligatori/i.test(c._ramo || '') ? '<span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Vida obligatorio se paga por ARCA con las cargas sociales">Se paga por ARCA</span>'
-          : '<span style="background:#EFF6FF;color:#1D4ED8;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="Se cobra con tarjeta o débito: si rebota, la compañía avisa por mail">💳 Automático</span>';
-        col7 = /anulad|baja|cancel/i.test(c._pol_estado || '') || /vida obligatori/i.test(c._ramo || '') ? '<span style="font-size:11px;color:var(--lt)">No hace falta avisar</span>'
-          : '<button type="button" class="btn btn-sm" title="La compañía avisó que no se pudo cobrar" onclick="cobMarcarRechazo(\'' + c.id + '\')" style="font-size:11px;color:#B91C1C;border-color:#FCA5A5">💳 Rebotó</button>';
-      } else if (_cobTab === 'pendiente') {
-        var dias = c._dias_mora || 0;
-        var moraBg = dias > 60 ? '#FCEBEB' : dias > 30 ? '#FAEEDA' : '#FEF9C3';
-        var moraColor = dias > 60 ? '#A32D2D' : dias > 30 ? '#854F0B' : '#713F12';
-        var moraLabel = dias > 60 ? '+60 días' : dias > 30 ? '31-60 días' : dias + ' días';
-        col6 = '<span style="background:'+moraBg+';color:'+moraColor+';font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">'+moraLabel+'</span>';
-        if (c.rechazada) col6 = '<span style="background:#DC2626;color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px" title="' + esc(c.rechazo_detalle || '') + '">💳 Débito rechazado</span> ' + col6;
-        var tm = _cobMoras[c._cliente_id];
-        if (tm) col6 += '<div style="font-size:11px;color:#1E40AF;margin-top:3px">' + esc(String(tm.titulo).split(' — ')[0]) + (tm.fecha_limite ? ' · reclamar ' + fmtDate(tm.fecha_limite).slice(0, 5) : '') + '</div>';
-        var its = c._items || [c];
-        _cobEst['k:' + c.id] = { kind: 'cuota', tarea: tm || null, cuotas: its.map(function (z) { return { id: z.id, poliza_id: z.poliza_id, monto: z.monto, numero_cuota: z.numero_cuota, fecha_vencimiento: z.fecha_vencimiento }; }),
-          pol: { numero_poliza: c._numero_poliza, ramo: c._ramo, aseguradora: c._aseguradora, cliente_id: c._cliente_id, clientes: c._cl || {} } };
-        // WhatsApp
-        var waNum = c._telefono ? normalizarTelefono(c._telefono) : '';        var msgWa = encodeURIComponent('Hola ' + (c._nombre||'') + ', te recordamos que tenés una cuota vencida de ' + monto + ' correspondiente a tu póliza N° ' + pol + ' de ' + aseg + '. Cualquier consulta estamos a disposición. Gracias!');
-        var waUrl = waNum ? 'https://wa.me/'+waNum+'?text='+msgWa : 'https://wa.me/?text='+msgWa;
-        col7 = '<a href="'+waUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);color:var(--med);text-decoration:none">'
-          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.016 22l4.985-1.397A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 0 1-4.076-1.124l-.29-.174-3.022.847.807-2.965-.19-.302A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>'
-          + 'Avisar</a>'
-          + ' <button type="button" title="Que el chat de Cobranzas arme el mail" onclick="window._ofRefs=window._ofRefs||{};window._ofRefs[\''+c.id+'\']={cliente_id:\''+(c.cliente_id||'')+'\'||null,poliza_id:\''+(c.poliza_id||'')+'\'||null,texto:\'Cuota '+(c.numero_cuota||'')+' vencida · '+monto.replace(/'/g,'')+' · póliza N° '+String(pol).replace(/'/g,'')+'\'};abrirGestionarPorMail(\'cobranzas\',window._ofRefs[\''+c.id+'\'])" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📧</button>'
-          + ' <button type="button" title="Anotar en qué está el cobro" onclick="hoyEstado(\'k:'+c.id+'\')" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);cursor:pointer;color:var(--med)">📝 En qué está</button>';
-      } else {
-        col6 = c.fecha_pago ? fmtDate(c.fecha_pago) : '—';
-        col7 = comPct ? '<span style="font-size:12px;font-weight:500;color:var(--blue)">$'
-          + Math.round((parseFloat(c.monto)||0) * comPct / 100).toLocaleString('es-AR')
-          + '</span>' : '<span style="font-size:11px;color:var(--lt)">Sin % config.</span>';
-      }
-
-      return '<tr style="'+border+'">'
-        + '<td style="padding:10px 10px;vertical-align:middle"><div style="font-weight:500;font-size:12px;color:var(--text)">'+cliente+'</div>'
-        + '<div style="font-size:11px;color:var(--muted)">'+c._ramo+'</div></td>'
-        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+pol+(c._medio ? '<div style="font-size:10.5px;margin-top:2px">'+c._medio.i+' '+esc(c._medio.t)+'</div>' : '')+'</td>'
-        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+aseg+'</td>'
-        + '<td style="padding:10px 10px;font-size:12px;color:var(--muted)">'+fmtDate(c.fecha_vencimiento)+'</td>'
-        + '<td style="padding:10px 10px;font-size:12px;font-weight:600;color:var(--text);text-align:right">'+monto+'</td>'
-        + '<td style="padding:10px 10px">'+col6+'</td>'
-        + '<td style="padding:10px 10px">'+col7+'</td>'
-        + '</tr>';
-    }).join('');
+    html = '<div style="height:4px"></div>' + rows2.map(card).join('');
   }
+  list.innerHTML = html;
 
-  // Footer
-  var footerL = document.getElementById('cob-footer-left');
-  var footerR = document.getElementById('cob-footer-right');
-  if (footerL) footerL.textContent = rows.length + ' ' + (_cobTab==='pendiente' ? 'cuota'+(rows.length!==1?'s':'')+' pendiente'+(rows.length!==1?'s':'') : 'cobro'+(rows.length!==1?'s':''));
-  if (footerR) {
-    var txt = 'Total: $' + Math.round(totalImporte).toLocaleString('es-AR');
-    if (_cobTab === 'cobrado' && comPct) txt += ' · Comisión: $' + Math.round(totalImporte * comPct / 100).toLocaleString('es-AR');
-    footerR.textContent = txt;
-  }
-  if (document.getElementById('cob-total-label'))
-    document.getElementById('cob-total-label').innerHTML = _cobTab==='pendiente'
-      ? 'Total pendiente: <strong>$' + Math.round(totalImporte).toLocaleString('es-AR') + '</strong>'
-      : 'Total cobrado: <strong>$' + Math.round(totalImporte).toLocaleString('es-AR') + '</strong>';
+  var fl = document.getElementById('cob-footer-left'), fr = document.getElementById('cob-footer-right');
+  if (fl) fl.textContent = rows2.length + ' ' + (tab === 'cobrado' ? 'cobro' : 'cuota') + (rows2.length !== 1 ? 's' : '');
+  if (fr) fr.textContent = 'Total: ' + _cob$(total) + (tab === 'cobrado' && comPct ? ' · Comisión: ' + _cob$(total * comPct / 100) : '');
+}
+
+// Panel derecho: cupones del mes y cómo pagan los clientes
+function cobRenderSide() {
+  var pols = (_cobPols || []).filter(function (p) { return p.estado === 'activa' && !p.paquete_de; });
+  var cup = {}, cuentas = {};
+  pols.forEach(function (p) {
+    var k = _medioCat(p).k; cuentas[k] = (cuentas[k] || 0) + 1;
+    if (k === 'efectivo' && /mensual/i.test(p.forma_pago || '')) {
+      var cl = _cobClIdx[p.cliente_id] || {};
+      var g = cup[p.cliente_id] = cup[p.cliente_id] || { nom: cl.id ? nombreClienteLista(cl) : '—', nombre: cl.nombre || '', tel: cl.telefono_principal || cl.telefono_secundario || '', pols: [] };
+      g.pols.push(p);
+    }
+  });
+  var cl = Object.keys(cup).map(function (k) { return cup[k]; }).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
+  var el = document.getElementById('cob-cupones');
+  if (el) el.innerHTML = cl.length ? cl.map(function (g) {
+    var desc = g.pols.map(function (p) { return p.ramo + ' N° ' + p.numero_poliza; }).join(' + ');
+    return '<div class="cobx-cup"><div style="min-width:0"><div style="font-size:13px;font-weight:500">' + esc(g.nom) + '</div><div style="font-size:11.5px;color:#5B6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(desc) + '</div></div>'
+      + '<a class="cobx-a wa" style="min-height:36px;font-size:12px" target="_blank" rel="noopener" href="' + _cobWa(g.tel, 'Hola ' + g.nombre + ', te paso el cupón de pago de este mes de tu seguro (' + desc + '). Cualquier cosa avisame.') + '">Mandar</a></div>';
+  }).join('') : '<div style="font-size:12.5px;color:#5B6472;margin-top:10px">Ningún cliente paga en efectivo con refacturación mensual.</div>';
+  var tot = pols.length || 1;
+  var bars = [['debito', '#2E6DA4'], ['tarjeta', '#5B8FC7'], ['efectivo', '#B45309'], ['confirmar', '#5B21B6'], ['f931', '#94A3B8'], ['sin', '#D5DBE3']];
+  var eb = document.getElementById('cob-medios-bars');
+  if (eb) eb.innerHTML = bars.filter(function (b) { return cuentas[b[0]]; }).map(function (b) {
+    return '<div class="cobx-bar"><div style="display:flex;justify-content:space-between"><span>' + MEDIOS[b[0]][1] + '</span><b>' + cuentas[b[0]] + '</b></div><div class="cobx-bar-t"><div style="width:' + Math.max(3, Math.round(cuentas[b[0]] / tot * 100)) + '%;background:' + b[1] + '"></div></div></div>';
+  }).join('');
+  var nb = document.getElementById('cob-sin-medio-n');
+  var nSin = pols.filter(function (p) { return _medioCat(p).k === 'sin'; }).length;
+  if (nb) { nb.textContent = nSin; nb.style.display = nSin ? '' : 'none'; }
 }
 
 async function cargarCobranzas() {
@@ -9671,27 +9674,32 @@ async function cargarCobranzas() {
   });
 
   // Métricas
+  _cobPols = polsRes.data || []; _cobClIdx = clIdx;
+  var esPendC = function (c) { return c.estado === 'pendiente' || c.estado === 'vencida'; };
   var cobradas = _cobData.filter(function(c){ return c.estado==='pagada'||c.estado==='cancelado'; });
-  // Pendiente = lo que hay que reclamar (contado / cupón); lo automático no cuenta
-  var pendientes = _cobData.filter(function(c){ return (c.estado==='pendiente'||c.estado==='vencida') && !c._auto; });
-  var totalCob = cobradas.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
-  var totalPend = pendientes.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0);
-  var totalEmitido = totalCob + totalPend;
-  var tasa = totalEmitido > 0 ? Math.round(totalCob / totalEmitido * 100) : 0;
+  var pendientes = _cobData.filter(function(c){ return esPendC(c) && !c._auto; });
+  var rechazadas = _cobData.filter(function(c){ return esPendC(c) && c.rechazada; });
+  var autos = _cobData.filter(function(c){ return esPendC(c) && c._auto; });
+  var suma = function (l) { return l.reduce(function(s,c){ return s+(parseFloat(c.monto)||0); },0); };
+  var totalCob = suma(cobradas), totalPend = suma(pendientes);
   var cfg = _cfg || {};
   var comPct = cfg.comision_promedio ? parseFloat(cfg.comision_promedio) : null;
-
+  var nCli = new Set(pendientes.map(function (c) { return c._cliente_id; })).size;
   var el = function(id){ return document.getElementById(id); };
-  if(el('cob-mes')) el('cob-mes').textContent = '$'+Math.round(totalCob).toLocaleString('es-AR');
-  if(el('cob-mes-sub')) el('cob-mes-sub').textContent = cobradas.length+' cuota'+(cobradas.length!==1?'s':'')+' cobrada'+(cobradas.length!==1?'s':'');
-  if(el('cob-pend')) el('cob-pend').textContent = '$'+Math.round(totalPend).toLocaleString('es-AR');
-  if(el('cob-pend-sub')) el('cob-pend-sub').textContent = pendientes.length+' cuota'+(pendientes.length!==1?'s':'')+' impaga'+(pendientes.length!==1?'s':'');
-  if(el('cob-comision')) el('cob-comision').textContent = comPct ? '$'+Math.round(totalCob*comPct/100).toLocaleString('es-AR') : '—';
-  if(el('cob-comision-sub')) el('cob-comision-sub').textContent = comPct ? '~'+comPct+'% promedio cartera' : 'Configurar % en Ajustes';
-  if(el('cob-tasa')) el('cob-tasa').textContent = tasa+'%';
-  if(el('cob-tasa-sub')) el('cob-tasa-sub').textContent = 'Cobrado vs emitido';
-  if(el('cob-badge-pend')) el('cob-badge-pend').textContent = pendientes.length;
-  if(el('cob-badge-cob')) el('cob-badge-cob').textContent = cobradas.length;
+  if (el('cob-k-recl')) el('cob-k-recl').textContent = _cob$(totalPend);
+  if (el('cob-k-recl-sub')) el('cob-k-recl-sub').textContent = pendientes.length + ' cuota' + (pendientes.length !== 1 ? 's' : '') + ' · ' + nCli + ' cliente' + (nCli !== 1 ? 's' : '');
+  if (el('cob-k-rech')) el('cob-k-rech').textContent = rechazadas.length;
+  if (el('cob-k-rech-sub')) el('cob-k-rech-sub').textContent = rechazadas.length ? 'Avisar hoy: puede quedar sin cobertura' : 'Ninguno rebotó';
+  if (el('cob-k-rech-box')) el('cob-k-rech-box').classList.toggle('cobx-alert', rechazadas.length > 0);
+  if (el('cob-k-auto')) el('cob-k-auto').textContent = _cob$(suma(autos));
+  if (el('cob-k-auto-sub')) el('cob-k-auto-sub').textContent = autos.length + ' cuota' + (autos.length !== 1 ? 's' : '') + ' · débito, tarjeta y ARCA';
+  if (el('cob-k-cob')) el('cob-k-cob').textContent = _cob$(totalCob);
+  if (el('cob-k-cob-sub')) el('cob-k-cob-sub').textContent = comPct ? 'Comisión estimada: ' + _cob$(totalCob * comPct / 100) : cobradas.length + ' cuota' + (cobradas.length !== 1 ? 's' : '') + ' cobradas';
+  if (el('cob-badge-pendiente')) el('cob-badge-pendiente').textContent = pendientes.length;
+  if (el('cob-badge-rechazada')) { el('cob-badge-rechazada').textContent = rechazadas.length; el('cob-badge-rechazada').style.display = rechazadas.length ? '' : 'none'; }
+  if (el('cob-badge-auto')) el('cob-badge-auto').textContent = autos.length;
+  if (el('cob-badge-cobrado')) el('cob-badge-cobrado').textContent = cobradas.length;
+  cobRenderSide();
 
   // Poblar filtro aseguradoras
   var asegSel = el('cob-fil-aseg');
@@ -9702,7 +9710,7 @@ async function cargarCobranzas() {
       + asegs.map(function(a){ return '<option'+(a===prev?' selected':'')+'>'+a+'</option>'; }).join('');
   }
 
-  cobRender();
+  var _m = _cobMedio; cobSetTab(_cobTab || 'pendiente'); if (_m) { _cobMedio = _m; cobRender(); }
 }
 
 // Débito o tarjeta que rebotó: la cuota vuelve a "para reclamar" y se crea la tarea de avisarle al cliente
@@ -9784,7 +9792,7 @@ async function cobCompletarMedio() {
       return '<div id="cmp-' + p.id + '" style="padding:8px 0;border-top:0.5px solid var(--border)">'
         + '<div style="font-size:13px;font-weight:500">' + esc(p._cli) + '</div>'
         + '<div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">' + esc((p.ramo || '') + ' N° ' + p.numero_poliza + ' · ' + (p.aseguradora || '')) + (p._hijos.length ? ' · 📦 + ' + esc(p._hijos.map(function (h) { return h.ramo; }).join(' + ')) : '') + (p.forma_pago ? ' · ' + esc(p.forma_pago) : '') + '</div>'
-        + '<div style="display:flex;gap:5px;flex-wrap:wrap">' + BTN.map(function (b) { return '<button type="button" class="btn btn-sm" style="font-size:11px" onclick="cobGuardarMedio(\'' + p.id + '\',\'' + b[0] + '\')">' + b[1] + '</button>'; }).join('') + '</div></div>';
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:4px">' + BTN.map(function (b) { var col = { 'Débito': '#1E5A8C', 'Tarjeta': '#2C3444', 'Tarjeta a confirmar': '#5B21B6', 'Efectivo': '#92400E' }[b[0]] || '#2C3444'; return '<button type="button" class="cobx-a" style="min-height:48px;color:' + col + '" onclick="cobGuardarMedio(\'' + p.id + '\',\'' + b[0] + '\')">' + b[1] + '</button>'; }).join('') + '</div></div>';
     }).join('') + '</div>';
   document.getElementById('env-cuerpo').innerHTML += '<div style="text-align:right;margin-top:10px"><button type="button" class="btn btn-p" onclick="cerrarModal(\'modal-envio\');cargarCobranzas()">Listo</button></div>';
   m.classList.add('open');
