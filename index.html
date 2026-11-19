@@ -2943,8 +2943,59 @@ async function autoPagarDebitos() {
   } catch (e) { console.warn('autoPagarDebitos:', e); return 0; }
 }
 
+// ── Cupones del mes ──────────────────────────────────────
+// Clientes que pagan en efectivo con refacturación mensual: cada mes se les manda el cupón (del 1 al 5).
+// Se arma una tarea por cliente al principio del mes; al tocar "Mandado" queda cerrada.
+function _cupMes() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; }
+function _cupClientes(pols, clIdx) {
+  var cup = {};
+  (pols || []).forEach(function (p) {
+    if (p.estado !== 'activa' || p.paquete_de) return;
+    if (_medioCat(p).k !== 'efectivo' || !/mensual/i.test(p.forma_pago || '')) return;
+    var cl = (clIdx || {})[p.cliente_id] || p.clientes || {};
+    var g = cup[p.cliente_id] = cup[p.cliente_id] || { cid: p.cliente_id, nom: cl.apellido || cl.razon_social ? nombreClienteLista(cl) : '—', nombre: cl.nombre || '', tel: cl.telefono_principal || cl.telefono_secundario || '', pols: [] };
+    g.pols.push(p);
+  });
+  return Object.keys(cup).map(function (k) { return cup[k]; }).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
+}
+var _cupGenerado = false;
+async function generarTareasCupon() {
+  if (_cupGenerado) return; _cupGenerado = true;
+  if (new Date().getDate() > 10) return; // pasado el día 10 ya no se crean las del mes
+  try {
+    var mes = _cupMes();
+    var r = await Promise.all([
+      sb.from('polizas').select('id,numero_poliza,ramo,aseguradora,forma_pago,medio_pago,estado,paquete_de,cliente_id,clientes(nombre,apellido,razon_social,tipo_cliente)').eq('productor_id', user.id).eq('estado', 'activa').limit(2000),
+      sb.from('tareas').select('id,cliente_id').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').eq('vencimiento', mes)
+    ]);
+    var ya = {}; (r[1].data || []).forEach(function (t) { ya[t.cliente_id] = 1; });
+    var nuevas = _cupClientes(r[0].data || [], {}).filter(function (g) { return g.cid && !ya[g.cid]; }).map(function (g) {
+      return { productor_id: user.id, titulo: 'Mandar cupón de pago — ' + g.nom, tipo: 'Mandar cupón', estado: 'pendiente', prioridad: 'media', tablero: 'cobranzas', categoria: 'cobranza',
+        cliente_id: g.cid, poliza_id: g.pols[0].id, vencimiento: mes, fecha_limite: mes.slice(0, 8) + '05', auto_generada: true,
+        descripcion: 'Paga en efectivo con refacturación mensual. Mandarle el cupón de este mes: ' + g.pols.map(function (p) { return p.ramo + ' N° ' + p.numero_poliza + ' (' + (p.aseguradora || '') + ')'; }).join(' + ') + '.' };
+    });
+    if (nuevas.length) await sb.from('tareas').insert(nuevas);
+  } catch (e) { console.warn('generarTareasCupon:', e); }
+}
+// Marca el cupón del mes como mandado (cierra la tarea; si no había, la crea cerrada)
+async function cobCupMandado(cid, deshacer) {
+  var mes = _cupMes(), t = (_cobCupT || []).find(function (x) { return x.cliente_id === cid; });
+  if (deshacer) { if (t) await sb.from('tareas').update({ estado: 'pendiente', resultado: null, updated_at: new Date().toISOString() }).eq('id', t.id); }
+  else if (t) await sb.from('tareas').update({ estado: 'cerrada', resultado: 'Cupón mandado', updated_at: new Date().toISOString() }).eq('id', t.id);
+  else {
+    var g = _cupClientes(_cobPols, _cobClIdx).find(function (x) { return x.cid === cid; }) || { nom: '', pols: [{}] };
+    await sb.from('tareas').insert({ productor_id: user.id, titulo: 'Mandar cupón de pago — ' + g.nom, tipo: 'Mandar cupón', estado: 'cerrada', resultado: 'Cupón mandado', prioridad: 'media', tablero: 'cobranzas', categoria: 'cobranza',
+      cliente_id: cid, poliza_id: g.pols[0].id || null, vencimiento: mes, fecha_limite: mes.slice(0, 8) + '05', auto_generada: true });
+  }
+  var r = await sb.from('tareas').select('id,cliente_id,estado').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').eq('vencimiento', mes);
+  _cobCupT = r.data || [];
+  cobRenderSide();
+}
+var _cobCupT = [];
+
 async function cargarDashboard() {
   await autoPagarDebitos();
+  await generarTareasCupon();
   var uid = user.id;
   var hoyD = new Date();
   var iso = function(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); };
@@ -9571,12 +9622,20 @@ function cobRenderSide() {
       g.pols.push(p);
     }
   });
-  var cl = Object.keys(cup).map(function (k) { return cup[k]; }).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
+  var cl = _cupClientes(_cobPols, _cobClIdx);
+  var tmap = {}; (_cobCupT || []).forEach(function (t) { tmap[t.cliente_id] = t; });
+  cl.sort(function (a, b) { var ea = tmap[a.cid] && tmap[a.cid].estado === 'cerrada' ? 1 : 0, eb = tmap[b.cid] && tmap[b.cid].estado === 'cerrada' ? 1 : 0; return ea - eb || a.nom.localeCompare(b.nom); });
+  var nHechos = cl.filter(function (g) { return tmap[g.cid] && tmap[g.cid].estado === 'cerrada'; }).length;
   var el = document.getElementById('cob-cupones');
-  if (el) el.innerHTML = cl.length ? cl.map(function (g) {
+  if (el) el.innerHTML = cl.length ? '<div style="font-size:12px;color:' + (nHechos === cl.length ? '#15803D' : '#92400E') + ';margin-top:8px;font-weight:600">' + (nHechos === cl.length ? '✓ Todos mandados este mes' : nHechos + ' de ' + cl.length + ' mandados este mes') + '</div>'
+    + cl.map(function (g) {
     var desc = g.pols.map(function (p) { return p.ramo + ' N° ' + p.numero_poliza; }).join(' + ');
-    return '<div class="cobx-cup"><div style="min-width:0"><div style="font-size:13px;font-weight:500">' + esc(g.nom) + '</div><div style="font-size:11.5px;color:#5B6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(desc) + '</div></div>'
-      + '<a class="cobx-a wa" style="min-height:36px;font-size:12px" target="_blank" rel="noopener" href="' + _cobWa(g.tel, 'Hola ' + g.nombre + ', te paso el cupón de pago de este mes de tu seguro (' + desc + '). Cualquier cosa avisame.') + '">Mandar</a></div>';
+    var hecho = tmap[g.cid] && tmap[g.cid].estado === 'cerrada';
+    if (hecho) return '<div class="cobx-cup" style="background:#F0FDF4;border-color:#BBF7D0"><div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#5B6472">' + esc(g.nom) + '</div><div style="font-size:11.5px;color:#15803D;font-weight:600">✓ Mandado</div></div>'
+      + '<button type="button" class="cobx-a sm" style="min-height:32px" onclick="cobCupMandado(\'' + g.cid + '\',true)">Deshacer</button></div>';
+    return '<div class="cobx-cup"><div style="min-width:0;flex:1 1 150px"><div style="font-size:13px;font-weight:500">' + esc(g.nom) + '</div><div style="font-size:11.5px;color:#5B6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(desc) + '</div></div>'
+      + '<div style="display:flex;gap:6px;flex-shrink:0"><a class="cobx-a sm" style="min-height:36px" target="_blank" rel="noopener" href="' + _cobWa(g.tel, 'Hola ' + g.nombre + ', te paso el cupón de pago de este mes de tu seguro (' + desc + '). Cualquier cosa avisame.') + '">WhatsApp</a>'
+      + '<button type="button" class="cobx-a wa" style="min-height:36px;font-size:12px" onclick="cobCupMandado(\'' + g.cid + '\')">✓ Mandado</button></div></div>';
   }).join('') : '<div style="font-size:12.5px;color:#5B6472;margin-top:10px">Ningún cliente paga en efectivo con refacturación mensual.</div>';
   var tot = pols.length || 1;
   var bars = [['debito', '#2E6DA4'], ['tarjeta', '#5B8FC7'], ['efectivo', '#B45309'], ['confirmar', '#5B21B6'], ['f931', '#94A3B8'], ['sin', '#D5DBE3']];
@@ -9591,6 +9650,7 @@ function cobRenderSide() {
 
 async function cargarCobranzas() {
   await autoPagarDebitos();
+  await generarTareasCupon();
   // Forzar recarga de clientes con campos de contacto
   // Clientes con teléfono (columnas reales); si falla, se usan los que ya estaban cargados
   var res = await sb.from('clientes').select('id,nombre,apellido,razon_social,tipo_cliente,telefono_principal,telefono_secundario').eq('productor_id', user.id).order('apellido');
@@ -9623,14 +9683,16 @@ async function cargarCobranzas() {
   if (lbl) lbl.textContent = mesesNom[mes-1] + ' ' + anio;
 
   // Traer cobranzas, pólizas y clientes por separado (sin join anidado)
-  var [resMes, resPend, polsRes, morasRes] = await Promise.all([
+  var [resMes, resPend, polsRes, morasRes, cupRes] = await Promise.all([
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .gte('fecha_vencimiento', desde).lte('fecha_vencimiento', hasta).limit(2000),
     sb.from('cobranzas').select('*').eq('productor_id', user.id)
       .in('estado', ['pendiente','vencida']).lt('fecha_vencimiento', desde).limit(2000),
     sb.from('polizas').select('id,numero_poliza,aseguradora,ramo,cliente_id,forma_pago,medio_pago,estado,paquete_de').eq('productor_id', user.id).limit(2000),
-    sb.from('tareas').select('id,titulo,fecha_limite,estado,cliente_id').eq('productor_id', user.id).eq('tipo', 'Gestionar mora').eq('estado', 'esperando')
+    sb.from('tareas').select('id,titulo,fecha_limite,estado,cliente_id').eq('productor_id', user.id).eq('tipo', 'Gestionar mora').eq('estado', 'esperando'),
+    sb.from('tareas').select('id,cliente_id,estado').eq('productor_id', user.id).eq('tipo', 'Mandar cupón').eq('vencimiento', _cupMes())
   ]);
+  _cobCupT = (cupRes && cupRes.data) || [];
   _cobMoras = {}; (morasRes.data || []).forEach(function (t) { if (t.cliente_id) _cobMoras[t.cliente_id] = t; });
 
   // Clientes: usar allCl si está disponible, sino cargar
