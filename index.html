@@ -602,7 +602,7 @@
             <option value="61">+60 días</option>
           </select>
           <select id="cob-fil-medio" onchange="cobRender()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--rsm);background:var(--white);color:var(--text)">
-            <option value="">Todos los medios</option><option value="efectivo">💵 Efectivo / cupón</option><option value="debito">🏦 Débito / CBU</option><option value="tarjeta">💳 Tarjeta</option><option value="confirmar">⏳ Tarjeta a confirmar</option><option value="transferencia">🔁 Transferencia</option><option value="sin">⚠️ Sin cargar</option>
+            <option value="">Todos los medios</option><option value="efectivo">💵 Efectivo / cupón</option><option value="debito">🏦 Débito / CBU</option><option value="tarjeta">💳 Tarjeta</option><option value="confirmar">⏳ Tarjeta a confirmar</option><option value="sin">⚠️ Sin cargar</option>
           </select>
           <button type="button" class="btn btn-sm" onclick="cobMediosPorCliente()" title="Qué cliente paga con qué medio" style="font-size:12px">👥 Clientes por medio de pago</button>
           <button type="button" class="btn btn-sm" onclick="cobCompletarMedio()" title="Cargá cómo paga cada póliza para que el CRM sepa cuáles se cobran solas" style="font-size:12px">💳 Completar medio de pago</button>
@@ -1790,7 +1790,6 @@
           <option>Tarjeta de débito</option>
           <option>Efectivo</option>
           <option>Cupón de pago</option>
-          <option>Transferencia</option>
           <option>Tarjeta a confirmar</option>
           <option>F.931 (ARCA)</option>
         </select>
@@ -9751,7 +9750,7 @@ async function cobMediosPorCliente() {
   });
   var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '760px';
   document.getElementById('env-titulo').textContent = '👥 Clientes por medio de pago';
-  var orden = ['efectivo', 'transferencia', 'confirmar', 'sin', 'debito', 'tarjeta', 'f931'];
+  var orden = ['efectivo', 'confirmar', 'sin', 'transferencia', 'debito', 'tarjeta', 'f931'];
   document.getElementById('env-cuerpo').innerHTML = '<div style="max-height:66vh;overflow:auto">' + orden.map(function (k) {
     var cls = Object.keys(grupos[k]).map(function (id) { return grupos[k][id]; }).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
     if (!cls.length) return '';
@@ -9777,9 +9776,10 @@ async function cobCompletarMedio() {
   _cmpPols.sort(function (a, b) { return a._cli.localeCompare(b._cli); });
   var m = _envModal(); m.querySelector('.modal-box').style.maxWidth = '760px';
   document.getElementById('env-titulo').textContent = '💳 Completar medio de pago (' + _cmpPols.length + ')';
-  var BTN = [['Débito', 'Débito / CBU'], ['Tarjeta', 'Tarjeta'], ['Tarjeta a confirmar', 'Tarjeta a confirmar'], ['Efectivo', 'Efectivo / cupón'], ['Transferencia', 'Transferencia']];
+  // Transferencia no es una forma de pago periódica (solo se usa para pagar una cuota que rebotó), por eso no está acá
+  var BTN = [['Débito', 'Débito / CBU'], ['Tarjeta', 'Tarjeta'], ['Tarjeta a confirmar', 'Tarjeta a confirmar'], ['Efectivo', 'Efectivo / cupón']];
   document.getElementById('env-cuerpo').innerHTML = !_cmpPols.length ? '<p style="font-size:13px">✓ Todas las pólizas tienen el medio de pago cargado.</p>'
-    : '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Débito y tarjeta se dan por pagos solos 7 días después del vencimiento (si no avisan un rechazo). Efectivo y transferencia quedan para reclamar. "Tarjeta a confirmar" se reclama hasta que la compañía la apruebe. En los paquetes se aplica a todas sus pólizas.</p>'
+    : '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Débito y tarjeta se dan por pagos solos 7 días después del vencimiento (si no avisan un rechazo). Efectivo / cupón queda para reclamar. "Tarjeta a confirmar" se reclama hasta que la compañía la apruebe. En los paquetes se aplica a todas sus pólizas.</p>'
     + '<div style="max-height:62vh;overflow:auto">' + _cmpPols.map(function (p) {
       return '<div id="cmp-' + p.id + '" style="padding:8px 0;border-top:0.5px solid var(--border)">'
         + '<div style="font-size:13px;font-weight:500">' + esc(p._cli) + '</div>'
