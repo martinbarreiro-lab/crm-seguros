@@ -1791,6 +1791,8 @@
           <option>Efectivo</option>
           <option>Cupón de pago</option>
           <option>Transferencia</option>
+          <option>Tarjeta a confirmar</option>
+          <option>F.931 (ARCA)</option>
         </select>
       </div>
     </div>
@@ -8308,7 +8310,12 @@ async function abrirRenovarPoliza(polId) {
     document.getElementById('fp-premio').value = p.prima_anual || '';
     document.getElementById('fp-pago').value = p.forma_pago || '';
     if (p.cantidad_cuotas) document.getElementById('fp-cuotas').value = p.cantidad_cuotas;
-    if (p.medio_pago) document.getElementById('fp-medio').value = p.medio_pago;
+    if (p.medio_pago) {
+      // Si el medio guardado no está en la lista (ej. "Débito", "Visa", "F.931 (ARCA)"), se agrega para no perderlo al guardar
+      var _sm = document.getElementById('fp-medio');
+      if (![].some.call(_sm.options, function (o) { return o.value === p.medio_pago; })) { var _o = document.createElement('option'); _o.textContent = p.medio_pago; _sm.appendChild(_o); }
+      _sm.value = p.medio_pago;
+    }
     if (p.dia_debito) document.getElementById('fp-dia-debito').value = p.dia_debito;
     if (p.periodo_meses) document.getElementById('fp-periodo').value = p.periodo_meses;
     document.getElementById('fp-notas').value = 'RENOVACIÓN de póliza N° '+(p.numero_poliza||'')+'. Ramo: '+p.ramo+'.';
